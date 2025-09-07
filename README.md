@@ -1,46 +1,186 @@
-# Getting Started with Create React App
+# 🚛 Food Truck Manager
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A comprehensive food truck management application built with React, TypeScript, and Material-UI. Manage all aspects of your food truck business from finances to employee scheduling.
 
-## Available Scripts
+## 🚀 Live Demo
 
-In the project directory, you can run:
+Visit the live application: [https://als15.github.io/foodtruck-manager](https://als15.github.io/foodtruck-manager)
 
-### `npm start`
+## ✨ Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 📊 Dashboard
+- Real-time business metrics and KPIs
+- Daily revenue and order tracking
+- Progress indicators for goals
+- Quick action shortcuts
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### 💰 Financial Management
+- Revenue and expense tracking
+- Profit/loss analysis
+- Transaction categorization
+- Payment method tracking
+- Financial reporting
 
-### `npm test`
+### 🍔 Menu Management
+- Menu item creation and editing
+- Category organization
+- Pricing management
+- Ingredient and allergen tracking
+- Availability toggles
+- Preparation time tracking
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 👥 Employee Management
+- Staff profiles and contact information
+- Shift scheduling system
+- Hours tracking and payroll calculation
+- Role-based management
+- Performance monitoring
 
-### `npm run build`
+### 🗺️ Logistics Management
+- Route planning and optimization
+- Location management
+- Event scheduling
+- Permit tracking
+- GPS coordinate support
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 📦 Inventory Management
+- Stock level monitoring
+- Low-stock alerts and notifications
+- Supplier management
+- Cost tracking per item
+- Automatic reorder suggestions
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 👤 Customer Management
+- Customer profiles and preferences
+- Loyalty points system
+- Order history tracking
+- Customer analytics
+- Tier-based rewards program
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 📈 Analytics & Reporting
+- Interactive charts and graphs
+- Sales performance analysis
+- Popular item tracking
+- Location performance comparison
+- Business insights and trends
 
-### `npm run eject`
+## 🛠️ Technology Stack
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+- **Frontend**: React 19 with TypeScript
+- **UI Framework**: Material-UI v5
+- **Routing**: React Router
+- **Charts**: Recharts
+- **State Management**: React Hooks
+- **Build Tool**: Create React App
+- **Deployment**: GitHub Pages
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🏃‍♂️ Getting Started
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Prerequisites
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- Node.js (version 16 or higher)
+- npm or yarn
 
-## Learn More
+### Installation
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/als15/foodtruck-manager.git
+   cd foodtruck-manager
+   ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm start
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+### Deploying to GitHub Pages
+
+```bash
+npm run deploy
+```
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+npm test
+```
+
+## 📱 Responsive Design
+
+The application is fully responsive and works seamlessly on:
+- Desktop computers
+- Tablets
+- Mobile phones
+
+## 🎯 Key Business Features
+
+### Financial Tracking
+- Daily revenue monitoring
+- Expense categorization
+- Profit margin analysis
+- Tax preparation support
+
+### Operational Efficiency
+- Inventory optimization
+- Route planning
+- Staff scheduling
+- Customer retention
+
+### Growth Analytics
+- Performance metrics
+- Trend analysis
+- Customer insights
+- Location comparison
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Create React App](https://create-react-app.dev/)
+- UI components from [Material-UI](https://mui.com/)
+- Charts powered by [Recharts](https://recharts.org/)
+- Icons from [Material-UI Icons](https://mui.com/material-ui/material-icons/)
+
+---
+
+**Note**: This application uses sample data for demonstration purposes. In a production environment, you would integrate with a backend API and database for persistent data storage.
+
+## 🔮 Future Enhancements
+
+- [ ] Backend API integration
+- [ ] Real-time notifications
+- [ ] Mobile app version
+- [ ] Integration with POS systems
+- [ ] Advanced reporting features
+- [ ] Multi-location support
+- [ ] Weather-based route suggestions
+
+---
+
+🤖 *Generated with [Claude Code](https://claude.ai/code)*
