@@ -1,25 +1,29 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { Routes, Route } from 'react-router-dom';
+import AppLayout from './components/Layout/AppLayout';
+import Dashboard from './pages/Dashboard';
+import Finances from './pages/Finances';
+import MenuManagement from './pages/MenuManagement';
+import Employees from './pages/Employees';
+import Logistics from './pages/Logistics';
+import Inventory from './pages/Inventory';
+import Customers from './pages/Customers';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AppLayout>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/finances" element={<Finances />} />
+        <Route path="/menu" element={<MenuManagement />} />
+        <Route path="/employees" element={<Employees />} />
+        <Route path="/logistics" element={<Logistics />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/analytics" element={<Analytics />} />
+      </Routes>
+    </AppLayout>
   );
 }
 

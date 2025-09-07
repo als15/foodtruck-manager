@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import Dashboard from './pages/Dashboard';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test('renders dashboard component', () => {
+  render(<Dashboard />);
+  const dashboardElement = screen.getByText(/Dashboard/i);
+  expect(dashboardElement).toBeInTheDocument();
 });
