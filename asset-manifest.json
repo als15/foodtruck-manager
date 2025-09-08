@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/foodtruck-manager/static/css/main.e6c13ad2.css",
-    "main.js": "/foodtruck-manager/static/js/main.95323732.js",
+    "main.js": "/foodtruck-manager/static/js/main.1e313be7.js",
     "static/js/453.d76e7d02.chunk.js": "/foodtruck-manager/static/js/453.d76e7d02.chunk.js",
     "index.html": "/foodtruck-manager/index.html",
     "main.e6c13ad2.css.map": "/foodtruck-manager/static/css/main.e6c13ad2.css.map",
-    "main.95323732.js.map": "/foodtruck-manager/static/js/main.95323732.js.map",
+    "main.1e313be7.js.map": "/foodtruck-manager/static/js/main.1e313be7.js.map",
     "453.d76e7d02.chunk.js.map": "/foodtruck-manager/static/js/453.d76e7d02.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.95323732.js"
+    "static/js/main.1e313be7.js"
   ]
 }
