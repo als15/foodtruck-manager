@@ -37,6 +37,7 @@ const navigationItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Finances', icon: <FinanceIcon />, path: '/finances' },
   { text: 'Menu', icon: <MenuManagementIcon />, path: '/menu' },
+  { text: 'Ingredients', icon: <InventoryIcon />, path: '/ingredients' },
   { text: 'Employees', icon: <EmployeeIcon />, path: '/employees' },
   { text: 'Logistics', icon: <LogisticsIcon />, path: '/logistics' },
   { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },

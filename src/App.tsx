@@ -4,6 +4,7 @@ import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import Finances from './pages/Finances';
 import MenuManagement from './pages/MenuManagement';
+import Ingredients from './pages/Ingredients';
 import Employees from './pages/Employees';
 import Logistics from './pages/Logistics';
 import Inventory from './pages/Inventory';
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/finances" element={<Finances />} />
         <Route path="/menu" element={<MenuManagement />} />
+        <Route path="/ingredients" element={<Ingredients />} />
         <Route path="/employees" element={<Employees />} />
         <Route path="/logistics" element={<Logistics />} />
         <Route path="/inventory" element={<Inventory />} />

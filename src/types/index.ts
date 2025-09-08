@@ -1,13 +1,33 @@
+export interface Ingredient {
+  id: string;
+  name: string;
+  costPerUnit: number;
+  unit: string; // e.g., "lbs", "oz", "cups", "pieces"
+  supplier: string;
+  category: string;
+  isAvailable: boolean;
+  lastUpdated: Date;
+}
+
+export interface MenuItemIngredient {
+  ingredientId: string;
+  quantity: number;
+  unit: string;
+  cost?: number; // calculated from ingredient cost * quantity
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   description: string;
   price: number;
   category: string;
-  ingredients: string[];
+  ingredients: MenuItemIngredient[];
   allergens: string[];
   isAvailable: boolean;
   prepTime: number;
+  totalIngredientCost?: number; // calculated total cost of all ingredients
+  profitMargin?: number; // calculated (price - totalIngredientCost) / price
 }
 
 export interface MenuCategory {
