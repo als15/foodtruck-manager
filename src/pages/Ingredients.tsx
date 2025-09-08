@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -22,6 +22,9 @@ import {
   IconButton,
   Switch,
   FormControlLabel,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,83 +33,15 @@ import {
   Kitchen as KitchenIcon,
 } from '@mui/icons-material';
 import { Ingredient } from '../types';
+import { ingredientsService, subscriptions } from '../services/supabaseService';
 
 export default function Ingredients() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
-
-  const [ingredients, setIngredients] = useState<Ingredient[]>([
-    {
-      id: '1',
-      name: 'Ground Beef',
-      costPerUnit: 8.50,
-      unit: 'lbs',
-      supplier: 'Local Butcher Co',
-      category: 'Meat',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    },
-    {
-      id: '2',
-      name: 'Burger Buns',
-      costPerUnit: 0.75,
-      unit: 'piece',
-      supplier: 'Fresh Bakery',
-      category: 'Bread',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-02')
-    },
-    {
-      id: '3',
-      name: 'Cheddar Cheese',
-      costPerUnit: 12.00,
-      unit: 'lbs',
-      supplier: 'Dairy Farm Co',
-      category: 'Dairy',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    },
-    {
-      id: '4',
-      name: 'Lettuce',
-      costPerUnit: 2.50,
-      unit: 'head',
-      supplier: 'Green Gardens',
-      category: 'Vegetables',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-03')
-    },
-    {
-      id: '5',
-      name: 'Tomatoes',
-      costPerUnit: 4.00,
-      unit: 'lbs',
-      supplier: 'Green Gardens',
-      category: 'Vegetables',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-03')
-    },
-    {
-      id: '6',
-      name: 'Fish Fillets',
-      costPerUnit: 15.00,
-      unit: 'lbs',
-      supplier: 'Ocean Fresh',
-      category: 'Seafood',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-02')
-    },
-    {
-      id: '7',
-      name: 'Corn Tortillas',
-      costPerUnit: 0.25,
-      unit: 'piece',
-      supplier: 'Tortilla Factory',
-      category: 'Bread',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    }
-  ]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
     name: '',
@@ -118,30 +53,65 @@ export default function Ingredients() {
     lastUpdated: new Date()
   });
 
-  const handleSaveIngredient = () => {
-    if (editingIngredient) {
-      setIngredients(ingredients.map(ing => 
-        ing.id === editingIngredient.id ? { ...newIngredient as Ingredient, id: editingIngredient.id } : ing
-      ));
-    } else {
-      const ingredient: Ingredient = {
-        ...newIngredient as Ingredient,
-        id: Date.now().toString()
-      };
-      setIngredients([...ingredients, ingredient]);
-    }
-    
-    setNewIngredient({
-      name: '',
-      costPerUnit: 0,
-      unit: '',
-      supplier: '',
-      category: '',
-      isAvailable: true,
-      lastUpdated: new Date()
+  // Load ingredients on component mount
+  useEffect(() => {
+    loadIngredients();
+  }, []);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const subscription = subscriptions.ingredients((payload) => {
+      console.log('Ingredients changed:', payload);
+      // Reload ingredients when changes occur
+      loadIngredients();
     });
-    setEditingIngredient(null);
-    setOpenDialog(false);
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const loadIngredients = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await ingredientsService.getAll();
+      setIngredients(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ingredients');
+      setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveIngredient = async () => {
+    try {
+      if (editingIngredient) {
+        await ingredientsService.update(editingIngredient.id, newIngredient);
+        setSnackbar({ open: true, message: 'Ingredient updated successfully', severity: 'success' });
+      } else {
+        await ingredientsService.create(newIngredient as Omit<Ingredient, 'id' | 'lastUpdated'>);
+        setSnackbar({ open: true, message: 'Ingredient created successfully', severity: 'success' });
+      }
+      
+      // Reload ingredients to get updated data
+      await loadIngredients();
+      
+      setNewIngredient({
+        name: '',
+        costPerUnit: 0,
+        unit: '',
+        supplier: '',
+        category: '',
+        isAvailable: true,
+        lastUpdated: new Date()
+      });
+      setEditingIngredient(null);
+      setOpenDialog(false);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to save ingredient', severity: 'error' });
+    }
   };
 
   const handleEditIngredient = (ingredient: Ingredient) => {
@@ -150,14 +120,27 @@ export default function Ingredients() {
     setOpenDialog(true);
   };
 
-  const handleDeleteIngredient = (id: string) => {
-    setIngredients(ingredients.filter(ing => ing.id !== id));
+  const handleDeleteIngredient = async (id: string) => {
+    try {
+      await ingredientsService.delete(id);
+      setSnackbar({ open: true, message: 'Ingredient deleted successfully', severity: 'success' });
+      await loadIngredients();
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to delete ingredient', severity: 'error' });
+    }
   };
 
-  const toggleAvailability = (id: string) => {
-    setIngredients(ingredients.map(ing => 
-      ing.id === id ? { ...ing, isAvailable: !ing.isAvailable } : ing
-    ));
+  const toggleAvailability = async (id: string) => {
+    try {
+      const ingredient = ingredients.find(ing => ing.id === id);
+      if (ingredient) {
+        await ingredientsService.update(id, { isAvailable: !ingredient.isAvailable });
+        setSnackbar({ open: true, message: 'Availability updated successfully', severity: 'success' });
+        await loadIngredients();
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to update availability', severity: 'error' });
+    }
   };
 
   const categories = Array.from(new Set(ingredients.map(ing => ing.category)));
@@ -168,6 +151,27 @@ export default function Ingredients() {
   const avgCostPerIngredient = ingredients.length > 0 
     ? ingredients.reduce((sum, ing) => sum + ing.costPerUnit, 0) / ingredients.length 
     : 0;
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={loadIngredients}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -372,6 +376,20 @@ export default function Ingredients() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
