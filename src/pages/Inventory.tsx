@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -22,6 +22,14 @@ import {
   LinearProgress,
   Alert,
   Grid,
+  CircularProgress,
+  Snackbar,
+  Menu,
+  MenuItem as MuiMenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -29,96 +37,178 @@ import {
   Delete as DeleteIcon,
   Warning as WarningIcon,
   Inventory as InventoryIcon,
+  MoreVert as MoreVertIcon,
+  Input as ImportIcon,
+  ShoppingCart as OrderIcon,
+  LocalShipping as DeliveryIcon,
+  Schedule as LeadTimeIcon,
+  Visibility as ViewIcon,
+  VisibilityOff as HideIcon,
 } from '@mui/icons-material';
-import { InventoryItem } from '../types';
+import { InventoryItem, Ingredient, Supplier } from '../types';
+import { inventoryService, ingredientsService, suppliersService, subscriptions } from '../services/supabaseService';
 
 export default function Inventory() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' | 'warning' });
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [showAutoOrders, setShowAutoOrders] = useState(false);
 
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      name: 'Ground Beef',
-      category: 'Meat',
-      currentStock: 25,
-      unit: 'lbs',
-      minThreshold: 10,
-      costPerUnit: 8.50,
-      supplier: 'Local Butcher',
-      lastRestocked: new Date('2024-01-01')
-    },
-    {
-      id: '2',
-      name: 'Burger Buns',
-      category: 'Bread',
-      currentStock: 5,
-      unit: 'dozen',
-      minThreshold: 12,
-      costPerUnit: 3.25,
-      supplier: 'Fresh Bakery',
-      lastRestocked: new Date('2024-01-02')
-    },
-    {
-      id: '3',
-      name: 'Cheese Slices',
-      category: 'Dairy',
-      currentStock: 8,
-      unit: 'lbs',
-      minThreshold: 5,
-      costPerUnit: 6.75,
-      supplier: 'Dairy Farm Co',
-      lastRestocked: new Date('2024-01-01')
-    },
-    {
-      id: '4',
-      name: 'Lettuce',
-      category: 'Vegetables',
-      currentStock: 3,
-      unit: 'heads',
-      minThreshold: 6,
-      costPerUnit: 2.50,
-      supplier: 'Green Gardens',
-      lastRestocked: new Date('2024-01-03')
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const inventorySubscription = subscriptions.inventory((payload) => {
+      console.log('Inventory changed:', payload);
+      loadInventoryItems();
+    });
+
+    const ingredientSubscription = subscriptions.ingredients((payload) => {
+      console.log('Ingredients changed:', payload);
+      loadIngredients();
+    });
+
+    return () => {
+      inventorySubscription.unsubscribe();
+      ingredientSubscription.unsubscribe();
+    };
+  }, []);
+
+  const loadData = async () => {
+    await Promise.all([loadInventoryItems(), loadIngredients(), loadSuppliers()]);
+  };
+
+  const loadInventoryItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await inventoryService.getAll();
+      setInventoryItems(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load inventory items');
+      setSnackbar({ open: true, message: 'Failed to load inventory items', severity: 'error' });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const loadIngredients = async () => {
+    try {
+      const data = await ingredientsService.getAll();
+      setAvailableIngredients(data);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' });
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const data = await suppliersService.getAll();
+      setSuppliers(data);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to load suppliers', severity: 'error' });
+    }
+  };
+
+  const handleImportFromIngredients = async () => {
+    try {
+      // Get ingredients that are not already in inventory
+      const existingNames = new Set(inventoryItems.map(item => item.name.toLowerCase()));
+      const missingIngredients = availableIngredients.filter(ing => 
+        !existingNames.has(ing.name.toLowerCase())
+      );
+
+      if (missingIngredients.length === 0) {
+        setSnackbar({ open: true, message: 'All ingredients are already in inventory', severity: 'info' });
+        setMenuAnchor(null);
+        return;
+      }
+
+      await inventoryService.createFromIngredients(missingIngredients.map(ing => ing.id));
+      setSnackbar({ 
+        open: true, 
+        message: `Imported ${missingIngredients.length} ingredients to inventory`, 
+        severity: 'success' 
+      });
+      await loadInventoryItems();
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' });
+    } finally {
+      setMenuAnchor(null);
+    }
+  };
 
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({
     name: '',
     category: '',
     currentStock: 0,
     unit: '',
-    minThreshold: 0,
+    minThreshold: 5,
     costPerUnit: 0,
     supplier: '',
     lastRestocked: new Date()
   });
 
-  const handleSaveItem = () => {
-    if (editingItem) {
-      setInventoryItems(inventoryItems.map(item => 
-        item.id === editingItem.id ? { ...newItem as InventoryItem, id: editingItem.id } : item
-      ));
+  const handleIngredientSelect = (selectedIngredient: Ingredient | null) => {
+    if (selectedIngredient) {
+      setNewItem({
+        ...newItem,
+        name: selectedIngredient.name,
+        category: selectedIngredient.category,
+        unit: selectedIngredient.unit,
+        costPerUnit: selectedIngredient.costPerUnit,
+        supplier: selectedIngredient.supplier
+      });
     } else {
-      const item: InventoryItem = {
-        ...newItem as InventoryItem,
-        id: Date.now().toString()
-      };
-      setInventoryItems([...inventoryItems, item]);
+      setNewItem({
+        ...newItem,
+        name: '',
+        category: '',
+        unit: '',
+        costPerUnit: 0,
+        supplier: ''
+      });
     }
-    
-    setNewItem({
-      name: '',
-      category: '',
-      currentStock: 0,
-      unit: '',
-      minThreshold: 0,
-      costPerUnit: 0,
-      supplier: '',
-      lastRestocked: new Date()
-    });
-    setEditingItem(null);
-    setOpenDialog(false);
+  };
+
+  const handleSaveItem = async () => {
+    try {
+      if (editingItem) {
+        await inventoryService.update(editingItem.id, newItem);
+        setSnackbar({ open: true, message: 'Inventory item updated successfully', severity: 'success' });
+      } else {
+        await inventoryService.create(newItem as Omit<InventoryItem, 'id'>);
+        setSnackbar({ open: true, message: 'Inventory item created successfully', severity: 'success' });
+      }
+      
+      await loadInventoryItems();
+      
+      setNewItem({
+        name: '',
+        category: '',
+        currentStock: 0,
+        unit: '',
+        minThreshold: 5,
+        costPerUnit: 0,
+        supplier: '',
+        lastRestocked: new Date()
+      });
+      setEditingItem(null);
+      setOpenDialog(false);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to save inventory item', severity: 'error' });
+    }
   };
 
   const handleEditItem = (item: InventoryItem) => {
@@ -127,8 +217,14 @@ export default function Inventory() {
     setOpenDialog(true);
   };
 
-  const handleDeleteItem = (id: string) => {
-    setInventoryItems(inventoryItems.filter(item => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      await inventoryService.delete(id);
+      setSnackbar({ open: true, message: 'Inventory item deleted successfully', severity: 'success' });
+      await loadInventoryItems();
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to delete inventory item', severity: 'error' });
+    }
   };
 
   const getStockStatus = (item: InventoryItem) => {
@@ -147,19 +243,83 @@ export default function Inventory() {
     total + (item.currentStock * item.costPerUnit), 0
   );
 
-  const categories = Array.from(new Set(inventoryItems.map(item => item.category)));
+  // Generate auto-order suggestions
+  const autoOrderSuggestions = lowStockItems
+    .map(item => {
+      const supplier = suppliers.find(sup => 
+        sup.name === item.supplier && sup.autoOrderEnabled && sup.isActive
+      );
+      if (!supplier) return null;
+      
+      const suggestedQuantity = Math.max(
+        item.minThreshold * 2 - item.currentStock, // Restock to double the threshold
+        supplier.minimumOrderAmount / item.costPerUnit // Or meet minimum order amount
+      );
+      
+      return {
+        item,
+        supplier,
+        suggestedQuantity: Math.ceil(suggestedQuantity),
+        totalCost: suggestedQuantity * item.costPerUnit,
+        deliveryDays: supplier.deliveryDays,
+        leadTime: supplier.leadTime
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b?.totalCost || 0) - (a?.totalCost || 0)); // Sort by cost descending
+
+  // Get existing categories from inventory items (for display)
+  const categories = Array.from(new Set(inventoryItems.map(item => item.category))).sort();
+  
+  // Get all ingredient categories for autocomplete
+  const allCategories = Array.from(new Set([
+    ...availableIngredients.map(ing => ing.category),
+    ...inventoryItems.map(item => item.category)
+  ])).sort();
+  
+  const totalAutoOrderValue = autoOrderSuggestions.reduce((sum, order) => sum + (order?.totalCost || 0), 0);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={loadData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Inventory Management</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenDialog(true)}
-        >
-          Add Item
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<MoreVertIcon />}
+            onClick={(e) => setMenuAnchor(e.currentTarget)}
+          >
+            Import
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenDialog(true)}
+          >
+            Add Item
+          </Button>
+        </Box>
       </Box>
 
       {lowStockItems.length > 0 && (
@@ -174,6 +334,106 @@ export default function Inventory() {
             {lowStockItems.map(item => item.name).join(', ')}
           </Typography>
         </Alert>
+      )}
+
+      {/* Auto-Order Suggestions */}
+      {autoOrderSuggestions.length > 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                <OrderIcon sx={{ mr: 1 }} />
+                Auto-Order Suggestions ({autoOrderSuggestions.length})
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={showAutoOrders ? <HideIcon /> : <ViewIcon />}
+                onClick={() => setShowAutoOrders(!showAutoOrders)}
+              >
+                {showAutoOrders ? 'Hide' : 'View'} Suggestions
+              </Button>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Total estimated cost: <strong>${totalAutoOrderValue.toFixed(2)}</strong>
+            </Typography>
+            
+            {showAutoOrders && (
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell>Supplier</TableCell>
+                      <TableCell>Current Stock</TableCell>
+                      <TableCell>Suggested Qty</TableCell>
+                      <TableCell>Unit Cost</TableCell>
+                      <TableCell>Total Cost</TableCell>
+                      <TableCell>Delivery</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {autoOrderSuggestions.map((suggestion, index) => (
+                      <TableRow key={`${suggestion?.item.id}-${index}`}>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                            {suggestion?.item.name}
+                          </Typography>
+                          <Typography variant="caption" color="error">
+                            {suggestion?.item.currentStock} / {suggestion?.item.minThreshold} {suggestion?.item.unit}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{suggestion?.supplier.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {suggestion?.supplier.contactPerson}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={`${suggestion?.item.currentStock} ${suggestion?.item.unit}`}
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="primary">
+                            {suggestion?.suggestedQuantity} {suggestion?.item.unit}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            ${suggestion?.item.costPerUnit.toFixed(2)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                            ${suggestion?.totalCost.toFixed(2)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <DeliveryIcon sx={{ fontSize: 14 }} />
+                            <Typography variant="caption">
+                              {suggestion?.deliveryDays.join(', ')}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <LeadTimeIcon sx={{ fontSize: 14 }} />
+                            <Typography variant="caption">
+                              {suggestion?.leadTime} days lead time
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -323,19 +583,50 @@ export default function Inventory() {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Item Name"
-                value={newItem.name}
-                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+              <Autocomplete
+                options={availableIngredients.filter(ing => 
+                  !inventoryItems.some(item => item.name.toLowerCase() === ing.name.toLowerCase())
+                )}
+                getOptionLabel={(option) => option.name}
+                value={availableIngredients.find(ing => ing.name === newItem.name) || null}
+                onChange={(_, value) => handleIngredientSelect(value)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Select Ingredient"
+                    placeholder="Choose from existing ingredients"
+                    disabled={editingItem !== null} // Disable when editing
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="body1">{option.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.category} • {option.supplier} • ${option.costPerUnit}/{option.unit}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                disabled={editingItem !== null} // Disable when editing existing items
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Category"
+              <Autocomplete
+                freeSolo
+                options={allCategories}
                 value={newItem.category}
-                onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
+                onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Category"
+                    placeholder="e.g., Meat, Vegetables, Dairy"
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -354,6 +645,8 @@ export default function Inventory() {
                 value={newItem.unit}
                 onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
                 placeholder="e.g., lbs, dozen, pieces"
+                InputProps={{ readOnly: !editingItem && !newItem.name }}
+                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -373,6 +666,8 @@ export default function Inventory() {
                 inputProps={{ step: "0.01" }}
                 value={newItem.costPerUnit}
                 onChange={(e) => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) })}
+                InputProps={{ readOnly: !editingItem && !newItem.name }}
+                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -381,6 +676,8 @@ export default function Inventory() {
                 label="Supplier"
                 value={newItem.supplier}
                 onChange={(e) => setNewItem({ ...newItem, supplier: e.target.value })}
+                InputProps={{ readOnly: !editingItem && !newItem.name }}
+                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
               />
             </Grid>
             <Grid item xs={12}>
@@ -402,6 +699,35 @@ export default function Inventory() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+      >
+        <MuiMenuItem onClick={handleImportFromIngredients}>
+          <ListItemIcon>
+            <ImportIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            Import from Ingredients
+          </ListItemText>
+        </MuiMenuItem>
+      </Menu>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

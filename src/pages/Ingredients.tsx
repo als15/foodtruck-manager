@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -20,20 +20,30 @@ import {
   Paper,
   Chip,
   IconButton,
+  Autocomplete,
   Switch,
   FormControlLabel,
   CircularProgress,
   Alert,
   Snackbar,
+  Menu,
+  MenuItem as MuiMenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Kitchen as KitchenIcon,
+  Upload as UploadIcon,
+  Download as DownloadIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { Ingredient } from '../types';
 import { ingredientsService, subscriptions } from '../services/supabaseService';
+import Papa from 'papaparse';
 
 export default function Ingredients() {
   const [openDialog, setOpenDialog] = useState(false);
@@ -41,7 +51,10 @@ export default function Ingredients() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
+  const [importing, setImporting] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
     name: '',
@@ -143,8 +156,145 @@ export default function Ingredients() {
     }
   };
 
-  const categories = Array.from(new Set(ingredients.map(ing => ing.category)));
-  const suppliers = Array.from(new Set(ingredients.map(ing => ing.supplier)));
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+    setMenuAnchor(null);
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const validIngredients: Omit<Ingredient, 'id' | 'lastUpdated'>[] = [];
+          const errors: string[] = [];
+
+          results.data.forEach((row: any, index: number) => {
+            if (!row.name || !row.costPerUnit || !row.unit || !row.supplier || !row.category) {
+              errors.push(`Row ${index + 1}: Missing required fields`);
+              return;
+            }
+
+            const costPerUnit = parseFloat(row.costPerUnit);
+            if (isNaN(costPerUnit)) {
+              errors.push(`Row ${index + 1}: Invalid cost per unit`);
+              return;
+            }
+
+            validIngredients.push({
+              name: row.name.trim(),
+              costPerUnit: costPerUnit,
+              unit: row.unit.trim(),
+              supplier: row.supplier.trim(),
+              category: row.category.trim(),
+              isAvailable: row.isAvailable?.toLowerCase() !== 'false'
+            });
+          });
+
+          if (errors.length > 0) {
+            setSnackbar({ 
+              open: true, 
+              message: `Import completed with ${errors.length} errors. Check console for details.`, 
+              severity: 'warning' as 'warning'
+            });
+            console.error('Import errors:', errors);
+          }
+
+          // Import valid ingredients
+          for (const ingredient of validIngredients) {
+            await ingredientsService.create(ingredient);
+          }
+
+          setSnackbar({ 
+            open: true, 
+            message: `Successfully imported ${validIngredients.length} ingredients`, 
+            severity: 'success' 
+          });
+          await loadIngredients();
+        } catch (err) {
+          setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' });
+        } finally {
+          setImporting(false);
+          event.target.value = ''; // Reset file input
+        }
+      },
+      error: () => {
+        setImporting(false);
+        setSnackbar({ open: true, message: 'Failed to parse CSV file', severity: 'error' });
+        event.target.value = '';
+      }
+    });
+  };
+
+  const handleExportCSV = () => {
+    const csvData = ingredients.map(ingredient => ({
+      name: ingredient.name,
+      costPerUnit: ingredient.costPerUnit,
+      unit: ingredient.unit,
+      supplier: ingredient.supplier,
+      category: ingredient.category,
+      isAvailable: ingredient.isAvailable
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ingredients-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    setMenuAnchor(null);
+    setSnackbar({ open: true, message: 'Ingredients exported successfully', severity: 'success' });
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        name: 'Ground Beef',
+        costPerUnit: 8.99,
+        unit: 'lbs',
+        supplier: 'Local Butcher',
+        category: 'Meat',
+        isAvailable: true
+      },
+      {
+        name: 'Tomatoes',
+        costPerUnit: 2.50,
+        unit: 'lbs',
+        supplier: 'Fresh Farms',
+        category: 'Vegetables',
+        isAvailable: true
+      }
+    ];
+
+    const csv = Papa.unparse(template);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'ingredients-template.csv';
+    link.click();
+    setMenuAnchor(null);
+    setSnackbar({ open: true, message: 'Template downloaded successfully', severity: 'success' });
+  };
+
+  // Common ingredient categories for autocomplete
+  const commonCategories = [
+    'Meat', 'Vegetables', 'Fruits', 'Dairy', 'Grains', 'Spices', 'Condiments', 
+    'Seafood', 'Pantry', 'Beverages', 'Oils', 'Nuts', 'Herbs', 'Baking'
+  ];
+  
+  const existingCategories = Array.from(new Set(ingredients.map(ing => ing.category)));
+  // Keep allCategories for autocomplete (includes common + existing)
+  const allCategories = commonCategories.concat(existingCategories);
+  const categoriesForAutocomplete = Array.from(new Set(allCategories)).sort();
+  // Only show categories that actually have ingredients
+  const categories = existingCategories.sort();
+  
+  const suppliers = Array.from(new Set(ingredients.map(ing => ing.supplier))).sort();
 
   const totalIngredients = ingredients.length;
   const availableIngredients = ingredients.filter(ing => ing.isAvailable).length;
@@ -177,13 +327,22 @@ export default function Ingredients() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Ingredient Management</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenDialog(true)}
-        >
-          Add Ingredient
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<MoreVertIcon />}
+            onClick={(e) => setMenuAnchor(e.currentTarget)}
+          >
+            Import/Export
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenDialog(true)}
+          >
+            Add Ingredient
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -340,20 +499,37 @@ export default function Ingredients() {
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Supplier"
+              <Autocomplete
+                freeSolo
+                options={suppliers}
                 value={newIngredient.supplier}
-                onChange={(e) => setNewIngredient({ ...newIngredient, supplier: e.target.value })}
+                onChange={(_, value) => setNewIngredient({ ...newIngredient, supplier: value || '' })}
+                onInputChange={(_, value) => setNewIngredient({ ...newIngredient, supplier: value || '' })}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Supplier"
+                    placeholder="e.g., Local Farms, Fresh Market"
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Category"
+              <Autocomplete
+                freeSolo
+                options={categoriesForAutocomplete}
                 value={newIngredient.category}
-                onChange={(e) => setNewIngredient({ ...newIngredient, category: e.target.value })}
-                placeholder="e.g., Meat, Vegetables, Dairy"
+                onChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })}
+                onInputChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Category"
+                    placeholder="e.g., Meat, Vegetables, Dairy"
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
@@ -390,6 +566,42 @@ export default function Ingredients() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+      >
+        <MuiMenuItem onClick={downloadTemplate}>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Download Template</ListItemText>
+        </MuiMenuItem>
+        <MuiMenuItem onClick={handleImportClick} disabled={importing}>
+          <ListItemIcon>
+            <UploadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {importing ? 'Importing...' : 'Import CSV'}
+          </ListItemText>
+        </MuiMenuItem>
+        <Divider />
+        <MuiMenuItem onClick={handleExportCSV}>
+          <ListItemIcon>
+            <DownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Export CSV</ListItemText>
+        </MuiMenuItem>
+      </Menu>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv"
+        style={{ display: 'none' }}
+        onChange={handleFileImport}
+      />
     </Box>
   );
 }

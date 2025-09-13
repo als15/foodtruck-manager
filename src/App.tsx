@@ -9,6 +9,7 @@ import Employees from './pages/Employees';
 import Logistics from './pages/Logistics';
 import Inventory from './pages/Inventory';
 import Customers from './pages/Customers';
+import Suppliers from './pages/Suppliers';
 import Analytics from './pages/Analytics';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         <Route path="/logistics" element={<Logistics />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/customers" element={<Customers />} />
+        <Route path="/suppliers" element={<Suppliers />} />
         <Route path="/analytics" element={<Analytics />} />
       </Routes>
     </AppLayout>

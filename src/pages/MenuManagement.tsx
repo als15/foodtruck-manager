@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -25,6 +25,13 @@ import {
   Divider,
   Alert,
   Grid,
+  CircularProgress,
+  Snackbar,
+  Select,
+  MenuItem as MuiMenuItem,
+  FormControl,
+  InputLabel,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,122 +41,25 @@ import {
   Calculate as CalculateIcon,
   TrendingUp as ProfitIcon,
   Remove as RemoveIcon,
+  Upload as UploadIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { MenuItem, Ingredient, MenuItemIngredient } from '../types';
+import { menuItemsService, ingredientsService, subscriptions } from '../services/supabaseService';
+import Papa from 'papaparse';
 
 export default function MenuManagement() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [importingIngredients, setImportingIngredients] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sample ingredients data
-  const [availableIngredients] = useState<Ingredient[]>([
-    {
-      id: '1',
-      name: 'Ground Beef',
-      costPerUnit: 8.50,
-      unit: 'lbs',
-      supplier: 'Local Butcher Co',
-      category: 'Meat',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    },
-    {
-      id: '2',
-      name: 'Burger Buns',
-      costPerUnit: 0.75,
-      unit: 'piece',
-      supplier: 'Fresh Bakery',
-      category: 'Bread',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-02')
-    },
-    {
-      id: '3',
-      name: 'Cheddar Cheese',
-      costPerUnit: 12.00,
-      unit: 'lbs',
-      supplier: 'Dairy Farm Co',
-      category: 'Dairy',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    },
-    {
-      id: '4',
-      name: 'Lettuce',
-      costPerUnit: 2.50,
-      unit: 'head',
-      supplier: 'Green Gardens',
-      category: 'Vegetables',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-03')
-    },
-    {
-      id: '5',
-      name: 'Tomatoes',
-      costPerUnit: 4.00,
-      unit: 'lbs',
-      supplier: 'Green Gardens',
-      category: 'Vegetables',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-03')
-    },
-    {
-      id: '6',
-      name: 'Fish Fillets',
-      costPerUnit: 15.00,
-      unit: 'lbs',
-      supplier: 'Ocean Fresh',
-      category: 'Seafood',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-02')
-    },
-    {
-      id: '7',
-      name: 'Corn Tortillas',
-      costPerUnit: 0.25,
-      unit: 'piece',
-      supplier: 'Tortilla Factory',
-      category: 'Bread',
-      isAvailable: true,
-      lastUpdated: new Date('2024-01-01')
-    }
-  ]);
+  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([
-    {
-      id: '1',
-      name: 'Classic Burger',
-      description: 'Beef patty with lettuce, tomato, and cheese',
-      price: 12.99,
-      category: 'Burgers',
-      ingredients: [
-        { ingredientId: '1', quantity: 0.25, unit: 'lbs' },
-        { ingredientId: '2', quantity: 1, unit: 'piece' },
-        { ingredientId: '3', quantity: 0.125, unit: 'lbs' },
-        { ingredientId: '4', quantity: 0.1, unit: 'head' },
-        { ingredientId: '5', quantity: 0.1, unit: 'lbs' }
-      ],
-      allergens: ['gluten', 'dairy'],
-      isAvailable: true,
-      prepTime: 8
-    },
-    {
-      id: '2',
-      name: 'Fish Tacos',
-      description: 'Grilled fish with fresh vegetables',
-      price: 10.99,
-      category: 'Tacos',
-      ingredients: [
-        { ingredientId: '6', quantity: 0.2, unit: 'lbs' },
-        { ingredientId: '7', quantity: 2, unit: 'piece' },
-        { ingredientId: '4', quantity: 0.05, unit: 'head' },
-        { ingredientId: '5', quantity: 0.05, unit: 'lbs' }
-      ],
-      allergens: ['fish'],
-      isAvailable: true,
-      prepTime: 6
-    }
-  ]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
     name: '',
@@ -161,6 +71,57 @@ export default function MenuManagement() {
     isAvailable: true,
     prepTime: 5
   });
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const menuSubscription = subscriptions.menuItems((payload) => {
+      console.log('Menu items changed:', payload);
+      loadMenuItems();
+    });
+
+    const ingredientSubscription = subscriptions.ingredients((payload) => {
+      console.log('Ingredients changed:', payload);
+      loadIngredients();
+    });
+
+    return () => {
+      menuSubscription.unsubscribe();
+      ingredientSubscription.unsubscribe();
+    };
+  }, []);
+
+  const loadData = async () => {
+    await Promise.all([loadMenuItems(), loadIngredients()]);
+  };
+
+  const loadMenuItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await menuItemsService.getAll();
+      setMenuItems(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load menu items');
+      setSnackbar({ open: true, message: 'Failed to load menu items', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadIngredients = async () => {
+    try {
+      const data = await ingredientsService.getAll();
+      setAvailableIngredients(data);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' });
+    }
+  };
 
   const calculateIngredientCost = (ingredientId: string, quantity: number): number => {
     const ingredient = availableIngredients.find(ing => ing.id === ingredientId);
@@ -182,44 +143,68 @@ export default function MenuManagement() {
     return ingredient ? ingredient.name : 'Unknown Ingredient';
   };
 
-  const categories = Array.from(new Set(menuItems.map(item => item.category)));
+  const predefinedCategories = [
+    'salads',
+    'sandwiches', 
+    'desserts',
+    'sweet pastries',
+    'savory pastries',
+    'fruit shakes',
+    'hot drinks',
+    'cold drinks'
+  ];
 
-  const handleSaveItem = () => {
-    const totalCost = calculateTotalIngredientCost(newItem.ingredients || []);
-    const profitMargin = calculateProfitMargin(newItem.price || 0, totalCost);
+  // Show all predefined categories, whether they have items or not
+  const categories = predefinedCategories;
 
-    const itemToSave = {
-      ...newItem as MenuItem,
-      totalIngredientCost: totalCost,
-      profitMargin: profitMargin
-    };
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-    if (editingItem) {
-      setMenuItems(menuItems.map(item => 
-        item.id === editingItem.id ? { ...itemToSave, id: editingItem.id } : item
-      ));
-    } else {
-      const item: MenuItem = {
-        ...itemToSave,
-        id: Date.now().toString(),
-        ingredients: newItem.ingredients || [],
-        allergens: newItem.allergens || []
-      };
-      setMenuItems([...menuItems, item]);
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={loadData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  const handleSaveItem = async () => {
+    try {
+      if (editingItem) {
+        await menuItemsService.update(editingItem.id, newItem);
+        setSnackbar({ open: true, message: 'Menu item updated successfully', severity: 'success' });
+      } else {
+        await menuItemsService.create(newItem as Omit<MenuItem, 'id' | 'totalIngredientCost' | 'profitMargin'>);
+        setSnackbar({ open: true, message: 'Menu item created successfully', severity: 'success' });
+      }
+      
+      await loadMenuItems();
+      
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        category: '',
+        ingredients: [],
+        allergens: [],
+        isAvailable: true,
+        prepTime: 5
+      });
+      setEditingItem(null);
+      setOpenDialog(false);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to save menu item', severity: 'error' });
     }
-    
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category: '',
-      ingredients: [],
-      allergens: [],
-      isAvailable: true,
-      prepTime: 5
-    });
-    setEditingItem(null);
-    setOpenDialog(false);
   };
 
   const handleEditItem = (item: MenuItem) => {
@@ -228,24 +213,53 @@ export default function MenuManagement() {
     setOpenDialog(true);
   };
 
-  const handleDeleteItem = (id: string) => {
-    setMenuItems(menuItems.filter(item => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      await menuItemsService.delete(id);
+      setSnackbar({ open: true, message: 'Menu item deleted successfully', severity: 'success' });
+      await loadMenuItems();
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to delete menu item', severity: 'error' });
+    }
   };
 
-  const toggleAvailability = (id: string) => {
-    setMenuItems(menuItems.map(item => 
-      item.id === id ? { ...item, isAvailable: !item.isAvailable } : item
-    ));
+  const toggleAvailability = async (id: string) => {
+    try {
+      const item = menuItems.find(item => item.id === id);
+      if (item) {
+        await menuItemsService.update(id, { isAvailable: !item.isAvailable });
+        setSnackbar({ open: true, message: 'Availability updated successfully', severity: 'success' });
+        await loadMenuItems();
+      }
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to update availability', severity: 'error' });
+    }
   };
 
   const addIngredientToItem = () => {
-    const newIngredients = [...(newItem.ingredients || []), { ingredientId: '', quantity: 0, unit: '' }];
+    const newIngredients = [...(newItem.ingredients || []), { ingredientId: '', quantity: 1, unit: '' }];
     setNewItem({ ...newItem, ingredients: newIngredients });
   };
 
   const updateIngredientInItem = (index: number, field: keyof MenuItemIngredient, value: any) => {
     const ingredients = [...(newItem.ingredients || [])];
-    ingredients[index] = { ...ingredients[index], [field]: value };
+    
+    // If changing ingredient, auto-fill the unit from the ingredient's default unit
+    if (field === 'ingredientId' && value) {
+      const selectedIngredient = availableIngredients.find(ing => ing.id === value);
+      if (selectedIngredient) {
+        ingredients[index] = { 
+          ...ingredients[index], 
+          [field]: value,
+          unit: selectedIngredient.unit // Auto-fill unit from ingredient
+        };
+      } else {
+        ingredients[index] = { ...ingredients[index], [field]: value };
+      }
+    } else {
+      ingredients[index] = { ...ingredients[index], [field]: value };
+    }
+    
     setNewItem({ ...newItem, ingredients });
   };
 
@@ -253,6 +267,109 @@ export default function MenuManagement() {
     const ingredients = [...(newItem.ingredients || [])];
     ingredients.splice(index, 1);
     setNewItem({ ...newItem, ingredients });
+  };
+
+  const handleImportIngredientsClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleIngredientsFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportingIngredients(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          const importedIngredients: MenuItemIngredient[] = [];
+          const errors: string[] = [];
+
+          results.data.forEach((row: any, index: number) => {
+            // Check if ingredient exists
+            const ingredient = availableIngredients.find(ing => 
+              ing.id === row.ingredientId || ing.name.toLowerCase() === row.name?.toLowerCase()
+            );
+
+            if (!ingredient) {
+              errors.push(`Row ${index + 1}: Ingredient '${row.name || row.ingredientId}' not found`);
+              return;
+            }
+
+            const quantity = parseFloat(row.quantity);
+            if (isNaN(quantity) || quantity <= 0) {
+              errors.push(`Row ${index + 1}: Invalid quantity`);
+              return;
+            }
+
+            // Use provided unit or default to ingredient's unit
+            const unit = row.unit?.trim() || ingredient.unit;
+
+            importedIngredients.push({
+              ingredientId: ingredient.id,
+              quantity: quantity,
+              unit: unit
+            });
+          });
+
+          if (errors.length > 0) {
+            setSnackbar({ 
+              open: true, 
+              message: `Import completed with ${errors.length} errors. Check console for details.`, 
+              severity: 'error' 
+            });
+            console.error('Import errors:', errors);
+          }
+
+          // Add imported ingredients to current menu item
+          const currentIngredients = newItem.ingredients || [];
+          const allIngredients = [...currentIngredients, ...importedIngredients];
+          setNewItem({ ...newItem, ingredients: allIngredients });
+
+          setSnackbar({ 
+            open: true, 
+            message: `Successfully imported ${importedIngredients.length} ingredients`, 
+            severity: 'success' 
+          });
+        } catch (err) {
+          setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' });
+        } finally {
+          setImportingIngredients(false);
+          event.target.value = ''; // Reset file input
+        }
+      },
+      error: () => {
+        setImportingIngredients(false);
+        setSnackbar({ open: true, message: 'Failed to parse CSV file', severity: 'error' });
+        event.target.value = '';
+      }
+    });
+  };
+
+  const downloadIngredientsTemplate = () => {
+    const template = [
+      {
+        name: 'Ground Beef',
+        ingredientId: '',
+        quantity: 0.25,
+        unit: '' // Leave empty to auto-fill from ingredient's default unit
+      },
+      {
+        name: 'Cheddar Cheese',
+        ingredientId: '',
+        quantity: 0.125,
+        unit: '' // Leave empty to auto-fill from ingredient's default unit
+      }
+    ];
+
+    const csv = Papa.unparse(template);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'menu-item-ingredients-template.csv';
+    link.click();
+    setSnackbar({ open: true, message: 'Template downloaded successfully', severity: 'success' });
   };
 
   const handleAllergenChange = (value: string) => {
@@ -273,18 +390,19 @@ export default function MenuManagement() {
         </Button>
       </Box>
 
-      {categories.map(category => (
+      {categories.map(category => {
+        const categoryItems = menuItems.filter(item => item.category === category);
+        
+        return (
         <Box key={category} sx={{ mb: 4 }}>
           <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
             <RestaurantMenu sx={{ mr: 1 }} />
             {category}
           </Typography>
           <Grid container spacing={2}>
-            {menuItems
-              .filter(item => item.category === category)
-              .map((item) => {
-                const totalCost = calculateTotalIngredientCost(item.ingredients);
-                const profitMargin = calculateProfitMargin(item.price, totalCost);
+            {categoryItems.map((item) => {
+                const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients);
+                const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost);
                 
                 return (
                   <Grid item xs={12} sm={6} md={4} key={item.id}>
@@ -357,7 +475,8 @@ export default function MenuManagement() {
               })}
           </Grid>
         </Box>
-      ))}
+        );
+      })}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
@@ -374,12 +493,20 @@ export default function MenuManagement() {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Category"
-                value={newItem.category}
-                onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-              />
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={newItem.category}
+                  label="Category"
+                  onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                >
+                  {predefinedCategories.map((category) => (
+                    <MuiMenuItem key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -415,14 +542,35 @@ export default function MenuManagement() {
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Ingredients</Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<AddIcon />}
-                  onClick={addIngredientToItem}
-                >
-                  Add Ingredient
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Tooltip title="Download CSV template">
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<DownloadIcon />}
+                      onClick={downloadIngredientsTemplate}
+                    >
+                      Template
+                    </Button>
+                  </Tooltip>
+                  <Button
+                    variant="text"
+                    size="small"
+                    startIcon={<UploadIcon />}
+                    onClick={handleImportIngredientsClick}
+                    disabled={importingIngredients}
+                  >
+                    {importingIngredients ? 'Importing...' : 'Import CSV'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={addIngredientToItem}
+                  >
+                    Add Ingredient
+                  </Button>
+                </Box>
               </Box>
 
               {newItem.ingredients && newItem.ingredients.length > 0 && (
@@ -538,6 +686,28 @@ export default function MenuManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv"
+        style={{ display: 'none' }}
+        onChange={handleIngredientsFileImport}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

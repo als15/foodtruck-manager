@@ -119,6 +119,24 @@ export interface Customer {
   lastVisit: Date;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  deliveryDays: string[]; // e.g., ['Monday', 'Wednesday', 'Friday']
+  minimumOrderAmount: number;
+  leadTime: number; // days
+  autoOrderEnabled: boolean;
+  paymentTerms: string; // e.g., 'Net 30', 'COD', etc.
+  notes?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Order {
   id: string;
   customerId?: string;

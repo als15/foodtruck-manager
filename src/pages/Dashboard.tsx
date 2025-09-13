@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Grid,
   Paper,
@@ -7,13 +7,18 @@ import {
   Card,
   CardContent,
   LinearProgress,
+  CircularProgress,
 } from '@mui/material';
 import {
   TrendingUp,
   AttachMoney,
   People,
   Restaurant,
+  ShoppingCart,
+  Warning,
 } from '@mui/icons-material';
+import { inventoryService, suppliersService } from '../services/supabaseService';
+import { InventoryItem, Supplier } from '../types';
 
 const StatCard = ({ title, value, icon, color, subtitle }: any) => (
   <Card>
@@ -37,6 +42,63 @@ const StatCard = ({ title, value, icon, color, subtitle }: any) => (
 );
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [inventoryData, suppliersData] = await Promise.all([
+        inventoryService.getAll(),
+        suppliersService.getAll()
+      ]);
+      setInventoryItems(inventoryData);
+      setSuppliers(suppliersData);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate real data
+  const lowStockItems = inventoryItems.filter(item => item.currentStock <= item.minThreshold);
+  const autoOrderSuggestions = lowStockItems
+    .map(item => {
+      const supplier = suppliers.find(sup => 
+        sup.name === item.supplier && sup.autoOrderEnabled && sup.isActive
+      );
+      if (!supplier) return null;
+      
+      const suggestedQuantity = Math.max(
+        item.minThreshold * 2 - item.currentStock,
+        supplier.minimumOrderAmount / item.costPerUnit
+      );
+      
+      return {
+        item,
+        supplier,
+        suggestedQuantity: Math.ceil(suggestedQuantity),
+        totalCost: suggestedQuantity * item.costPerUnit
+      };
+    })
+    .filter(Boolean);
+
+  const estimatedOrderValue = autoOrderSuggestions.reduce((sum, order) => sum + (order?.totalCost || 0), 0);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 3 }}>
@@ -82,6 +144,43 @@ export default function Dashboard() {
             color="warning.main"
             subtitle="This month"
           />
+        </Grid>
+
+        {/* Auto-Order Status Card */}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <ShoppingCart sx={{ color: 'warning.main', mr: 1 }} />
+                <Typography variant="h6">Auto-Order Status</Typography>
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Warning sx={{ color: 'error.main', fontSize: 16, mr: 0.5 }} />
+                  <Typography variant="body2" color="error">
+                    {lowStockItems.length} Low Stock Items
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {autoOrderSuggestions.length} suppliers ready for auto-order
+                </Typography>
+              </Box>
+              
+              <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Estimated Order Value
+                </Typography>
+                <Typography variant="h5" color="primary">
+                  ${estimatedOrderValue.toFixed(2)}
+                </Typography>
+              </Box>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Visit Inventory → Auto-Order Suggestions to review
+              </Typography>
+            </CardContent>
+          </Card>
         </Grid>
 
         <Grid item xs={12} md={8}>

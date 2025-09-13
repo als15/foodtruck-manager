@@ -155,6 +155,25 @@ CREATE TABLE IF NOT EXISTS route_locations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 12. Suppliers table
+CREATE TABLE IF NOT EXISTS suppliers (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    contact_person VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    address TEXT NOT NULL,
+    delivery_days TEXT[] NOT NULL, -- Array of delivery days
+    minimum_order_amount DECIMAL(10,2) DEFAULT 0,
+    lead_time INTEGER DEFAULT 1, -- days
+    auto_order_enabled BOOLEAN DEFAULT false,
+    payment_terms VARCHAR(100) DEFAULT 'Net 30',
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category);
 CREATE INDEX IF NOT EXISTS idx_ingredients_supplier ON ingredients(supplier);
@@ -169,6 +188,8 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
+CREATE INDEX IF NOT EXISTS idx_suppliers_active ON suppliers(is_active);
 
 -- Create functions for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -196,6 +217,9 @@ CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_routes_updated_at BEFORE UPDATE ON routes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to calculate menu item costs
@@ -258,6 +282,7 @@ ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE route_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 
 -- Create permissive policies for now (allow all operations)
 -- In production, you'd want more restrictive policies
@@ -272,3 +297,4 @@ CREATE POLICY "Allow all operations" ON inventory_items FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON customers FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON routes FOR ALL USING (true);
 CREATE POLICY "Allow all operations" ON route_locations FOR ALL USING (true);
+CREATE POLICY "Allow all operations" ON suppliers FOR ALL USING (true);

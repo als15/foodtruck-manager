@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Ingredient, MenuItem, MenuItemIngredient, Employee, Shift, Transaction, Location, InventoryItem, Customer } from '../types';
+import { Ingredient, MenuItem, MenuItemIngredient, Employee, Shift, Transaction, Location, InventoryItem, Customer, Supplier } from '../types';
 
 // Helper function to handle Supabase errors
 const handleError = (error: any, operation: string) => {
@@ -405,6 +405,294 @@ export const employeesService = {
   }
 };
 
+// ==================== INVENTORY ITEMS ====================
+
+export const inventoryService = {
+  async getAll(): Promise<InventoryItem[]> {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .order('category', { ascending: true });
+    
+    if (error) handleError(error, 'fetch inventory items');
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      currentStock: item.current_stock,
+      unit: item.unit,
+      minThreshold: item.min_threshold,
+      costPerUnit: item.cost_per_unit,
+      supplier: item.supplier || '',
+      lastRestocked: new Date(item.last_restocked)
+    }));
+  },
+
+  async create(inventoryItem: Omit<InventoryItem, 'id'>): Promise<InventoryItem> {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .insert({
+        name: inventoryItem.name,
+        category: inventoryItem.category,
+        current_stock: inventoryItem.currentStock,
+        unit: inventoryItem.unit,
+        min_threshold: inventoryItem.minThreshold,
+        cost_per_unit: inventoryItem.costPerUnit,
+        supplier: inventoryItem.supplier,
+        last_restocked: inventoryItem.lastRestocked.toISOString().split('T')[0]
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create inventory item');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      category: data.category,
+      currentStock: data.current_stock,
+      unit: data.unit,
+      minThreshold: data.min_threshold,
+      costPerUnit: data.cost_per_unit,
+      supplier: data.supplier || '',
+      lastRestocked: new Date(data.last_restocked)
+    };
+  },
+
+  async update(id: string, inventoryItem: Partial<InventoryItem>): Promise<InventoryItem> {
+    const updateData: any = {};
+    if (inventoryItem.name !== undefined) updateData.name = inventoryItem.name;
+    if (inventoryItem.category !== undefined) updateData.category = inventoryItem.category;
+    if (inventoryItem.currentStock !== undefined) updateData.current_stock = inventoryItem.currentStock;
+    if (inventoryItem.unit !== undefined) updateData.unit = inventoryItem.unit;
+    if (inventoryItem.minThreshold !== undefined) updateData.min_threshold = inventoryItem.minThreshold;
+    if (inventoryItem.costPerUnit !== undefined) updateData.cost_per_unit = inventoryItem.costPerUnit;
+    if (inventoryItem.supplier !== undefined) updateData.supplier = inventoryItem.supplier;
+    if (inventoryItem.lastRestocked !== undefined) updateData.last_restocked = inventoryItem.lastRestocked.toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update inventory item');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      category: data.category,
+      currentStock: data.current_stock,
+      unit: data.unit,
+      minThreshold: data.min_threshold,
+      costPerUnit: data.cost_per_unit,
+      supplier: data.supplier || '',
+      lastRestocked: new Date(data.last_restocked)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('inventory_items')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete inventory item');
+  },
+
+  // Create inventory items from existing ingredients
+  async createFromIngredients(ingredientIds: string[]): Promise<InventoryItem[]> {
+    // Get ingredients data
+    const { data: ingredients, error: ingredientsError } = await supabase
+      .from('ingredients')
+      .select('*')
+      .in('id', ingredientIds);
+    
+    if (ingredientsError) handleError(ingredientsError, 'fetch ingredients for inventory');
+    
+    // Create inventory items from ingredients
+    const inventoryData = (ingredients || []).map(ing => ({
+      name: ing.name,
+      category: ing.category,
+      current_stock: 0, // Start with 0 stock
+      unit: ing.unit,
+      min_threshold: 5, // Default threshold
+      cost_per_unit: ing.cost_per_unit,
+      supplier: ing.supplier,
+      last_restocked: new Date().toISOString().split('T')[0]
+    }));
+    
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .insert(inventoryData)
+      .select();
+    
+    if (error) handleError(error, 'create inventory items from ingredients');
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      currentStock: item.current_stock,
+      unit: item.unit,
+      minThreshold: item.min_threshold,
+      costPerUnit: item.cost_per_unit,
+      supplier: item.supplier || '',
+      lastRestocked: new Date(item.last_restocked)
+    }));
+  }
+};
+
+// ==================== SUPPLIERS ====================
+
+export const suppliersService = {
+  async getAll(): Promise<Supplier[]> {
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) handleError(error, 'fetch suppliers');
+    
+    return (data || []).map(supplier => ({
+      id: supplier.id,
+      name: supplier.name,
+      contactPerson: supplier.contact_person,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address,
+      deliveryDays: supplier.delivery_days || [],
+      minimumOrderAmount: supplier.minimum_order_amount,
+      leadTime: supplier.lead_time,
+      autoOrderEnabled: supplier.auto_order_enabled,
+      paymentTerms: supplier.payment_terms,
+      notes: supplier.notes || '',
+      isActive: supplier.is_active,
+      createdAt: new Date(supplier.created_at),
+      updatedAt: new Date(supplier.updated_at)
+    }));
+  },
+
+  async create(supplier: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>): Promise<Supplier> {
+    const { data, error } = await supabase
+      .from('suppliers')
+      .insert({
+        name: supplier.name,
+        contact_person: supplier.contactPerson,
+        email: supplier.email,
+        phone: supplier.phone,
+        address: supplier.address,
+        delivery_days: supplier.deliveryDays,
+        minimum_order_amount: supplier.minimumOrderAmount,
+        lead_time: supplier.leadTime,
+        auto_order_enabled: supplier.autoOrderEnabled,
+        payment_terms: supplier.paymentTerms,
+        notes: supplier.notes,
+        is_active: supplier.isActive
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create supplier');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      contactPerson: data.contact_person,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      deliveryDays: data.delivery_days || [],
+      minimumOrderAmount: data.minimum_order_amount,
+      leadTime: data.lead_time,
+      autoOrderEnabled: data.auto_order_enabled,
+      paymentTerms: data.payment_terms,
+      notes: data.notes || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async update(id: string, supplier: Partial<Supplier>): Promise<Supplier> {
+    const updateData: any = {};
+    if (supplier.name !== undefined) updateData.name = supplier.name;
+    if (supplier.contactPerson !== undefined) updateData.contact_person = supplier.contactPerson;
+    if (supplier.email !== undefined) updateData.email = supplier.email;
+    if (supplier.phone !== undefined) updateData.phone = supplier.phone;
+    if (supplier.address !== undefined) updateData.address = supplier.address;
+    if (supplier.deliveryDays !== undefined) updateData.delivery_days = supplier.deliveryDays;
+    if (supplier.minimumOrderAmount !== undefined) updateData.minimum_order_amount = supplier.minimumOrderAmount;
+    if (supplier.leadTime !== undefined) updateData.lead_time = supplier.leadTime;
+    if (supplier.autoOrderEnabled !== undefined) updateData.auto_order_enabled = supplier.autoOrderEnabled;
+    if (supplier.paymentTerms !== undefined) updateData.payment_terms = supplier.paymentTerms;
+    if (supplier.notes !== undefined) updateData.notes = supplier.notes;
+    if (supplier.isActive !== undefined) updateData.is_active = supplier.isActive;
+    
+    const { data, error } = await supabase
+      .from('suppliers')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update supplier');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      contactPerson: data.contact_person,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      deliveryDays: data.delivery_days || [],
+      minimumOrderAmount: data.minimum_order_amount,
+      leadTime: data.lead_time,
+      autoOrderEnabled: data.auto_order_enabled,
+      paymentTerms: data.payment_terms,
+      notes: data.notes || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete supplier');
+  },
+
+  // Get low stock items for suppliers with auto-order enabled
+  async getLowStockItemsForAutoOrder(): Promise<InventoryItem[]> {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*');
+    
+    if (error) handleError(error, 'fetch inventory items for auto order');
+    
+    // Filter client-side for now (could be optimized with a database function)
+    const lowStockItems = (data || []).filter(item => item.current_stock <= item.min_threshold);
+    
+    return lowStockItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      currentStock: item.current_stock,
+      unit: item.unit,
+      minThreshold: item.min_threshold,
+      costPerUnit: item.cost_per_unit,
+      supplier: item.supplier || '',
+      lastRestocked: new Date(item.last_restocked)
+    }));
+  }
+};
+
 // ==================== TRANSACTIONS ====================
 
 export const transactionsService = {
@@ -495,6 +783,26 @@ export const subscriptions = {
       .channel('transactions_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'transactions' }, 
+        callback
+      )
+      .subscribe();
+  },
+
+  inventory: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('inventory_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'inventory_items' }, 
+        callback
+      )
+      .subscribe();
+  },
+
+  suppliers: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('suppliers_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'suppliers' }, 
         callback
       )
       .subscribe();

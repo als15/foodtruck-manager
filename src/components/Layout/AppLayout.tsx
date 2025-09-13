@@ -23,6 +23,7 @@ import {
   Route as LogisticsIcon,
   Inventory as InventoryIcon,
   Person as CustomerIcon,
+  Business as SupplierIcon,
   Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -42,6 +43,7 @@ const navigationItems = [
   { text: 'Logistics', icon: <LogisticsIcon />, path: '/logistics' },
   { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
   { text: 'Customers', icon: <CustomerIcon />, path: '/customers' },
+  { text: 'Suppliers', icon: <SupplierIcon />, path: '/suppliers' },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
 ];
 

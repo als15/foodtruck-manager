@@ -1,0 +1,9 @@
+name,costPerUnit,unit,supplier,category,isAvailable
+Ground Beef,8.99,lbs,Local Butcher,Meat,true
+Tomatoes,2.50,lbs,Fresh Farms,Vegetables,true
+Cheddar Cheese,7.99,lbs,Dairy Co,Dairy,true
+Burger Buns,0.75,piece,Bakery Fresh,Grains,true
+Lettuce,1.80,head,Green Gardens,Vegetables,true
+Onions,1.20,lbs,Farm Direct,Vegetables,true
+Salt,1.50,container,Spice World,Spices,true
+Olive Oil,12.00,bottle,Mediterranean Co,Oils,true
