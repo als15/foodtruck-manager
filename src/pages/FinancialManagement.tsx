@@ -110,6 +110,25 @@ export default function FinancialManagement() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [monthlyLaborCost, setMonthlyLaborCost] = useState(0);
   
+  // Calculate real revenue and order data
+  const calculateWeeklyMetrics = () => {
+    // For now, we'll calculate based on break-even analysis and menu data
+    // This can be replaced with actual sales data when available
+    const avgOrderValue = calculateAverageOrderValue();
+    const breakEvenOrders = calculateBreakEvenPoint();
+    const dailyBreakdown = calculateDailyBreakEven();
+    
+    // Estimate weekly revenue based on operating days (Thu-Fri-Sat)
+    const estimatedWeeklyOrders = dailyBreakdown.thursday + dailyBreakdown.friday + dailyBreakdown.saturday;
+    const estimatedWeeklyRevenue = estimatedWeeklyOrders * avgOrderValue;
+    
+    return {
+      weeklyRevenue: estimatedWeeklyRevenue,
+      weeklyOrders: estimatedWeeklyOrders,
+      avgOrderValue
+    };
+  };
+  
   // Financial calculation settings
   const [financialSettings, setFinancialSettings] = useState({
     customAverageOrderValue: 0, // 0 means use calculated value
@@ -750,13 +769,31 @@ export default function FinancialManagement() {
 
       {/* Labor Costs Tab */}
       <TabPanel value={currentTab} index={1}>
-        <LaborCostManager 
-          employees={employees}
-          shifts={shifts}
-          weeklyRevenue={8000} // This could be calculated from actual sales data
-          weeklyOrders={500}   // This could be calculated from actual order data
-          onLaborCostUpdate={setMonthlyLaborCost}
-        />
+        {(() => {
+          const metrics = calculateWeeklyMetrics();
+          return (
+            <Box>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="body2">
+                  <strong>Revenue Analytics:</strong> Based on break-even analysis and menu data
+                  <br />
+                  • Weekly Revenue: ${metrics.weeklyRevenue.toFixed(2)} 
+                  • Weekly Orders: {metrics.weeklyOrders} orders
+                  • Avg Order Value: ${metrics.avgOrderValue.toFixed(2)}
+                  <br />
+                  <em>These values will be replaced with actual sales data when transaction tracking is implemented.</em>
+                </Typography>
+              </Alert>
+              <LaborCostManager 
+                employees={employees}
+                shifts={shifts}
+                weeklyRevenue={metrics.weeklyRevenue}
+                weeklyOrders={metrics.weeklyOrders}
+                onLaborCostUpdate={setMonthlyLaborCost}
+              />
+            </Box>
+          );
+        })()}
       </TabPanel>
 
       {/* Projections Tab */}
