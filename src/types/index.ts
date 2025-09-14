@@ -127,6 +127,7 @@ export interface Supplier {
   phone: string;
   address: string;
   deliveryDays: string[]; // e.g., ['Monday', 'Wednesday', 'Friday']
+  orderSubmissionDays: string[]; // e.g., ['Friday', 'Tuesday'] - days to submit orders
   minimumOrderAmount: number;
   leadTime: number; // days
   autoOrderEnabled: boolean;
@@ -150,4 +151,118 @@ export interface Order {
   orderTime: Date;
   location: string;
   paymentMethod: string;
+}
+
+// Financial Management Interfaces
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  type: 'monthly_revenue' | 'monthly_profit' | 'break_even' | 'custom';
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: Date;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  type: 'fixed' | 'variable' | 'one_time';
+  description?: string;
+  isActive: boolean;
+}
+
+export interface Expense {
+  id: string;
+  categoryId?: string | null;
+  name: string;
+  amount: number;
+  type: 'fixed' | 'variable' | 'one_time';
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one_time';
+  startDate: Date;
+  endDate?: Date;
+  description?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FinancialProjection {
+  id: string;
+  name: string;
+  projectionPeriod: 'monthly' | 'quarterly' | 'yearly';
+  projectedRevenue: number;
+  projectedExpenses: number;
+  projectedProfit: number;
+  averageOrderValue: number;
+  ordersPerDay: number;
+  workingDaysPerMonth: number;
+  profitMarginPercentage: number;
+  breakEvenPoint: number; // orders needed to break even
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CashFlow {
+  id: string;
+  date: Date;
+  type: 'inflow' | 'outflow';
+  amount: number;
+  category: string;
+  description: string;
+  recurring: boolean;
+  recurringPeriod?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  createdAt: Date;
+}
+
+// Labor Cost Management Interfaces
+export interface LaborCost {
+  id: string;
+  employeeId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  totalHours: number;
+  regularHours: number;
+  overtimeHours: number;
+  regularRate: number;
+  overtimeRate: number;
+  grossPay: number;
+  taxes: number;
+  benefits: number;
+  netPay: number;
+  totalCost: number; // Gross pay + employer taxes + benefits
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PayrollPeriod {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  payDate: Date;
+  status: 'draft' | 'calculated' | 'paid' | 'closed';
+  totalGrossPay: number;
+  totalNetPay: number;
+  totalEmployerCosts: number;
+  employeeCounts: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface LaborProjection {
+  id: string;
+  name: string;
+  projectionPeriod: 'weekly' | 'monthly' | 'quarterly';
+  averageHoursPerEmployee: number;
+  averageWage: number;
+  employeeCount: number;
+  projectedLaborCost: number;
+  projectedOvertimeCost: number;
+  projectedBenefitsCost: number;
+  totalProjectedCost: number;
+  laborCostPercentage: number; // As percentage of revenue
+  createdAt: Date;
+  updatedAt: Date;
 }

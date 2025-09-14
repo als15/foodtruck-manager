@@ -36,19 +36,21 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  ContentCopy as DuplicateIcon,
   Kitchen as KitchenIcon,
   Upload as UploadIcon,
   Download as DownloadIcon,
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
-import { Ingredient } from '../types';
-import { ingredientsService, subscriptions } from '../services/supabaseService';
+import { Ingredient, Supplier } from '../types';
+import { ingredientsService, suppliersService, subscriptions } from '../services/supabaseService';
 import Papa from 'papaparse';
 
 export default function Ingredients() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
@@ -66,9 +68,10 @@ export default function Ingredients() {
     lastUpdated: new Date()
   });
 
-  // Load ingredients on component mount
+  // Load ingredients and suppliers on component mount
   useEffect(() => {
     loadIngredients();
+    loadSuppliers();
   }, []);
 
   // Set up real-time subscription
@@ -95,6 +98,15 @@ export default function Ingredients() {
       setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const data = await suppliersService.getAll();
+      setSuppliers(data.filter(supplier => supplier.isActive));
+    } catch (err) {
+      console.error('Failed to load suppliers:', err);
     }
   };
 
@@ -141,6 +153,18 @@ export default function Ingredients() {
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to delete ingredient', severity: 'error' });
     }
+  };
+
+  const handleDuplicateIngredient = (ingredient: Ingredient) => {
+    const duplicatedIngredient = {
+      ...ingredient,
+      name: `${ingredient.name} (Copy)`,
+      id: undefined,
+      lastUpdated: undefined
+    };
+    setNewIngredient(duplicatedIngredient);
+    setEditingIngredient(null);
+    setOpenDialog(true);
   };
 
   const toggleAvailability = async (id: string) => {
@@ -294,7 +318,7 @@ export default function Ingredients() {
   // Only show categories that actually have ingredients
   const categories = existingCategories.sort();
   
-  const suppliers = Array.from(new Set(ingredients.map(ing => ing.supplier))).sort();
+  const supplierNames = suppliers.map(supplier => supplier.name).sort();
 
   const totalIngredients = ingredients.length;
   const availableIngredients = ingredients.filter(ing => ing.isAvailable).length;
@@ -450,6 +474,9 @@ export default function Ingredients() {
                       </TableCell>
                       <TableCell>{ingredient.lastUpdated.toLocaleDateString()}</TableCell>
                       <TableCell>
+                        <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
+                          <DuplicateIcon />
+                        </IconButton>
                         <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
                           <EditIcon />
                         </IconButton>
@@ -501,7 +528,7 @@ export default function Ingredients() {
             <Grid item xs={12}>
               <Autocomplete
                 freeSolo
-                options={suppliers}
+                options={supplierNames}
                 value={newIngredient.supplier}
                 onChange={(_, value) => setNewIngredient({ ...newIngredient, supplier: value || '' })}
                 onInputChange={(_, value) => setNewIngredient({ ...newIngredient, supplier: value || '' })}
@@ -510,7 +537,7 @@ export default function Ingredients() {
                     {...params}
                     fullWidth
                     label="Supplier"
-                    placeholder="e.g., Local Farms, Fresh Market"
+                    placeholder="Select from active suppliers or type new"
                   />
                 )}
               />

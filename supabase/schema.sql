@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
     phone VARCHAR(20) NOT NULL,
     address TEXT NOT NULL,
     delivery_days TEXT[] NOT NULL, -- Array of delivery days
+    order_submission_days TEXT[] DEFAULT '{}', -- Array of days to submit orders
     minimum_order_amount DECIMAL(10,2) DEFAULT 0,
     lead_time INTEGER DEFAULT 1, -- days
     auto_order_enabled BOOLEAN DEFAULT false,

@@ -1,5 +1,19 @@
 import { supabase } from '../lib/supabase';
-import { Ingredient, MenuItem, MenuItemIngredient, Employee, Shift, Transaction, Location, InventoryItem, Customer, Supplier } from '../types';
+import { 
+  Ingredient, 
+  MenuItem, 
+  MenuItemIngredient, 
+  Employee, 
+  Shift, 
+  Transaction, 
+  Location, 
+  InventoryItem, 
+  Customer, 
+  Supplier,
+  Expense,
+  FinancialGoal,
+  FinancialProjection
+} from '../types';
 
 // Helper function to handle Supabase errors
 const handleError = (error: any, operation: string) => {
@@ -307,103 +321,6 @@ export const menuItemsService = {
   }
 };
 
-// ==================== EMPLOYEES ====================
-
-export const employeesService = {
-  async getAll(): Promise<Employee[]> {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .order('first_name', { ascending: true });
-    
-    if (error) handleError(error, 'fetch employees');
-    
-    return (data || []).map(emp => ({
-      id: emp.id,
-      firstName: emp.first_name,
-      lastName: emp.last_name,
-      email: emp.email,
-      phone: emp.phone,
-      position: emp.position,
-      hourlyRate: emp.hourly_rate,
-      hireDate: new Date(emp.hire_date),
-      isActive: emp.is_active
-    }));
-  },
-
-  async create(employee: Omit<Employee, 'id'>): Promise<Employee> {
-    const { data, error } = await supabase
-      .from('employees')
-      .insert({
-        first_name: employee.firstName,
-        last_name: employee.lastName,
-        email: employee.email,
-        phone: employee.phone,
-        position: employee.position,
-        hourly_rate: employee.hourlyRate,
-        hire_date: employee.hireDate.toISOString().split('T')[0],
-        is_active: employee.isActive
-      })
-      .select()
-      .single();
-    
-    if (error) handleError(error, 'create employee');
-    
-    return {
-      id: data.id,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      email: data.email,
-      phone: data.phone,
-      position: data.position,
-      hourlyRate: data.hourly_rate,
-      hireDate: new Date(data.hire_date),
-      isActive: data.is_active
-    };
-  },
-
-  async update(id: string, employee: Partial<Employee>): Promise<Employee> {
-    const updateData: any = {};
-    if (employee.firstName !== undefined) updateData.first_name = employee.firstName;
-    if (employee.lastName !== undefined) updateData.last_name = employee.lastName;
-    if (employee.email !== undefined) updateData.email = employee.email;
-    if (employee.phone !== undefined) updateData.phone = employee.phone;
-    if (employee.position !== undefined) updateData.position = employee.position;
-    if (employee.hourlyRate !== undefined) updateData.hourly_rate = employee.hourlyRate;
-    if (employee.hireDate !== undefined) updateData.hire_date = employee.hireDate.toISOString().split('T')[0];
-    if (employee.isActive !== undefined) updateData.is_active = employee.isActive;
-    
-    const { data, error } = await supabase
-      .from('employees')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) handleError(error, 'update employee');
-    
-    return {
-      id: data.id,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      email: data.email,
-      phone: data.phone,
-      position: data.position,
-      hourlyRate: data.hourly_rate,
-      hireDate: new Date(data.hire_date),
-      isActive: data.is_active
-    };
-  },
-
-  async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', id);
-    
-    if (error) handleError(error, 'delete employee');
-  }
-};
 
 // ==================== INVENTORY ITEMS ====================
 
@@ -564,6 +481,7 @@ export const suppliersService = {
       phone: supplier.phone,
       address: supplier.address,
       deliveryDays: supplier.delivery_days || [],
+      orderSubmissionDays: supplier.order_submission_days || [],
       minimumOrderAmount: supplier.minimum_order_amount,
       leadTime: supplier.lead_time,
       autoOrderEnabled: supplier.auto_order_enabled,
@@ -585,6 +503,7 @@ export const suppliersService = {
         phone: supplier.phone,
         address: supplier.address,
         delivery_days: supplier.deliveryDays,
+        order_submission_days: supplier.orderSubmissionDays,
         minimum_order_amount: supplier.minimumOrderAmount,
         lead_time: supplier.leadTime,
         auto_order_enabled: supplier.autoOrderEnabled,
@@ -605,6 +524,7 @@ export const suppliersService = {
       phone: data.phone,
       address: data.address,
       deliveryDays: data.delivery_days || [],
+      orderSubmissionDays: data.order_submission_days || [],
       minimumOrderAmount: data.minimum_order_amount,
       leadTime: data.lead_time,
       autoOrderEnabled: data.auto_order_enabled,
@@ -624,6 +544,7 @@ export const suppliersService = {
     if (supplier.phone !== undefined) updateData.phone = supplier.phone;
     if (supplier.address !== undefined) updateData.address = supplier.address;
     if (supplier.deliveryDays !== undefined) updateData.delivery_days = supplier.deliveryDays;
+    if (supplier.orderSubmissionDays !== undefined) updateData.order_submission_days = supplier.orderSubmissionDays;
     if (supplier.minimumOrderAmount !== undefined) updateData.minimum_order_amount = supplier.minimumOrderAmount;
     if (supplier.leadTime !== undefined) updateData.lead_time = supplier.leadTime;
     if (supplier.autoOrderEnabled !== undefined) updateData.auto_order_enabled = supplier.autoOrderEnabled;
@@ -648,6 +569,7 @@ export const suppliersService = {
       phone: data.phone,
       address: data.address,
       deliveryDays: data.delivery_days || [],
+      orderSubmissionDays: data.order_submission_days || [],
       minimumOrderAmount: data.minimum_order_amount,
       leadTime: data.lead_time,
       autoOrderEnabled: data.auto_order_enabled,
@@ -806,5 +728,497 @@ export const subscriptions = {
         callback
       )
       .subscribe();
+  },
+
+  expenses: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('expenses_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'expenses' }, 
+        callback
+      )
+      .subscribe();
+  },
+
+  financialGoals: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('financial_goals_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'financial_goals' }, 
+        callback
+      )
+      .subscribe();
+  },
+
+  employees: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('employees_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'employees' }, 
+        callback
+      )
+      .subscribe();
+  },
+
+  shifts: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('shifts_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'shifts' }, 
+        callback
+      )
+      .subscribe();
+  }
+};
+
+// Financial Management Services
+export const expensesService = {
+  async getAll(): Promise<Expense[]> {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) handleError(error, 'fetch expenses');
+    
+    return (data || []).map(expense => ({
+      id: expense.id,
+      categoryId: expense.category_id || null,
+      name: expense.name,
+      amount: expense.amount,
+      type: expense.type,
+      frequency: expense.frequency,
+      startDate: new Date(expense.start_date),
+      endDate: expense.end_date ? new Date(expense.end_date) : undefined,
+      description: expense.description || '',
+      isActive: expense.is_active,
+      createdAt: new Date(expense.created_at),
+      updatedAt: new Date(expense.updated_at)
+    }));
+  },
+
+  async create(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<Expense> {
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert({
+        category_id: expense.categoryId,
+        name: expense.name,
+        amount: expense.amount,
+        type: expense.type,
+        frequency: expense.frequency,
+        start_date: expense.startDate.toISOString().split('T')[0],
+        end_date: expense.endDate?.toISOString().split('T')[0],
+        description: expense.description,
+        is_active: expense.isActive
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create expense');
+    
+    return {
+      id: data.id,
+      categoryId: data.category_id || null,
+      name: data.name,
+      amount: data.amount,
+      type: data.type,
+      frequency: data.frequency,
+      startDate: new Date(data.start_date),
+      endDate: data.end_date ? new Date(data.end_date) : undefined,
+      description: data.description || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async update(id: string, expense: Partial<Expense>): Promise<Expense> {
+    const updateData: any = {};
+    if (expense.categoryId !== undefined) updateData.category_id = expense.categoryId;
+    if (expense.name !== undefined) updateData.name = expense.name;
+    if (expense.amount !== undefined) updateData.amount = expense.amount;
+    if (expense.type !== undefined) updateData.type = expense.type;
+    if (expense.frequency !== undefined) updateData.frequency = expense.frequency;
+    if (expense.startDate !== undefined) updateData.start_date = expense.startDate.toISOString().split('T')[0];
+    if (expense.endDate !== undefined) updateData.end_date = expense.endDate?.toISOString().split('T')[0];
+    if (expense.description !== undefined) updateData.description = expense.description;
+    if (expense.isActive !== undefined) updateData.is_active = expense.isActive;
+    
+    const { data, error } = await supabase
+      .from('expenses')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update expense');
+    
+    return {
+      id: data.id,
+      categoryId: data.category_id || null,
+      name: data.name,
+      amount: data.amount,
+      type: data.type,
+      frequency: data.frequency,
+      startDate: new Date(data.start_date),
+      endDate: data.end_date ? new Date(data.end_date) : undefined,
+      description: data.description || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete expense');
+  }
+};
+
+export const financialGoalsService = {
+  async getAll(): Promise<FinancialGoal[]> {
+    const { data, error } = await supabase
+      .from('financial_goals')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) handleError(error, 'fetch financial goals');
+    
+    return (data || []).map(goal => ({
+      id: goal.id,
+      name: goal.name,
+      type: goal.type,
+      targetAmount: goal.target_amount,
+      currentAmount: goal.current_amount,
+      targetDate: new Date(goal.target_date),
+      isActive: goal.is_active,
+      createdAt: new Date(goal.created_at),
+      updatedAt: new Date(goal.updated_at)
+    }));
+  },
+
+  async create(goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>): Promise<FinancialGoal> {
+    const { data, error } = await supabase
+      .from('financial_goals')
+      .insert({
+        name: goal.name,
+        type: goal.type,
+        target_amount: goal.targetAmount,
+        current_amount: goal.currentAmount,
+        target_date: goal.targetDate.toISOString().split('T')[0],
+        is_active: goal.isActive
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create financial goal');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      targetAmount: data.target_amount,
+      currentAmount: data.current_amount,
+      targetDate: new Date(data.target_date),
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async update(id: string, goal: Partial<FinancialGoal>): Promise<FinancialGoal> {
+    const updateData: any = {};
+    if (goal.name !== undefined) updateData.name = goal.name;
+    if (goal.type !== undefined) updateData.type = goal.type;
+    if (goal.targetAmount !== undefined) updateData.target_amount = goal.targetAmount;
+    if (goal.currentAmount !== undefined) updateData.current_amount = goal.currentAmount;
+    if (goal.targetDate !== undefined) updateData.target_date = goal.targetDate.toISOString().split('T')[0];
+    if (goal.isActive !== undefined) updateData.is_active = goal.isActive;
+    
+    const { data, error } = await supabase
+      .from('financial_goals')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update financial goal');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      targetAmount: data.target_amount,
+      currentAmount: data.current_amount,
+      targetDate: new Date(data.target_date),
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('financial_goals')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete financial goal');
+  }
+};
+
+export const financialProjectionsService = {
+  async getAll(): Promise<FinancialProjection[]> {
+    const { data, error } = await supabase
+      .from('financial_projections')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) handleError(error, 'fetch financial projections');
+    
+    return (data || []).map(projection => ({
+      id: projection.id,
+      name: projection.name,
+      projectionPeriod: projection.projection_period,
+      projectedRevenue: projection.projected_revenue,
+      projectedExpenses: projection.projected_expenses,
+      projectedProfit: projection.projected_profit,
+      averageOrderValue: projection.average_order_value,
+      ordersPerDay: projection.orders_per_day,
+      workingDaysPerMonth: projection.working_days_per_month,
+      profitMarginPercentage: projection.profit_margin_percentage,
+      breakEvenPoint: projection.break_even_point,
+      createdAt: new Date(projection.created_at),
+      updatedAt: new Date(projection.updated_at)
+    }));
+  },
+
+  async create(projection: Omit<FinancialProjection, 'id' | 'createdAt' | 'updatedAt'>): Promise<FinancialProjection> {
+    const { data, error } = await supabase
+      .from('financial_projections')
+      .insert({
+        name: projection.name,
+        projection_period: projection.projectionPeriod,
+        projected_revenue: projection.projectedRevenue,
+        projected_expenses: projection.projectedExpenses,
+        projected_profit: projection.projectedProfit,
+        average_order_value: projection.averageOrderValue,
+        orders_per_day: projection.ordersPerDay,
+        working_days_per_month: projection.workingDaysPerMonth,
+        profit_margin_percentage: projection.profitMarginPercentage,
+        break_even_point: projection.breakEvenPoint
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create financial projection');
+    
+    return {
+      id: data.id,
+      name: data.name,
+      projectionPeriod: data.projection_period,
+      projectedRevenue: data.projected_revenue,
+      projectedExpenses: data.projected_expenses,
+      projectedProfit: data.projected_profit,
+      averageOrderValue: data.average_order_value,
+      ordersPerDay: data.orders_per_day,
+      workingDaysPerMonth: data.working_days_per_month,
+      profitMarginPercentage: data.profit_margin_percentage,
+      breakEvenPoint: data.break_even_point,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  }
+};
+
+// Employee Management Services
+export const employeesService = {
+  async getAll(): Promise<Employee[]> {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .order('first_name', { ascending: true });
+    
+    if (error) handleError(error, 'fetch employees');
+    
+    return (data || []).map(employee => ({
+      id: employee.id,
+      firstName: employee.first_name,
+      lastName: employee.last_name,
+      email: employee.email,
+      phone: employee.phone,
+      position: employee.position,
+      hourlyRate: employee.hourly_rate,
+      hireDate: new Date(employee.hire_date),
+      isActive: employee.is_active
+    }));
+  },
+
+  async create(employee: Omit<Employee, 'id'>): Promise<Employee> {
+    const { data, error } = await supabase
+      .from('employees')
+      .insert({
+        first_name: employee.firstName,
+        last_name: employee.lastName,
+        email: employee.email,
+        phone: employee.phone,
+        position: employee.position,
+        hourly_rate: employee.hourlyRate,
+        hire_date: employee.hireDate.toISOString().split('T')[0],
+        is_active: employee.isActive
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create employee');
+    
+    return {
+      id: data.id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      position: data.position,
+      hourlyRate: data.hourly_rate,
+      hireDate: new Date(data.hire_date),
+      isActive: data.is_active
+    };
+  },
+
+  async update(id: string, employee: Partial<Employee>): Promise<Employee> {
+    const updateData: any = {};
+    if (employee.firstName !== undefined) updateData.first_name = employee.firstName;
+    if (employee.lastName !== undefined) updateData.last_name = employee.lastName;
+    if (employee.email !== undefined) updateData.email = employee.email;
+    if (employee.phone !== undefined) updateData.phone = employee.phone;
+    if (employee.position !== undefined) updateData.position = employee.position;
+    if (employee.hourlyRate !== undefined) updateData.hourly_rate = employee.hourlyRate;
+    if (employee.hireDate !== undefined) updateData.hire_date = employee.hireDate.toISOString().split('T')[0];
+    if (employee.isActive !== undefined) updateData.is_active = employee.isActive;
+    
+    const { data, error } = await supabase
+      .from('employees')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update employee');
+    
+    return {
+      id: data.id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      position: data.position,
+      hourlyRate: data.hourly_rate,
+      hireDate: new Date(data.hire_date),
+      isActive: data.is_active
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete employee');
+  }
+};
+
+export const shiftsService = {
+  async getAll(): Promise<Shift[]> {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (error) handleError(error, 'fetch shifts');
+    
+    return (data || []).map(shift => ({
+      id: shift.id,
+      employeeId: shift.employee_id,
+      date: new Date(shift.date),
+      startTime: shift.start_time,
+      endTime: shift.end_time,
+      hoursWorked: shift.hours_worked,
+      role: shift.role,
+      location: shift.location
+    }));
+  },
+
+  async create(shift: Omit<Shift, 'id'>): Promise<Shift> {
+    const { data, error } = await supabase
+      .from('shifts')
+      .insert({
+        employee_id: shift.employeeId,
+        date: shift.date.toISOString().split('T')[0],
+        start_time: shift.startTime,
+        end_time: shift.endTime,
+        hours_worked: shift.hoursWorked,
+        role: shift.role,
+        location: shift.location || 'Main Location' // Default location since business operates from one place
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create shift');
+    
+    return {
+      id: data.id,
+      employeeId: data.employee_id,
+      date: new Date(data.date),
+      startTime: data.start_time,
+      endTime: data.end_time,
+      hoursWorked: data.hours_worked,
+      role: data.role,
+      location: data.location
+    };
+  },
+
+  async update(id: string, shift: Partial<Shift>): Promise<Shift> {
+    const updateData: any = {};
+    if (shift.employeeId !== undefined) updateData.employee_id = shift.employeeId;
+    if (shift.date !== undefined) updateData.date = shift.date.toISOString().split('T')[0];
+    if (shift.startTime !== undefined) updateData.start_time = shift.startTime;
+    if (shift.endTime !== undefined) updateData.end_time = shift.endTime;
+    if (shift.hoursWorked !== undefined) updateData.hours_worked = shift.hoursWorked;
+    if (shift.role !== undefined) updateData.role = shift.role;
+    if (shift.location !== undefined) updateData.location = shift.location || 'Main Location';
+    
+    const { data, error } = await supabase
+      .from('shifts')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update shift');
+    
+    return {
+      id: data.id,
+      employeeId: data.employee_id,
+      date: new Date(data.date),
+      startTime: data.start_time,
+      endTime: data.end_time,
+      hoursWorked: data.hours_worked,
+      role: data.role,
+      location: data.location
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('shifts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete shift');
   }
 };

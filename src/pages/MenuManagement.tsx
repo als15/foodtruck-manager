@@ -37,6 +37,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  ContentCopy as DuplicateIcon,
   RestaurantMenu,
   Calculate as CalculateIcon,
   TrendingUp as ProfitIcon,
@@ -221,6 +222,19 @@ export default function MenuManagement() {
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to delete menu item', severity: 'error' });
     }
+  };
+
+  const handleDuplicateItem = (item: MenuItem) => {
+    const duplicatedItem = {
+      ...item,
+      name: `${item.name} (Copy)`,
+      id: undefined,
+      totalIngredientCost: undefined,
+      profitMargin: undefined
+    };
+    setNewItem(duplicatedItem);
+    setEditingItem(null);
+    setOpenDialog(true);
   };
 
   const toggleAvailability = async (id: string) => {
@@ -413,6 +427,9 @@ export default function MenuManagement() {
                             {item.name}
                           </Typography>
                           <Box>
+                            <IconButton size="small" onClick={() => handleDuplicateItem(item)}>
+                              <DuplicateIcon />
+                            </IconButton>
                             <IconButton size="small" onClick={() => handleEditItem(item)}>
                               <EditIcon />
                             </IconButton>

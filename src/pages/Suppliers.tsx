@@ -64,6 +64,7 @@ export default function Suppliers() {
     phone: '',
     address: '',
     deliveryDays: [],
+    orderSubmissionDays: [],
     minimumOrderAmount: 0,
     leadTime: 1,
     autoOrderEnabled: false,
@@ -122,6 +123,7 @@ export default function Suppliers() {
         phone: '',
         address: '',
         deliveryDays: [],
+        orderSubmissionDays: [],
         minimumOrderAmount: 0,
         leadTime: 1,
         autoOrderEnabled: false,
@@ -170,6 +172,14 @@ export default function Suppliers() {
     setNewSupplier({ 
       ...newSupplier, 
       deliveryDays: typeof value === 'string' ? value.split(',') : value 
+    });
+  };
+
+  const handleOrderSubmissionDaysChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    setNewSupplier({ 
+      ...newSupplier, 
+      orderSubmissionDays: typeof value === 'string' ? value.split(',') : value 
     });
   };
 
@@ -279,6 +289,7 @@ export default function Suppliers() {
                   <TableCell>Supplier</TableCell>
                   <TableCell>Contact</TableCell>
                   <TableCell>Delivery Days</TableCell>
+                  <TableCell>Order Days</TableCell>
                   <TableCell>Lead Time</TableCell>
                   <TableCell>Min Order</TableCell>
                   <TableCell>Auto Order</TableCell>
@@ -322,6 +333,19 @@ export default function Suppliers() {
                             label={day.slice(0, 3)} 
                             size="small" 
                             variant="outlined" 
+                          />
+                        ))}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {supplier.orderSubmissionDays?.map((day) => (
+                          <Chip 
+                            key={day} 
+                            label={day.slice(0, 3)} 
+                            size="small" 
+                            variant="filled"
+                            color="primary"
                           />
                         ))}
                       </Box>
@@ -439,6 +463,30 @@ export default function Suppliers() {
                   value={newSupplier.deliveryDays || []}
                   onChange={handleDeliveryDaysChange}
                   input={<OutlinedInput label="Delivery Days" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} size="small" />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  {WEEKDAYS.map((day) => (
+                    <MuiMenuItem key={day} value={day}>
+                      {day}
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Order Submission Days</InputLabel>
+                <Select
+                  multiple
+                  value={newSupplier.orderSubmissionDays || []}
+                  onChange={handleOrderSubmissionDaysChange}
+                  input={<OutlinedInput label="Order Submission Days" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => (
