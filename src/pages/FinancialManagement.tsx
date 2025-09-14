@@ -62,6 +62,8 @@ import {
   financialGoalsService, 
   financialProjectionsService,
   menuItemsService,
+  employeesService,
+  shiftsService,
   subscriptions
 } from '../services/supabaseService';
 import LaborCostManager from '../components/LaborCostManager';
@@ -142,9 +144,19 @@ export default function FinancialManagement() {
       loadGoals();
     });
 
+    const employeesSubscription = subscriptions.employees(() => {
+      loadEmployees();
+    });
+
+    const shiftsSubscription = subscriptions.shifts(() => {
+      loadShifts();
+    });
+
     return () => {
       expensesSubscription.unsubscribe();
       goalsSubscription.unsubscribe();
+      employeesSubscription.unsubscribe();
+      shiftsSubscription.unsubscribe();
     };
   }, []);
 
@@ -156,10 +168,10 @@ export default function FinancialManagement() {
         loadExpenseCategories(),
         loadGoals(),
         loadProjections(),
-        loadMenuItems()
+        loadMenuItems(),
+        loadEmployees(),
+        loadShifts()
       ]);
-      // Load sample data for now
-      loadSampleEmployeeData();
     } catch (error) {
       setSnackbar({ open: true, message: 'Failed to load financial data', severity: 'error' });
     } finally {
@@ -212,59 +224,22 @@ export default function FinancialManagement() {
     }
   };
 
-  const loadSampleEmployeeData = () => {
-    // Sample employee data for demonstration
-    const sampleEmployees: Employee[] = [
-      {
-        id: '1',
-        firstName: 'John',
-        lastName: 'Smith',
-        email: 'john@foodtruck.com',
-        phone: '555-0101',
-        position: 'Chef',
-        hourlyRate: 18,
-        hireDate: new Date('2024-01-15'),
-        isActive: true
-      },
-      {
-        id: '2',
-        firstName: 'Sarah',
-        lastName: 'Johnson',
-        email: 'sarah@foodtruck.com',
-        phone: '555-0102',
-        position: 'Server',
-        hourlyRate: 15,
-        hireDate: new Date('2024-02-01'),
-        isActive: true
-      }
-    ];
+  const loadEmployees = async () => {
+    try {
+      const data = await employeesService.getAll();
+      setEmployees(data);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  };
 
-    // Sample shifts for the last week
-    const sampleShifts: Shift[] = [
-      {
-        id: '1',
-        employeeId: '1',
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        startTime: '10:00',
-        endTime: '18:00',
-        hoursWorked: 8,
-        role: 'Chef',
-        location: 'Downtown'
-      },
-      {
-        id: '2',
-        employeeId: '2',
-        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        startTime: '11:00',
-        endTime: '19:00',
-        hoursWorked: 8,
-        role: 'Server',
-        location: 'Downtown'
-      }
-    ];
-
-    setEmployees(sampleEmployees);
-    setShifts(sampleShifts);
+  const loadShifts = async () => {
+    try {
+      const data = await shiftsService.getAll();
+      setShifts(data);
+    } catch (error) {
+      console.error('Failed to load shifts:', error);
+    }
   };
 
   // Form states
