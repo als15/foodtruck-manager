@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery } from '@mui/material'
 import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from '../LanguageSwitcher'
 
 const drawerWidth = 240
 
@@ -9,18 +11,16 @@ interface AppLayoutProps {
   children: React.ReactNode
 }
 
-const navigationItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Orders', icon: <OrdersIcon />, path: '/orders' },
-  { text: 'Finances', icon: <FinanceIcon />, path: '/finances' },
-  { text: 'Menu', icon: <MenuManagementIcon />, path: '/menu' },
-  { text: 'Ingredients', icon: <InventoryIcon />, path: '/ingredients' },
-  { text: 'Employees', icon: <EmployeeIcon />, path: '/employees' },
-  // { text: 'Logistics', icon: <LogisticsIcon />, path: '/logistics' },
-  { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
-  // { text: 'Customers', icon: <CustomerIcon />, path: '/customers' },
-  { text: 'Suppliers', icon: <SupplierIcon />, path: '/suppliers' },
-  { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' }
+const getNavigationItems = (t: any) => [
+  { textKey: 'dashboard', text: t('dashboard'), icon: <DashboardIcon />, path: '/' },
+  { textKey: 'orders', text: t('orders'), icon: <OrdersIcon />, path: '/orders' },
+  { textKey: 'financial', text: t('financial'), icon: <FinanceIcon />, path: '/finances' },
+  { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
+  { textKey: 'ingredients', text: t('ingredients'), icon: <InventoryIcon />, path: '/ingredients' },
+  { textKey: 'employees', text: t('employees'), icon: <EmployeeIcon />, path: '/employees' },
+  { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
+  { textKey: 'suppliers', text: t('suppliers'), icon: <SupplierIcon />, path: '/suppliers' },
+  { textKey: 'analytics', text: t('analytics'), icon: <AnalyticsIcon />, path: '/analytics' }
 ]
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -29,6 +29,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
+  
+  const navigationItems = getNavigationItems(t)
+  const isRtl = theme.direction === 'rtl'
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -67,22 +71,32 @@ export default function AppLayout({ children }: AppLayoutProps) {
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` }
+          ...(isRtl ? {
+            left: 0,
+            right: { md: `${drawerWidth}px` },
+            ml: 0,
+            mr: 0
+          } : {
+            ml: { md: `${drawerWidth}px` },
+            mr: { md: 0 }
+          })
         }}
       >
         <Toolbar>
           <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { md: 'none' } }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            {navigationItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            {navigationItems.find(item => item.path === location.pathname)?.text || t('dashboard')}
           </Typography>
+          <LanguageSwitcher />
         </Toolbar>
       </AppBar>
 
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer
           variant="temporary"
+          anchor={isRtl ? 'right' : 'left'}
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
@@ -97,6 +111,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </Drawer>
         <Drawer
           variant="permanent"
+          anchor={isRtl ? 'right' : 'left'}
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth }
@@ -109,10 +124,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <Box
         component="main"
+        className="main-content"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` }
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ...(isRtl ? {
+            marginLeft: 0,
+            marginRight: { md: `${drawerWidth}px` }
+          } : {
+            ml: { md: `${drawerWidth}px` },
+            mr: { md: 0 }
+          })
         }}
       >
         <Toolbar />

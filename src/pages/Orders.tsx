@@ -60,6 +60,7 @@ import {
   customersService,
   subscriptions 
 } from '../services/supabaseService';
+import { useTranslation } from 'react-i18next';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -77,6 +78,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Orders() {
+  const { t } = useTranslation();
   const [tabValue, setTabValue] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -492,7 +494,7 @@ export default function Orders() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Order Management</Typography>
+        <Typography variant="h4">{t('order_management')}</Typography>
         <Box>
           <Button 
             variant="outlined" 
@@ -500,14 +502,14 @@ export default function Orders() {
             onClick={() => setOpenImportDialog(true)}
             sx={{ mr: 1 }}
           >
-            Import Orders
+            {t('import_orders')}
           </Button>
           <Button 
             variant="contained" 
             startIcon={<AddIcon />} 
             onClick={() => setOpenOrderDialog(true)}
           >
-            Add Order Record
+            {t('add_order_record')}
           </Button>
         </Box>
       </Box>
@@ -521,19 +523,19 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="primary">Today's Performance</Typography>
-                  <Typography variant="h4">${stats.todayRevenue.toFixed(2)}</Typography>
+                  <Typography variant="h6" color="primary">{t('todays_performance')}</Typography>
+                  <Typography variant="h4" className="number-ltr">${stats.todayRevenue.toFixed(2)}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {stats.todayOrders} orders
+                    {t('orders_count', { count: stats.todayOrders })}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {stats.dailyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" />
+                    <TrendingUpIcon color="success" className="trend-icon" />
                   ) : stats.dailyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" />
+                    <TrendingDownIcon color="error" className="trend-icon" />
                   ) : (
-                    <TrendingFlatIcon color="disabled" />
+                    <TrendingFlatIcon color="disabled" className="trend-icon" />
                   )}
                   <Typography 
                     variant="body2" 
@@ -553,7 +555,7 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="info.main">This Week</Typography>
+                  <Typography variant="h6" color="info.main">{t('this_week')}</Typography>
                   <Typography variant="h4">${stats.thisWeekRevenue.toFixed(2)}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisWeekOrders} orders
@@ -561,11 +563,11 @@ export default function Orders() {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {stats.weeklyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" />
+                    <TrendingUpIcon color="success" className="trend-icon" />
                   ) : stats.weeklyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" />
+                    <TrendingDownIcon color="error" className="trend-icon" />
                   ) : (
-                    <TrendingFlatIcon color="disabled" />
+                    <TrendingFlatIcon color="disabled" className="trend-icon" />
                   )}
                   <Typography 
                     variant="body2" 
@@ -585,7 +587,7 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="secondary.main">This Month</Typography>
+                  <Typography variant="h6" color="secondary.main">{t('this_month')}</Typography>
                   <Typography variant="h4">${stats.thisMonthRevenue.toFixed(2)}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisMonthOrders} orders
@@ -593,11 +595,11 @@ export default function Orders() {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {stats.monthlyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" />
+                    <TrendingUpIcon color="success" className="trend-icon" />
                   ) : stats.monthlyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" />
+                    <TrendingDownIcon color="error" className="trend-icon" />
                   ) : (
-                    <TrendingFlatIcon color="disabled" />
+                    <TrendingFlatIcon color="disabled" className="trend-icon" />
                   )}
                   <Typography 
                     variant="body2" 
@@ -615,7 +617,7 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>🏆 Top Selling Items</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>🏆 {t('top_selling_items')}</Typography>
               <List dense>
                 {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
                   <ListItem key={itemName} sx={{ px: 0 }}>
@@ -648,20 +650,20 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>📊 Key Metrics</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>📊 {t('key_metrics')}</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <MoneyIcon color="success" />
                     <Typography variant="h6">${stats.averageOrderValue.toFixed(2)}</Typography>
-                    <Typography variant="caption">Avg Order Value</Typography>
+                    <Typography variant="caption">{t('avg_order_value')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <ReceiptIcon color="primary" />
                     <Typography variant="h6">{stats.totalOrders}</Typography>
-                    <Typography variant="caption">Total Orders</Typography>
+                    <Typography variant="caption">{t('total_orders')}</Typography>
                   </Box>
                 </Grid>
                 {stats.peakHour && (
@@ -671,7 +673,7 @@ export default function Orders() {
                       <Typography variant="h6">
                         {stats.peakHour.hour}:00
                       </Typography>
-                      <Typography variant="caption">Peak Hour</Typography>
+                      <Typography variant="caption">{t('peak_hour')}</Typography>
                     </Box>
                   </Grid>
                 )}
@@ -679,7 +681,7 @@ export default function Orders() {
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <MoneyIcon color="info" />
                     <Typography variant="h6">${stats.totalRevenue.toFixed(2)}</Typography>
-                    <Typography variant="caption">Total Revenue</Typography>
+                    <Typography variant="caption">{t('total_revenue')}</Typography>
                   </Box>
                 </Grid>
               </Grid>
@@ -691,7 +693,7 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>💳 Payment Methods</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>💳 {t('payment_methods')}</Typography>
               <List dense>
                 {Object.entries(stats.paymentMethods).map(([method, count]) => (
                   <ListItem key={method} sx={{ px: 0 }}>
@@ -723,7 +725,7 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>📍 Location Performance</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>📍 {t('location_performance')}</Typography>
               <List dense>
                 {Object.entries(stats.locationStats)
                   .sort(([,a], [,b]) => b.revenue - a.revenue)
@@ -758,8 +760,8 @@ export default function Orders() {
 
       <Paper>
         <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="All Orders" />
-          <Tab label="Analytics" />
+          <Tab label={t('all_orders')} />
+          <Tab label={t('analytics')} />
         </Tabs>
 
         {/* All Orders Tab */}
@@ -768,15 +770,15 @@ export default function Orders() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Order #</TableCell>
-                  <TableCell>Time</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Items</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>Payment</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell>{t('order_number')}</TableCell>
+                  <TableCell>{t('time')}</TableCell>
+                  <TableCell>{t('customer')}</TableCell>
+                  <TableCell>{t('items')}</TableCell>
+                  <TableCell>{t('total')}</TableCell>
+                  <TableCell>{t('payment')}</TableCell>
+                  <TableCell>{t('status')}</TableCell>
+                  <TableCell>{t('source')}</TableCell>
+                  <TableCell>{t('actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
