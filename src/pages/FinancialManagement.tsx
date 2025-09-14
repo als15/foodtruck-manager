@@ -58,6 +58,7 @@ import {
 } from '../types';
 import { 
   expensesService, 
+  expenseCategoriesService,
   financialGoalsService, 
   financialProjectionsService,
   menuItemsService,
@@ -99,6 +100,7 @@ export default function FinancialManagement() {
 
   // Data state
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [projections, setProjections] = useState<FinancialProjection[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -151,6 +153,7 @@ export default function FinancialManagement() {
     try {
       await Promise.all([
         loadExpenses(),
+        loadExpenseCategories(),
         loadGoals(),
         loadProjections(),
         loadMenuItems()
@@ -170,6 +173,15 @@ export default function FinancialManagement() {
       setExpenses(data);
     } catch (error) {
       console.error('Failed to load expenses:', error);
+    }
+  };
+
+  const loadExpenseCategories = async () => {
+    try {
+      const data = await expenseCategoriesService.getAll();
+      setExpenseCategories(data);
+    } catch (error) {
+      console.error('Failed to load expense categories:', error);
     }
   };
 
@@ -262,6 +274,7 @@ export default function FinancialManagement() {
     type: 'fixed',
     frequency: 'monthly',
     description: '',
+    categoryId: '',
     isActive: true
   });
 
@@ -283,19 +296,6 @@ export default function FinancialManagement() {
     workingDaysPerMonth: 22
   });
 
-  // Predefined expense categories for food truck business
-  const expenseCategories: ExpenseCategory[] = [
-    { id: '1', name: 'Truck Payment/Lease', type: 'fixed', isActive: true },
-    { id: '2', name: 'Insurance', type: 'fixed', isActive: true },
-    { id: '3', name: 'Permits & Licenses', type: 'fixed', isActive: true },
-    { id: '4', name: 'Fuel', type: 'variable', isActive: true },
-    { id: '5', name: 'Food & Ingredients', type: 'variable', isActive: true },
-    { id: '6', name: 'Maintenance & Repairs', type: 'variable', isActive: true },
-    { id: '7', name: 'Marketing', type: 'variable', isActive: true },
-    { id: '8', name: 'Utilities', type: 'fixed', isActive: true },
-    { id: '9', name: 'Equipment', type: 'one_time', isActive: true },
-    { id: '10', name: 'Initial Investment', type: 'one_time', isActive: true },
-  ];
 
   // Enhanced financial calculation functions
   const calculateMonthlyExpenses = () => {
@@ -456,6 +456,7 @@ export default function FinancialManagement() {
       type: expense.type,
       frequency: expense.frequency,
       description: expense.description || '',
+      categoryId: expense.categoryId || '',
       isActive: expense.isActive
     });
     setEditingExpense(expense);
@@ -465,7 +466,7 @@ export default function FinancialManagement() {
   const handleSaveExpense = async () => {
     try {
       const expense = {
-        categoryId: null, // We'll make this optional for now
+        categoryId: newExpense.categoryId || null,
         name: newExpense.name || '',
         amount: newExpense.amount || 0,
         type: newExpense.type || 'fixed',
@@ -489,6 +490,7 @@ export default function FinancialManagement() {
         type: 'fixed',
         frequency: 'monthly',
         description: '',
+        categoryId: '',
         isActive: true
       });
       setEditingExpense(null);
@@ -698,7 +700,7 @@ export default function FinancialManagement() {
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Name</TableCell>
+                        <TableCell>Name & Category</TableCell>
                         <TableCell>Amount</TableCell>
                         <TableCell>Frequency</TableCell>
                         <TableCell>Type</TableCell>
@@ -726,9 +728,21 @@ export default function FinancialManagement() {
                             monthlyImpact = 0;
                         }
 
+                        const category = expenseCategories.find(cat => cat.id === expense.categoryId);
+                        
                         return (
                           <TableRow key={expense.id}>
-                            <TableCell>{expense.name}</TableCell>
+                            <TableCell>
+                              {expense.name}
+                              {category && (
+                                <Chip 
+                                  label={category.name} 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ ml: 1, fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </TableCell>
                             <TableCell>${expense.amount.toFixed(2)}</TableCell>
                             <TableCell>{expense.frequency}</TableCell>
                             <TableCell>
@@ -997,6 +1011,7 @@ export default function FinancialManagement() {
           type: 'fixed',
           frequency: 'monthly',
           description: '',
+          categoryId: '',
           isActive: true
         });
       }} maxWidth="md" fullWidth>
@@ -1011,6 +1026,22 @@ export default function FinancialManagement() {
                 onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
                 required
               />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={newExpense.categoryId || ''}
+                  onChange={(e) => setNewExpense({ ...newExpense, categoryId: e.target.value })}
+                >
+                  <MuiMenuItem value="">No Category</MuiMenuItem>
+                  {expenseCategories.map((category) => (
+                    <MuiMenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField

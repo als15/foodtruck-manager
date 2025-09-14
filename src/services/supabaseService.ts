@@ -11,6 +11,7 @@ import {
   Customer, 
   Supplier,
   Expense,
+  ExpenseCategory,
   FinancialGoal,
   FinancialProjection
 } from '../types';
@@ -876,6 +877,25 @@ export const expensesService = {
       .eq('id', id);
     
     if (error) handleError(error, 'delete expense');
+  }
+};
+
+export const expenseCategoriesService = {
+  async getAll(): Promise<ExpenseCategory[]> {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+    
+    if (error) handleError(error, 'fetch expense categories');
+    
+    return (data || []).map(category => ({
+      id: category.id,
+      name: category.name,
+      type: category.type,
+      isActive: category.is_active
+    }));
   }
 };
 

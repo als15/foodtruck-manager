@@ -315,10 +315,23 @@ export default function Employees() {
     }
   }
 
-  const calculateTotalHours = (employeeId: string) => {
-    return shifts
-      .filter(shift => shift.employeeId === employeeId)
-      .reduce((total, shift) => total + shift.hoursWorked, 0)
+  const calculateTotalHours = (employeeId: string, weekDate?: Date) => {
+    const targetWeek = weekDate || new Date()
+    const weekStart = new Date(targetWeek)
+    weekStart.setDate(targetWeek.getDate() - targetWeek.getDay()) // Start of target week (Sunday)
+    weekStart.setHours(0, 0, 0, 0) // Set to start of day
+    
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6) // End of target week (Saturday)
+    weekEnd.setHours(23, 59, 59, 999) // Set to end of day
+
+    const employeeShifts = shifts.filter(shift => shift.employeeId === employeeId)
+    const weekShifts = employeeShifts.filter(shift => {
+      const shiftDate = new Date(shift.date)
+      return shiftDate >= weekStart && shiftDate <= weekEnd
+    })
+
+    return weekShifts.reduce((total, shift) => total + shift.hoursWorked, 0)
   }
 
   return (
@@ -471,7 +484,7 @@ export default function Employees() {
                   <TableRow>
                     <TableCell>Employee</TableCell>
                     <TableCell>Hours This Week</TableCell>
-                    <TableCell>Total Hours (All Time)</TableCell>
+                    <TableCell>All Hours (This Week)</TableCell>
                     <TableCell>Hourly Rate</TableCell>
                     <TableCell>Weekly Pay</TableCell>
                   </TableRow>
@@ -479,7 +492,7 @@ export default function Employees() {
                 <TableBody>
                   {employees.map(employee => {
                     const weeklyHours = calculateWeeklyHours(employee.id, selectedWeek)
-                    const totalHours = calculateTotalHours(employee.id)
+                    const totalHours = calculateTotalHours(employee.id, selectedWeek)
                     const weeklyPay = weeklyHours * employee.hourlyRate
                     return (
                       <TableRow key={employee.id} sx={{ opacity: weeklyHours === 0 ? 0.6 : 1 }}>
@@ -510,7 +523,7 @@ export default function Employees() {
                       {employees.reduce((total, emp) => total + calculateWeeklyHours(emp.id, selectedWeek), 0).toFixed(2)}
                     </TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>
-                      {employees.reduce((total, emp) => total + calculateTotalHours(emp.id), 0).toFixed(2)}
+                      {employees.reduce((total, emp) => total + calculateTotalHours(emp.id, selectedWeek), 0).toFixed(2)}
                     </TableCell>
                     <TableCell>-</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>
