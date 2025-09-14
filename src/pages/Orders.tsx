@@ -46,6 +46,11 @@ import {
   AttachMoney as MoneyIcon,
   Schedule as TimeIcon,
   Person as CustomerIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  TrendingFlat as TrendingFlatIcon,
+  LocationOn as LocationIcon,
+  AccessTime as PeakIcon,
 } from '@mui/icons-material';
 import { Order, OrderItem, MenuItem, Employee, Customer } from '../types';
 import { 
@@ -96,7 +101,7 @@ export default function Orders() {
     subtotal: 0,
     taxAmount: 0,
     tipAmount: 0,
-    status: 'pending',
+    status: 'completed',
     orderTime: new Date(),
     location: 'Main Location',
     paymentMethod: 'card',
@@ -274,7 +279,7 @@ export default function Orders() {
       subtotal: 0,
       taxAmount: 0,
       tipAmount: 0,
-      status: 'pending',
+      status: 'completed',
       orderTime: new Date(),
       location: 'Main Location',
       paymentMethod: 'card',
@@ -302,8 +307,9 @@ export default function Orders() {
         taxAmount: totals.taxAmount,
         tipAmount: totals.tipAmount,
         discountAmount: 0,
-        status: 'pending',
-        orderTime: new Date(),
+        status: 'completed',
+        orderTime: newOrder.orderTime || new Date(),
+        completedTime: newOrder.orderTime || new Date(),
         location: newOrder.location || 'Main Location',
         paymentMethod: newOrder.paymentMethod || 'card',
         paymentStatus: 'completed',
@@ -323,7 +329,7 @@ export default function Orders() {
     }
   };
 
-  const handleImportFromDefrayal = async () => {
+  const handleImportOrders = async () => {
     try {
       // Parse the import data (expecting JSON format)
       const externalOrders = JSON.parse(importData);
@@ -365,16 +371,123 @@ export default function Orders() {
     }
   };
 
-  // Calculate order statistics
-  const orderStats = {
-    total: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
-    preparing: orders.filter(o => o.status === 'preparing').length,
-    ready: orders.filter(o => o.status === 'ready').length,
-    completed: orders.filter(o => o.status === 'completed').length,
-    totalRevenue: orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.total, 0),
-    averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0
+  // Calculate comprehensive business analytics
+  const getDateFilters = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+    const lastWeekEnd = new Date(thisWeekStart);
+    lastWeekEnd.setDate(thisWeekStart.getDate() - 1);
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    return { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd };
   };
+
+  const analytics = () => {
+    const { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd } = getDateFilters();
+    
+    // Filter orders by time periods
+    const todayOrders = orders.filter(o => new Date(o.orderTime) >= today);
+    const yesterdayOrders = orders.filter(o => {
+      const orderDate = new Date(o.orderTime);
+      return orderDate >= yesterday && orderDate < today;
+    });
+    const thisWeekOrders = orders.filter(o => new Date(o.orderTime) >= thisWeekStart);
+    const lastWeekOrders = orders.filter(o => {
+      const orderDate = new Date(o.orderTime);
+      return orderDate >= lastWeekStart && orderDate <= lastWeekEnd;
+    });
+    const thisMonthOrders = orders.filter(o => new Date(o.orderTime) >= thisMonth);
+    const lastMonthOrders = orders.filter(o => {
+      const orderDate = new Date(o.orderTime);
+      return orderDate >= lastMonth && orderDate <= lastMonthEnd;
+    });
+
+    // Revenue calculations
+    const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
+    const yesterdayRevenue = yesterdayOrders.reduce((sum, o) => sum + o.total, 0);
+    const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + o.total, 0);
+    const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + o.total, 0);
+    const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + o.total, 0);
+    const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + o.total, 0);
+
+    // Growth calculations
+    const dailyGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100) : 0;
+    const weeklyGrowth = lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) : 0;
+    const monthlyGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
+
+    // Top-selling items analysis
+    const itemSales = orders.reduce((acc, order) => {
+      order.items.forEach(item => {
+        const itemName = item.menuItem?.name || 'Unknown Item';
+        if (!acc[itemName]) {
+          acc[itemName] = { quantity: 0, revenue: 0 };
+        }
+        acc[itemName].quantity += item.quantity;
+        acc[itemName].revenue += item.totalPrice;
+      });
+      return acc;
+    }, {} as Record<string, { quantity: number; revenue: number }>);
+
+    const topItems = Object.entries(itemSales)
+      .sort(([,a], [,b]) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    // Peak hours analysis
+    const hourlyOrders = orders.reduce((acc, order) => {
+      const hour = new Date(order.orderTime).getHours();
+      acc[hour] = (acc[hour] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const peakHour = Object.entries(hourlyOrders)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    // Payment method breakdown
+    const paymentMethods = orders.reduce((acc, order) => {
+      acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Location performance
+    const locationStats = orders.reduce((acc, order) => {
+      const location = order.location || 'Unknown';
+      if (!acc[location]) {
+        acc[location] = { orders: 0, revenue: 0 };
+      }
+      acc[location].orders += 1;
+      acc[location].revenue += order.total;
+      return acc;
+    }, {} as Record<string, { orders: number; revenue: number }>);
+
+    return {
+      todayOrders: todayOrders.length,
+      todayRevenue,
+      dailyGrowth,
+      thisWeekOrders: thisWeekOrders.length,
+      thisWeekRevenue,
+      weeklyGrowth,
+      thisMonthOrders: thisMonthOrders.length,
+      thisMonthRevenue,
+      monthlyGrowth,
+      averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0,
+      topItems,
+      peakHour: peakHour ? { hour: parseInt(peakHour[0]), count: peakHour[1] } : null,
+      paymentMethods,
+      locationStats,
+      totalOrders: orders.length,
+      totalRevenue: orders.reduce((sum, o) => sum + o.total, 0)
+    };
+  };
+
+  const stats = analytics();
 
   return (
     <Box>
@@ -387,83 +500,257 @@ export default function Orders() {
             onClick={() => setOpenImportDialog(true)}
             sx={{ mr: 1 }}
           >
-            Import from Defrayal
+            Import Orders
           </Button>
           <Button 
             variant="contained" 
             startIcon={<AddIcon />} 
             onClick={() => setOpenOrderDialog(true)}
           >
-            New Order
+            Add Order Record
           </Button>
         </Box>
       </Box>
 
-      {/* Order Statistics Cards */}
+      {/* Enhanced Business Analytics Dashboard */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={2}>
+        
+        {/* Today's Performance */}
+        <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ReceiptIcon color="primary" />
-                <Typography variant="h6">Total Orders</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" color="primary">Today's Performance</Typography>
+                  <Typography variant="h4">${stats.todayRevenue.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.todayOrders} orders
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {stats.dailyGrowth > 0 ? (
+                    <TrendingUpIcon color="success" />
+                  ) : stats.dailyGrowth < 0 ? (
+                    <TrendingDownIcon color="error" />
+                  ) : (
+                    <TrendingFlatIcon color="disabled" />
+                  )}
+                  <Typography 
+                    variant="body2" 
+                    color={stats.dailyGrowth > 0 ? 'success.main' : stats.dailyGrowth < 0 ? 'error.main' : 'text.secondary'}
+                  >
+                    {stats.dailyGrowth > 0 ? '+' : ''}{stats.dailyGrowth.toFixed(1)}%
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="h4">{orderStats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={2}>
+
+        {/* This Week */}
+        <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <TimeIcon color="warning" />
-                <Typography variant="h6">Pending</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" color="info.main">This Week</Typography>
+                  <Typography variant="h4">${stats.thisWeekRevenue.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.thisWeekOrders} orders
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {stats.weeklyGrowth > 0 ? (
+                    <TrendingUpIcon color="success" />
+                  ) : stats.weeklyGrowth < 0 ? (
+                    <TrendingDownIcon color="error" />
+                  ) : (
+                    <TrendingFlatIcon color="disabled" />
+                  )}
+                  <Typography 
+                    variant="body2" 
+                    color={stats.weeklyGrowth > 0 ? 'success.main' : stats.weeklyGrowth < 0 ? 'error.main' : 'text.secondary'}
+                  >
+                    {stats.weeklyGrowth > 0 ? '+' : ''}{stats.weeklyGrowth.toFixed(1)}%
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="h4">{orderStats.pending}</Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={2}>
+
+        {/* This Month */}
+        <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <KitchenIcon color="info" />
-                <Typography variant="h6">Preparing</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" color="secondary.main">This Month</Typography>
+                  <Typography variant="h4">${stats.thisMonthRevenue.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.thisMonthOrders} orders
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {stats.monthlyGrowth > 0 ? (
+                    <TrendingUpIcon color="success" />
+                  ) : stats.monthlyGrowth < 0 ? (
+                    <TrendingDownIcon color="error" />
+                  ) : (
+                    <TrendingFlatIcon color="disabled" />
+                  )}
+                  <Typography 
+                    variant="body2" 
+                    color={stats.monthlyGrowth > 0 ? 'success.main' : stats.monthlyGrowth < 0 ? 'error.main' : 'text.secondary'}
+                  >
+                    {stats.monthlyGrowth > 0 ? '+' : ''}{stats.monthlyGrowth.toFixed(1)}%
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="h4">{orderStats.preparing}</Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={2}>
+
+        {/* Top Selling Items */}
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CompleteIcon color="success" />
-                <Typography variant="h6">Ready</Typography>
-              </Box>
-              <Typography variant="h4">{orderStats.ready}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>🏆 Top Selling Items</Typography>
+              <List dense>
+                {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
+                  <ListItem key={itemName} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">
+                            #{index + 1} {itemName}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {data.quantity} sold
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={`$${data.revenue.toFixed(2)} revenue`}
+                    />
+                  </ListItem>
+                ))}
+                {stats.topItems.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                    No sales data available
+                  </Typography>
+                )}
+              </List>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={2}>
+
+        {/* Key Metrics */}
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MoneyIcon color="success" />
-                <Typography variant="h6">Revenue</Typography>
-              </Box>
-              <Typography variant="h4">${orderStats.totalRevenue.toFixed(2)}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>📊 Key Metrics</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <MoneyIcon color="success" />
+                    <Typography variant="h6">${stats.averageOrderValue.toFixed(2)}</Typography>
+                    <Typography variant="caption">Avg Order Value</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <ReceiptIcon color="primary" />
+                    <Typography variant="h6">{stats.totalOrders}</Typography>
+                    <Typography variant="caption">Total Orders</Typography>
+                  </Box>
+                </Grid>
+                {stats.peakHour && (
+                  <Grid item xs={6}>
+                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <PeakIcon color="warning" />
+                      <Typography variant="h6">
+                        {stats.peakHour.hour}:00
+                      </Typography>
+                      <Typography variant="caption">Peak Hour</Typography>
+                    </Box>
+                  </Grid>
+                )}
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <MoneyIcon color="info" />
+                    <Typography variant="h6">${stats.totalRevenue.toFixed(2)}</Typography>
+                    <Typography variant="caption">Total Revenue</Typography>
+                  </Box>
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={2}>
+
+        {/* Payment Methods Breakdown */}
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MoneyIcon color="info" />
-                <Typography variant="h6">Avg Order</Typography>
-              </Box>
-              <Typography variant="h4">${orderStats.averageOrderValue.toFixed(2)}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>💳 Payment Methods</Typography>
+              <List dense>
+                {Object.entries(stats.paymentMethods).map(([method, count]) => (
+                  <ListItem key={method} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">
+                            {getPaymentMethodIcon(method)} {method.charAt(0).toUpperCase() + method.slice(1)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {count} orders ({((count / stats.totalOrders) * 100).toFixed(1)}%)
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                ))}
+                {Object.keys(stats.paymentMethods).length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                    No payment data available
+                  </Typography>
+                )}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Location Performance */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>📍 Location Performance</Typography>
+              <List dense>
+                {Object.entries(stats.locationStats)
+                  .sort(([,a], [,b]) => b.revenue - a.revenue)
+                  .map(([location, data]) => (
+                  <ListItem key={location} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">
+                            <LocationIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
+                            {location}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            ${data.revenue.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={`${data.orders} orders • $${(data.revenue / data.orders).toFixed(2)} avg`}
+                    />
+                  </ListItem>
+                ))}
+                {Object.keys(stats.locationStats).length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                    No location data available
+                  </Typography>
+                )}
+              </List>
             </CardContent>
           </Card>
         </Grid>
@@ -472,7 +759,6 @@ export default function Orders() {
       <Paper>
         <Tabs value={tabValue} onChange={handleTabChange}>
           <Tab label="All Orders" />
-          <Tab label="Kitchen View" />
           <Tab label="Analytics" />
         </Tabs>
 
@@ -569,36 +855,10 @@ export default function Orders() {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {order.status === 'pending' && (
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleUpdateOrderStatus(order.id, 'preparing')}
-                            title="Start Preparing"
-                          >
-                            <KitchenIcon />
-                          </IconButton>
-                        )}
-                        {order.status === 'preparing' && (
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleUpdateOrderStatus(order.id, 'ready')}
-                            title="Mark Ready"
-                          >
-                            <CompleteIcon />
-                          </IconButton>
-                        )}
-                        {order.status === 'ready' && (
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
-                            title="Complete Order"
-                          >
-                            <CompleteIcon />
-                          </IconButton>
-                        )}
                         <IconButton 
                           size="small" 
                           onClick={() => handleDeleteOrder(order.id)}
+                          title="Delete Order"
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -611,69 +871,8 @@ export default function Orders() {
           </TableContainer>
         </TabPanel>
 
-        {/* Kitchen View Tab */}
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={2}>
-            {['pending', 'preparing', 'ready'].map(status => (
-              <Grid item xs={12} md={4} key={status}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ mb: 2, textTransform: 'capitalize' }}>
-                      {status} Orders ({orders.filter(o => o.status === status).length})
-                    </Typography>
-                    <List>
-                      {orders.filter(o => o.status === status).map(order => (
-                        <ListItem key={order.id} divider>
-                          <ListItemText
-                            primary={`Order ${order.orderNumber || order.id.slice(0, 8)}`}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2">
-                                  {order.items.map(item => 
-                                    `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`
-                                  ).join(', ')}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {order.orderTime.toLocaleTimeString()} | ${order.total.toFixed(2)}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                          <ListItemSecondaryAction>
-                            {status === 'pending' && (
-                              <IconButton 
-                                onClick={() => handleUpdateOrderStatus(order.id, 'preparing')}
-                              >
-                                <KitchenIcon />
-                              </IconButton>
-                            )}
-                            {status === 'preparing' && (
-                              <IconButton 
-                                onClick={() => handleUpdateOrderStatus(order.id, 'ready')}
-                              >
-                                <CompleteIcon />
-                              </IconButton>
-                            )}
-                            {status === 'ready' && (
-                              <IconButton 
-                                onClick={() => handleUpdateOrderStatus(order.id, 'completed')}
-                              >
-                                <CompleteIcon />
-                              </IconButton>
-                            )}
-                          </ListItemSecondaryAction>
-                        </ListItem>
-                      ))}
-                    </List>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </TabPanel>
-
         {/* Analytics Tab */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={1}>
           <Alert severity="info" sx={{ mb: 3 }}>
             Detailed analytics will be implemented here, including daily/weekly/monthly sales reports, 
             popular items, peak hours, customer analytics, and revenue trends.
@@ -683,17 +882,17 @@ export default function Orders() {
 
       {/* Import Dialog */}
       <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Import Orders from Defrayal Machine</DialogTitle>
+        <DialogTitle>Import Orders from Clearing Device</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Paste the JSON export from your Defrayal machine below. The system will automatically 
+            Paste the export data from your clearing device below (JSON or CSV format). The system will automatically 
             process and import the orders into your database.
           </Alert>
           <TextField
             fullWidth
             multiline
             rows={10}
-            label="Defrayal Export Data (JSON)"
+            label="Clearing Device Export Data"
             value={importData}
             onChange={(e) => setImportData(e.target.value)}
             placeholder={`[
@@ -717,7 +916,7 @@ export default function Orders() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-          <Button onClick={handleImportFromDefrayal} variant="contained">
+          <Button onClick={handleImportOrders} variant="contained">
             Import Orders
           </Button>
         </DialogActions>
@@ -725,7 +924,7 @@ export default function Orders() {
 
       {/* New Order Dialog */}
       <Dialog open={openOrderDialog} onClose={() => setOpenOrderDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Create New Order</DialogTitle>
+        <DialogTitle>Add Order Record</DialogTitle>
         <DialogContent>
           <Grid container spacing={3}>
             
@@ -929,8 +1128,26 @@ export default function Orders() {
                 </Box>
               )}
 
-              {/* Payment & Order Details */}
+              {/* Order Details */}
               <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Order Date & Time"
+                  type="datetime-local"
+                  value={newOrder.orderTime ? newOrder.orderTime.toISOString().slice(0, 16) : ''}
+                  onChange={(e) => setNewOrder({...newOrder, orderTime: new Date(e.target.value)})}
+                  sx={{ mb: 2 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Location"
+                  value={newOrder.location || 'Main Location'}
+                  onChange={(e) => setNewOrder({...newOrder, location: e.target.value})}
+                  sx={{ mb: 2 }}
+                />
+
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Payment Method</InputLabel>
                   <Select
@@ -964,7 +1181,7 @@ export default function Orders() {
             onClick={handleCreateOrder}
             disabled={orderItems.length === 0}
           >
-            Create Order (${calculateTotals().total.toFixed(2)})
+            Add Order Record (${calculateTotals().total.toFixed(2)})
           </Button>
         </DialogActions>
       </Dialog>
