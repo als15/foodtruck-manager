@@ -154,10 +154,10 @@ export default function Customers() {
   };
 
   const totalCustomers = customers.length;
-  const totalLoyaltyPoints = customers.reduce((sum, customer) => sum + customer.loyaltyPoints, 0);
+  const totalLoyaltyPoints = customers.reduce((sum, customer) => sum + (customer.loyaltyPoints || 0), 0);
   const avgOrderValue = customers.length > 0 
-    ? customers.reduce((sum, customer) => sum + customer.totalSpent, 0) / 
-      customers.reduce((sum, customer) => sum + customer.totalOrders, 0)
+    ? customers.reduce((sum, customer) => sum + (customer.totalSpent || 0), 0) / 
+      customers.reduce((sum, customer) => sum + (customer.totalOrders || 0), 0)
     : 0;
 
   const handleFavoriteItemsChange = (value: string) => {
@@ -222,7 +222,7 @@ export default function Customers() {
                 Repeat Customers
               </Typography>
               <Typography variant="h4">
-                {customers.filter(c => c.totalOrders > 1).length}
+                {customers.filter(c => (c.totalOrders || 0) > 1).length}
               </Typography>
             </CardContent>
           </Card>
@@ -239,7 +239,7 @@ export default function Customers() {
         <TabPanel value={tabValue} index={0}>
           <Grid container spacing={2}>
             {customers.map((customer) => {
-              const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints);
+              const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints || 0);
               return (
                 <Grid item xs={12} sm={6} md={4} key={customer.id}>
                   <Card>
@@ -276,24 +276,24 @@ export default function Customers() {
                         Phone: {customer.phone}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Loyalty Points: {customer.loyaltyPoints}
+                        Loyalty Points: {customer.loyaltyPoints || 0}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Total Orders: {customer.totalOrders}
+                        Total Orders: {customer.totalOrders || 0}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Total Spent: ${customer.totalSpent.toFixed(2)}
+                        Total Spent: ${(customer.totalSpent || 0).toFixed(2)}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Last Visit: {customer.lastVisit.toLocaleDateString()}
+                        Last Visit: {customer.lastVisit?.toLocaleDateString() || 'Never'}
                       </Typography>
                       
-                      {customer.favoriteItems.length > 0 && (
+                      {(customer.favoriteItems?.length || 0) > 0 && (
                         <Box sx={{ mt: 1 }}>
                           <Typography variant="caption" display="block">
                             Favorite Items:
                           </Typography>
-                          {customer.favoriteItems.map((item, index) => (
+                          {(customer.favoriteItems || []).map((item, index) => (
                             <Chip
                               key={index}
                               label={item}
@@ -330,11 +330,11 @@ export default function Customers() {
               </TableHead>
               <TableBody>
                 {customers
-                  .sort((a, b) => b.loyaltyPoints - a.loyaltyPoints)
+                  .sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))
                   .map((customer) => {
-                    const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints);
-                    const pointsPerDollar = customer.totalSpent > 0 
-                      ? customer.loyaltyPoints / customer.totalSpent 
+                    const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints || 0);
+                    const pointsPerDollar = (customer.totalSpent || 0) > 0 
+                      ? (customer.loyaltyPoints || 0) / (customer.totalSpent || 0)
                       : 0;
                     
                     return (
@@ -350,9 +350,9 @@ export default function Customers() {
                             icon={<StarIcon />}
                           />
                         </TableCell>
-                        <TableCell>{customer.loyaltyPoints}</TableCell>
-                        <TableCell>{customer.totalOrders}</TableCell>
-                        <TableCell>${customer.totalSpent.toFixed(2)}</TableCell>
+                        <TableCell>{customer.loyaltyPoints || 0}</TableCell>
+                        <TableCell>{customer.totalOrders || 0}</TableCell>
+                        <TableCell>${(customer.totalSpent || 0).toFixed(2)}</TableCell>
                         <TableCell>{pointsPerDollar.toFixed(2)}</TableCell>
                       </TableRow>
                     );
@@ -375,13 +375,13 @@ export default function Customers() {
                   </Typography>
                   <Box>
                     <Typography variant="body2">
-                      Gold Members: {customers.filter(c => c.loyaltyPoints >= 200).length}
+                      Gold Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 200).length}
                     </Typography>
                     <Typography variant="body2">
-                      Silver Members: {customers.filter(c => c.loyaltyPoints >= 100 && c.loyaltyPoints < 200).length}
+                      Silver Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 100 && (c.loyaltyPoints || 0) < 200).length}
                     </Typography>
                     <Typography variant="body2">
-                      Bronze Members: {customers.filter(c => c.loyaltyPoints < 100).length}
+                      Bronze Members: {customers.filter(c => (c.loyaltyPoints || 0) < 100).length}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -394,13 +394,13 @@ export default function Customers() {
                     Customer Insights
                   </Typography>
                   <Typography variant="body2">
-                    Most Loyal Customer: {customers.sort((a, b) => b.loyaltyPoints - a.loyaltyPoints)[0]?.firstName} {customers.sort((a, b) => b.loyaltyPoints - a.loyaltyPoints)[0]?.lastName}
+                    Most Loyal Customer: {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.firstName} {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.lastName}
                   </Typography>
                   <Typography variant="body2">
-                    Highest Spender: {customers.sort((a, b) => b.totalSpent - a.totalSpent)[0]?.firstName} {customers.sort((a, b) => b.totalSpent - a.totalSpent)[0]?.lastName}
+                    Highest Spender: {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.lastName}
                   </Typography>
                   <Typography variant="body2">
-                    Most Frequent Visitor: {customers.sort((a, b) => b.totalOrders - a.totalOrders)[0]?.firstName} {customers.sort((a, b) => b.totalOrders - a.totalOrders)[0]?.lastName}
+                    Most Frequent Visitor: {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.lastName}
                   </Typography>
                 </CardContent>
               </Card>
@@ -419,7 +419,7 @@ export default function Customers() {
               <TextField
                 fullWidth
                 label="First Name"
-                value={newCustomer.firstName}
+                value={newCustomer.firstName || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })}
               />
             </Grid>
@@ -427,7 +427,7 @@ export default function Customers() {
               <TextField
                 fullWidth
                 label="Last Name"
-                value={newCustomer.lastName}
+                value={newCustomer.lastName || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })}
               />
             </Grid>
@@ -436,7 +436,7 @@ export default function Customers() {
                 fullWidth
                 label="Email"
                 type="email"
-                value={newCustomer.email}
+                value={newCustomer.email || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
               />
             </Grid>
@@ -444,7 +444,7 @@ export default function Customers() {
               <TextField
                 fullWidth
                 label="Phone"
-                value={newCustomer.phone}
+                value={newCustomer.phone || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
               />
             </Grid>
@@ -453,7 +453,7 @@ export default function Customers() {
                 fullWidth
                 label="Loyalty Points"
                 type="number"
-                value={newCustomer.loyaltyPoints}
+                value={newCustomer.loyaltyPoints || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, loyaltyPoints: parseInt(e.target.value) })}
               />
             </Grid>
@@ -462,7 +462,7 @@ export default function Customers() {
                 fullWidth
                 label="Total Orders"
                 type="number"
-                value={newCustomer.totalOrders}
+                value={newCustomer.totalOrders || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, totalOrders: parseInt(e.target.value) })}
               />
             </Grid>
@@ -472,7 +472,7 @@ export default function Customers() {
                 label="Total Spent"
                 type="number"
                 inputProps={{ step: "0.01" }}
-                value={newCustomer.totalSpent}
+                value={newCustomer.totalSpent || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, totalSpent: parseFloat(e.target.value) })}
               />
             </Grid>

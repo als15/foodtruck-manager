@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const drawerWidth = 240
@@ -11,6 +11,7 @@ interface AppLayoutProps {
 
 const navigationItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Orders', icon: <OrdersIcon />, path: '/orders' },
   { text: 'Finances', icon: <FinanceIcon />, path: '/finances' },
   { text: 'Menu', icon: <MenuManagementIcon />, path: '/menu' },
   { text: 'Ingredients', icon: <InventoryIcon />, path: '/ingredients' },

@@ -108,15 +108,15 @@ export interface InventoryItem {
 
 export interface Customer {
   id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   phone?: string;
-  loyaltyPoints: number;
-  totalOrders: number;
-  totalSpent: number;
-  favoriteItems: string[];
-  lastVisit: Date;
+  loyaltyPoints?: number;
+  totalOrders?: number;
+  totalSpent?: number;
+  favoriteItems?: string[];
+  lastVisit?: Date;
 }
 
 export interface Supplier {
@@ -138,19 +138,43 @@ export interface Supplier {
   updatedAt: Date;
 }
 
+export interface OrderItem {
+  id?: string;
+  menuItemId: string;
+  menuItem?: {
+    name: string;
+    description: string;
+    price: number;
+  };
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  specialInstructions?: string;
+}
+
+
 export interface Order {
   id: string;
+  orderNumber?: string;
   customerId?: string;
-  items: {
-    menuItemId: string;
-    quantity: number;
-    specialInstructions?: string;
-  }[];
+  customer?: Customer;
+  items: OrderItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  subtotal: number;
+  taxAmount?: number;
+  tipAmount?: number;
+  discountAmount?: number;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled' | 'refunded';
   orderTime: Date;
+  completedTime?: Date;
   location: string;
-  paymentMethod: string;
+  paymentMethod: 'cash' | 'card' | 'mobile' | 'online' | 'other';
+  paymentStatus?: 'pending' | 'completed' | 'failed' | 'refunded';
+  specialInstructions?: string;
+  externalOrderId?: string;
+  externalSource?: string;
+  prepTimeMinutes?: number;
+  employeeId?: string;
 }
 
 // Financial Management Interfaces

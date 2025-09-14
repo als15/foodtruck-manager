@@ -13,7 +13,9 @@ import {
   Expense,
   ExpenseCategory,
   FinancialGoal,
-  FinancialProjection
+  FinancialProjection,
+  Order,
+  OrderItem
 } from '../types';
 
 // Helper function to handle Supabase errors
@@ -769,6 +771,16 @@ export const subscriptions = {
         callback
       )
       .subscribe();
+  },
+
+  orders: (callback: (payload: any) => void) => {
+    return supabase
+      .channel('orders_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        callback
+      )
+      .subscribe();
   }
 };
 
@@ -1240,5 +1252,375 @@ export const shiftsService = {
       .eq('id', id);
     
     if (error) handleError(error, 'delete shift');
+  }
+};
+
+// ==================== CUSTOMERS ====================
+
+export const customersService = {
+  async getAll(): Promise<Customer[]> {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('first_name', { ascending: true });
+    
+    if (error) handleError(error, 'fetch customers');
+    
+    return (data || []).map(customer => ({
+      id: customer.id,
+      firstName: customer.first_name,
+      lastName: customer.last_name,
+      email: customer.email,
+      phone: customer.phone,
+      loyaltyPoints: customer.loyalty_points,
+      totalOrders: customer.total_orders,
+      totalSpent: customer.total_spent,
+      lastVisit: customer.last_visit ? new Date(customer.last_visit) : undefined
+    }));
+  },
+
+  async create(customer: Omit<Customer, 'id'>): Promise<Customer> {
+    const { data, error } = await supabase
+      .from('customers')
+      .insert({
+        first_name: customer.firstName,
+        last_name: customer.lastName,
+        email: customer.email,
+        phone: customer.phone,
+        loyalty_points: customer.loyaltyPoints || 0,
+        total_orders: customer.totalOrders || 0,
+        total_spent: customer.totalSpent || 0
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create customer');
+    
+    return {
+      id: data.id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      loyaltyPoints: data.loyalty_points,
+      totalOrders: data.total_orders,
+      totalSpent: data.total_spent
+    };
+  }
+};
+
+// ==================== ORDERS ====================
+
+export const ordersService = {
+  async getAll(): Promise<Order[]> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          menu_item_id,
+          quantity,
+          unit_price,
+          total_price,
+          special_instructions,
+          menu_items (
+            name,
+            description,
+            price
+          )
+        ),
+        customers (
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          loyalty_points,
+          total_orders,
+          total_spent
+        )
+      `)
+      .order('order_time', { ascending: false });
+    
+    if (error) handleError(error, 'fetch orders');
+    
+    return (data || []).map(order => ({
+      id: order.id,
+      orderNumber: order.order_number,
+      customerId: order.customer_id,
+      customer: order.customers ? {
+        id: order.customers.id,
+        firstName: order.customers.first_name,
+        lastName: order.customers.last_name,
+        email: order.customers.email,
+        phone: order.customers.phone,
+        loyaltyPoints: order.customers.loyalty_points,
+        totalOrders: order.customers.total_orders,
+        totalSpent: order.customers.total_spent
+      } : undefined,
+      items: order.order_items.map((item: any) => ({
+        id: item.id,
+        menuItemId: item.menu_item_id,
+        menuItem: item.menu_items ? {
+          name: item.menu_items.name,
+          description: item.menu_items.description,
+          price: item.menu_items.price
+        } : undefined,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        totalPrice: item.total_price,
+        specialInstructions: item.special_instructions
+      })),
+      total: order.total,
+      subtotal: order.subtotal,
+      taxAmount: order.tax_amount,
+      tipAmount: order.tip_amount,
+      discountAmount: order.discount_amount,
+      status: order.status,
+      orderTime: new Date(order.order_time),
+      completedTime: order.completed_time ? new Date(order.completed_time) : undefined,
+      location: order.location,
+      paymentMethod: order.payment_method,
+      paymentStatus: order.payment_status,
+      specialInstructions: order.special_instructions,
+      externalOrderId: order.external_order_id,
+      externalSource: order.external_source,
+      prepTimeMinutes: order.prep_time_minutes,
+      employeeId: order.employee_id
+    }));
+  },
+
+  async getById(id: string): Promise<Order> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          menu_item_id,
+          quantity,
+          unit_price,
+          total_price,
+          special_instructions,
+          menu_items (
+            name,
+            description,
+            price
+          )
+        ),
+        customers (
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          loyalty_points,
+          total_orders,
+          total_spent
+        )
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) handleError(error, 'fetch order');
+    
+    return {
+      id: data.id,
+      orderNumber: data.order_number,
+      customerId: data.customer_id,
+      customer: data.customers ? {
+        id: data.customers.id,
+        firstName: data.customers.first_name,
+        lastName: data.customers.last_name,
+        email: data.customers.email,
+        phone: data.customers.phone
+      } : undefined,
+      items: data.order_items.map((item: any) => ({
+        id: item.id,
+        menuItemId: item.menu_item_id,
+        menuItem: item.menu_items ? {
+          name: item.menu_items.name,
+          description: item.menu_items.description,
+          price: item.menu_items.price
+        } : undefined,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        totalPrice: item.total_price,
+        specialInstructions: item.special_instructions
+      })),
+      total: data.total,
+      subtotal: data.subtotal,
+      taxAmount: data.tax_amount,
+      tipAmount: data.tip_amount,
+      discountAmount: data.discount_amount,
+      status: data.status,
+      orderTime: new Date(data.order_time),
+      completedTime: data.completed_time ? new Date(data.completed_time) : undefined,
+      location: data.location,
+      paymentMethod: data.payment_method,
+      paymentStatus: data.payment_status,
+      specialInstructions: data.special_instructions,
+      externalOrderId: data.external_order_id,
+      externalSource: data.external_source,
+      prepTimeMinutes: data.prep_time_minutes,
+      employeeId: data.employee_id
+    };
+  },
+
+  async create(order: Omit<Order, 'id' | 'orderNumber'>): Promise<Order> {
+    // Generate order number
+    const { data: orderNumberData, error: orderNumberError } = await supabase
+      .rpc('generate_order_number');
+    
+    if (orderNumberError) handleError(orderNumberError, 'generate order number');
+    
+    const orderData = {
+      order_number: orderNumberData,
+      customer_id: order.customerId,
+      total: order.total,
+      subtotal: order.subtotal,
+      tax_amount: order.taxAmount || 0,
+      tip_amount: order.tipAmount || 0,
+      discount_amount: order.discountAmount || 0,
+      status: order.status,
+      order_time: order.orderTime.toISOString(),
+      location: order.location,
+      payment_method: order.paymentMethod,
+      payment_status: order.paymentStatus || 'completed',
+      special_instructions: order.specialInstructions,
+      external_order_id: order.externalOrderId,
+      external_source: order.externalSource || 'manual',
+      employee_id: order.employeeId
+    };
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert(orderData)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create order');
+
+    // Insert order items
+    if (order.items && order.items.length > 0) {
+      const orderItems = order.items.map(item => ({
+        order_id: data.id,
+        menu_item_id: item.menuItemId,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total_price: item.totalPrice,
+        special_instructions: item.specialInstructions
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+      
+      if (itemsError) handleError(itemsError, 'create order items');
+    }
+
+    return this.getById(data.id);
+  },
+
+  async updateStatus(id: string, status: Order['status'], employeeId?: string): Promise<Order> {
+    const updateData: any = { 
+      status,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (status === 'completed') {
+      updateData.completed_time = new Date().toISOString();
+    }
+    
+    if (employeeId) {
+      updateData.employee_id = employeeId;
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', id);
+    
+    if (error) handleError(error, 'update order status');
+    
+    return this.getById(id);
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+    
+    if (error) handleError(error, 'delete order');
+  },
+
+  // Import orders from external systems (like defrayal machine)
+  async importFromExternal(externalOrders: any[]): Promise<Order[]> {
+    const createdOrders = [];
+    
+    for (const externalOrder of externalOrders) {
+      try {
+        const order = await this.create({
+          customerId: undefined, // External orders might not have customer info
+          items: externalOrder.items?.map((item: any) => ({
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
+            specialInstructions: item.specialInstructions
+          })) || [],
+          total: externalOrder.total,
+          subtotal: externalOrder.subtotal || externalOrder.total,
+          taxAmount: externalOrder.taxAmount || 0,
+          tipAmount: externalOrder.tipAmount || 0,
+          status: externalOrder.status || 'completed',
+          orderTime: new Date(externalOrder.orderTime || Date.now()),
+          location: externalOrder.location || 'Main Location',
+          paymentMethod: externalOrder.paymentMethod || 'card',
+          paymentStatus: 'completed',
+          externalOrderId: externalOrder.externalId,
+          externalSource: externalOrder.source || 'defrayal'
+        });
+        
+        createdOrders.push(order);
+      } catch (error) {
+        console.error('Failed to import external order:', externalOrder, error);
+      }
+    }
+    
+    return createdOrders;
+  }
+};
+
+// ==================== DAILY SALES ====================
+
+export const dailySalesService = {
+  async getByDate(date: Date): Promise<any> {
+    const { data, error } = await supabase
+      .from('daily_sales_summary')
+      .select('*')
+      .eq('date', date.toISOString().split('T')[0])
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      handleError(error, 'fetch daily sales');
+    }
+    
+    return data;
+  },
+
+  async getDateRange(startDate: Date, endDate: Date): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('daily_sales_summary')
+      .select('*')
+      .gte('date', startDate.toISOString().split('T')[0])
+      .lte('date', endDate.toISOString().split('T')[0])
+      .order('date', { ascending: true });
+    
+    if (error) handleError(error, 'fetch daily sales range');
+    
+    return data || [];
   }
 };
