@@ -94,8 +94,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ...(isRtl
             ? {
-                left: 0,
-                right: { md: `${drawerWidth}px` },
+                left: { md: `${drawerWidth}px` },
+                right: 0,
                 ml: 0,
                 mr: 0
               }
@@ -106,7 +106,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         }}
       >
         <Toolbar>
-          <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { md: 'none' } }}>
+          <IconButton 
+            color="inherit" 
+            aria-label="open drawer" 
+            edge="start" 
+            onClick={handleDrawerToggle} 
+            sx={{ 
+              mr: isRtl ? 0 : 2, 
+              ml: isRtl ? 2 : 0, 
+              display: { md: 'none' } 
+            }}
+          >
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
@@ -143,13 +153,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     '& .MuiAvatar-root': {
                       width: 32,
                       height: 32,
-                      ml: -0.5,
-                      mr: 1,
+                      ml: isRtl ? 1 : -0.5,
+                      mr: isRtl ? -0.5 : 1,
                     },
                   },
                 }}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                transformOrigin={{ 
+                  horizontal: isRtl ? 'left' : 'right', 
+                  vertical: 'top' 
+                }}
+                anchorOrigin={{ 
+                  horizontal: isRtl ? 'left' : 'right', 
+                  vertical: 'bottom' 
+                }}
               >
                 <MenuItem onClick={handleUserManagement}>
                   <ListItemIcon>
@@ -208,11 +224,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           width: '100%',
           ...(isRtl
             ? {
-                marginLeft: 0,
-                marginRight: { md: `${16}px` }
+                marginLeft: { md: `${drawerWidth}px` },
+                marginRight: 0
               }
             : {
-                ml: { md: `${16}px` },
+                ml: { md: `${drawerWidth}px` },
                 mr: { md: 0 }
               })
         }}
