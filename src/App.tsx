@@ -11,6 +11,7 @@ import Logistics from './pages/Logistics';
 import Inventory from './pages/Inventory';
 import Customers from './pages/Customers';
 import Suppliers from './pages/Suppliers';
+import SupplierOrders from './pages/SupplierOrders';
 import Analytics from './pages/Analytics';
 import { Auth } from './pages/Auth';
 import { UserManagement } from './pages/UserManagement';
@@ -43,6 +44,7 @@ function App() {
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/suppliers" element={<Suppliers />} />
+                <Route path="/supplier-orders" element={<SupplierOrders />} />
                 <Route path="/analytics" element={<Analytics />} />
               </Routes>
             </AppLayout>

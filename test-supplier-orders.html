@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supplier Orders Behavior</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #f0f0f0;
+        }
+        
+        .supplier-order-test {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        select, input {
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        
+        .order-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 3px;
+        }
+        
+        .order-item > * {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Supplier Orders - Add Item Test</h1>
+    
+    <div class="step">
+        <h3>Test Steps:</h3>
+        <ol>
+            <li>Select a supplier</li>
+            <li>Click "Add Item"</li>
+            <li>Select an ingredient (e.g., "Pizza Dough")</li>
+            <li>Click "Add Item" again</li>
+            <li>Check: Does the previous ingredient still display "Pizza Dough"?</li>
+        </ol>
+    </div>
+
+    <div class="supplier-order-test">
+        <h3>Create Supplier Order</h3>
+        
+        <div>
+            <label>Supplier:</label>
+            <select id="supplierSelect">
+                <option value="">Select Supplier</option>
+                <option value="pizza-supplier">Pizza Supplier Co</option>
+                <option value="burger-supplier">Burger Supplier Inc</option>
+            </select>
+        </div>
+        
+        <br>
+        
+        <div>
+            <button id="addItemBtn" disabled>Add Item</button>
+        </div>
+        
+        <div id="orderItems"></div>
+        
+        <div id="testResult" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Mock data
+        const suppliers = {
+            'pizza-supplier': { id: 'pizza-supplier', name: 'Pizza Supplier Co' },
+            'burger-supplier': { id: 'burger-supplier', name: 'Burger Supplier Inc' }
+        };
+        
+        const ingredients = {
+            'pizza-supplier': [
+                { id: 'pizza-dough', name: 'Pizza Dough', price: 2.50 },
+                { id: 'mozzarella', name: 'Mozzarella Cheese', price: 4.00 }
+            ],
+            'burger-supplier': [
+                { id: 'burger-buns', name: 'Burger Buns', price: 1.50 },
+                { id: 'beef-patty', name: 'Beef Patty', price: 3.00 }
+            ]
+        };
+        
+        let selectedSupplier = '';
+        let orderItems = [];
+        let itemCounter = 0;
+        
+        // DOM elements
+        const supplierSelect = document.getElementById('supplierSelect');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const orderItemsDiv = document.getElementById('orderItems');
+        const testResult = document.getElementById('testResult');
+        
+        // Event listeners
+        supplierSelect.addEventListener('change', function() {
+            selectedSupplier = this.value;
+            addItemBtn.disabled = !selectedSupplier;
+            orderItems = []; // Clear items when supplier changes
+            renderOrderItems();
+        });
+        
+        addItemBtn.addEventListener('click', function() {
+            if (!selectedSupplier) return;
+            
+            const newItem = {
+                tempId: `temp-${Date.now()}-${Math.random()}`,
+                ingredientId: '',
+                ingredientName: '',
+                quantity: 1,
+                unitPrice: 0
+            };
+            
+            orderItems.push(newItem);
+            renderOrderItems();
+            
+            // Test validation
+            validateTest();
+        });
+        
+        function renderOrderItems() {
+            orderItemsDiv.innerHTML = '';
+            
+            orderItems.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'order-item';
+                itemDiv.innerHTML = `
+                    <span>Item ${index + 1}:</span>
+                    <select onchange="updateIngredient('${item.tempId}', this)">
+                        <option value="">Select Ingredient</option>
+                        ${getIngredientOptions()}
+                    </select>
+                    <input type="number" value="${item.quantity}" min="1" 
+                           onchange="updateQuantity('${item.tempId}', this.value)">
+                    <span>$${item.unitPrice.toFixed(2)}</span>
+                    <button onclick="removeItem('${item.tempId}')">Remove</button>
+                `;
+                
+                orderItemsDiv.appendChild(itemDiv);
+                
+                // Set selected ingredient if any
+                if (item.ingredientId) {
+                    const select = itemDiv.querySelector('select');
+                    select.value = item.ingredientId;
+                }
+            });
+        }
+        
+        function getIngredientOptions() {
+            if (!selectedSupplier || !ingredients[selectedSupplier]) return '';
+            
+            return ingredients[selectedSupplier].map(ing => 
+                `<option value="${ing.id}">${ing.name}</option>`
+            ).join('');
+        }
+        
+        function updateIngredient(tempId, selectElement) {
+            const item = orderItems.find(i => i.tempId === tempId);
+            if (!item) return;
+            
+            const ingredient = ingredients[selectedSupplier].find(i => i.id === selectElement.value);
+            
+            item.ingredientId = selectElement.value;
+            item.ingredientName = ingredient ? ingredient.name : '';
+            item.unitPrice = ingredient ? ingredient.price : 0;
+            
+            renderOrderItems();
+            validateTest();
+        }
+        
+        function updateQuantity(tempId, quantity) {
+            const item = orderItems.find(i => i.tempId === tempId);
+            if (item) {
+                item.quantity = parseInt(quantity) || 1;
+            }
+        }
+        
+        function removeItem(tempId) {
+            orderItems = orderItems.filter(i => i.tempId !== tempId);
+            renderOrderItems();
+            validateTest();
+        }
+        
+        function validateTest() {
+            if (orderItems.length < 2) {
+                testResult.style.display = 'none';
+                return;
+            }
+            
+            // Check if first item maintains its selection
+            const firstItem = orderItems[0];
+            if (firstItem.ingredientId && firstItem.ingredientName) {
+                testResult.className = 'result success';
+                testResult.innerHTML = `
+                    ✅ SUCCESS: First item maintains selection "${firstItem.ingredientName}" when adding new items.
+                    <br>This indicates the fix is working correctly!
+                `;
+            } else {
+                testResult.className = 'result error';
+                testResult.innerHTML = `
+                    ❌ ISSUE: First item lost its selection when adding new items.
+                    <br>This indicates the problem still exists.
+                `;
+            }
+            
+            testResult.style.display = 'block';
+        }
+        
+        // Make functions global for onclick handlers
+        window.updateIngredient = updateIngredient;
+        window.updateQuantity = updateQuantity;
+        window.removeItem = removeItem;
+    </script>
+</body>
+</html>

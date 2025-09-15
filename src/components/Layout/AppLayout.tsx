@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
@@ -21,6 +21,7 @@ const getNavigationItems = (t: any) => [
   { textKey: 'employees', text: t('employees'), icon: <EmployeeIcon />, path: '/employees' },
   { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
   { textKey: 'suppliers', text: t('suppliers'), icon: <SupplierIcon />, path: '/suppliers' },
+  { textKey: 'supplier_orders', text: t('supplier_orders'), icon: <SupplierOrdersIcon />, path: '/supplier-orders' },
   { textKey: 'analytics', text: t('analytics'), icon: <AnalyticsIcon />, path: '/analytics' }
 ]
 
@@ -88,10 +89,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   )
 
   return (
-    <Box sx={{ 
-      display: 'flex',
-      flexDirection: isRtl ? 'row-reverse' : 'row'
-    }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: isRtl ? 'row-reverse' : 'row'
+      }}
+    >
       <AppBar
         position="fixed"
         sx={{
@@ -110,15 +113,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         }}
       >
         <Toolbar>
-          <IconButton 
-            color="inherit" 
-            aria-label="open drawer" 
-            edge="start" 
-            onClick={handleDrawerToggle} 
-            sx={{ 
-              mr: isRtl ? 0 : 2, 
-              ml: isRtl ? 2 : 0, 
-              display: { md: 'none' } 
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{
+              mr: isRtl ? 0 : 2,
+              ml: isRtl ? 2 : 0,
+              display: { md: 'none' }
             }}
           >
             <MenuIcon />
@@ -129,18 +132,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <LanguageSwitcher />
           {user && (
             <>
-              <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="user-menu"
-                aria-haspopup="true"
-                onClick={handleUserMenuOpen}
-                color="inherit"
-                sx={{ ml: 1 }}
-              >
-                <Avatar sx={{ width: 32, height: 32 }}>
-                  {user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}
-                </Avatar>
+              <IconButton size="large" aria-label="account of current user" aria-controls="user-menu" aria-haspopup="true" onClick={handleUserMenuOpen} color="inherit" sx={{ ml: 1 }}>
+                <Avatar sx={{ width: 32, height: 32 }}>{user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}</Avatar>
               </IconButton>
               <Menu
                 id="user-menu"
@@ -158,17 +151,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       width: 32,
                       height: 32,
                       ml: isRtl ? 1 : -0.5,
-                      mr: isRtl ? -0.5 : 1,
-                    },
-                  },
+                      mr: isRtl ? -0.5 : 1
+                    }
+                  }
                 }}
-                transformOrigin={{ 
-                  horizontal: isRtl ? 'left' : 'right', 
-                  vertical: 'top' 
+                transformOrigin={{
+                  horizontal: isRtl ? 'left' : 'right',
+                  vertical: 'top'
                 }}
-                anchorOrigin={{ 
-                  horizontal: isRtl ? 'left' : 'right', 
-                  vertical: 'bottom' 
+                anchorOrigin={{
+                  horizontal: isRtl ? 'left' : 'right',
+                  vertical: 'bottom'
                 }}
               >
                 <MenuItem onClick={handleUserManagement}>
@@ -230,11 +223,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           width: '100%',
           ...(isRtl
             ? {
-                marginLeft: { md: `${drawerWidth}px` },
+                marginLeft: 0,
                 marginRight: 0
               }
             : {
-                ml: { md: `${drawerWidth}px` },
+                ml: 0,
                 mr: { md: 0 }
               })
         }}
