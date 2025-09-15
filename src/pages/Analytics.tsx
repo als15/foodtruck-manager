@@ -166,7 +166,7 @@ export default function Analytics() {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                  label={({ name, value, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
                   {popularItemsData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
