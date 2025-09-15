@@ -45,11 +45,11 @@ import {
   AutoMode as AutoOrderIcon,
   Warning as WarningIcon,
   Check as CheckIcon,
-  Close as CloseIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types';
 import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService';
+import { nomNomColors } from '../theme/nomnom-theme';
 
 const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
 const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -311,9 +311,19 @@ export default function SupplierOrders() {
 
   const ordersNeedingAttention = orders.filter(order => {
     const now = new Date();
-    return (order.expectedDeliveryDate && order.expectedDeliveryDate < now && order.status !== 'delivered') ||
-           (order.status === 'submitted' && order.submittedDate && 
-            (now.getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24) > 7);
+    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    
+    // Only flag as needing attention if:
+    // 1. Delivery is overdue by more than 1 day AND not delivered/cancelled
+    // 2. OR submitted orders older than 7 days
+    return (
+      (order.expectedDeliveryDate && 
+       order.expectedDeliveryDate < oneDayAgo && 
+       !['delivered', 'cancelled'].includes(order.status)) ||
+      (order.status === 'submitted' && 
+       order.submittedDate && 
+       (now.getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24) > 7)
+    );
   });
 
   if (loading && orders.length === 0) {
@@ -435,9 +445,11 @@ export default function SupplierOrders() {
                   <ListItemText
                     primary={`${order.orderNumber} - ${order.supplier?.name}`}
                     secondary={
-                      order.expectedDeliveryDate && order.expectedDeliveryDate < new Date()
+                      order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - (24 * 60 * 60 * 1000))
                         ? `Overdue delivery (expected ${format(order.expectedDeliveryDate, 'MMM dd, yyyy')})`
-                        : `Pending for ${Math.floor((new Date().getTime() - (order.submittedDate?.getTime() || 0)) / (1000 * 60 * 60 * 24))} days`
+                        : order.status === 'submitted' && order.submittedDate
+                        ? `Submitted ${Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24))} days ago - needs follow-up`
+                        : 'Needs attention'
                     }
                   />
                   <ListItemSecondaryAction>
@@ -490,11 +502,41 @@ export default function SupplierOrders() {
                     <TableCell>{order.items.length} items</TableCell>
                     <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Chip 
-                        label={order.status} 
-                        color={getStatusColor(order.status)}
-                        size="small"
-                      />
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <Select
+                          value={order.status}
+                          onChange={(e) => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
+                          variant="outlined"
+                          sx={{
+                            '& .MuiSelect-select': {
+                              padding: '4px 8px',
+                              backgroundColor: 
+                                order.status === 'draft' ? '#f5f5f5' :
+                                order.status === 'submitted' ? '#e3f2fd' :
+                                order.status === 'confirmed' ? '#e8f5e8' :
+                                order.status === 'shipped' ? '#fff3e0' :
+                                order.status === 'delivered' ? '#e8f5e8' :
+                                order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
+                              fontSize: '0.75rem',
+                              fontWeight: 500
+                            }
+                          }}
+                        >
+                          {ORDER_STATUSES.map(status => (
+                            <MuiMenuItem key={status} value={status}>
+                              <Box display="flex" alignItems="center">
+                                <Chip 
+                                  label={status} 
+                                  color={getStatusColor(status)}
+                                  size="small"
+                                  sx={{ mr: 1 }}
+                                />
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </Box>
+                            </MuiMenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </TableCell>
                     <TableCell>
                       <Chip 
@@ -508,30 +550,22 @@ export default function SupplierOrders() {
                       {order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}
                     </TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleOpenDialog(order)} size="small">
+                      <IconButton 
+                        onClick={() => handleOpenDialog(order)} 
+                        size="small"
+                        color="primary"
+                        title="Edit Order"
+                      >
                         <EditIcon />
                       </IconButton>
-                      <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error">
+                      <IconButton 
+                        onClick={() => handleDeleteOrder(order.id)} 
+                        size="small" 
+                        color="error"
+                        title="Delete Order"
+                      >
                         <DeleteIcon />
                       </IconButton>
-                      {order.status === 'draft' && (
-                        <IconButton 
-                          onClick={() => handleUpdateStatus(order.id, 'submitted')} 
-                          size="small" 
-                          color="primary"
-                        >
-                          <CheckIcon />
-                        </IconButton>
-                      )}
-                      {order.status === 'shipped' && (
-                        <IconButton 
-                          onClick={() => handleUpdateStatus(order.id, 'delivered')} 
-                          size="small" 
-                          color="success"
-                        >
-                          <DeliveryIcon />
-                        </IconButton>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -578,6 +612,56 @@ export default function SupplierOrders() {
                   ))}
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={newOrder.status || 'draft'}
+                  onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })}
+                  label="Status"
+                >
+                  {ORDER_STATUSES.map(status => (
+                    <MuiMenuItem key={status} value={status}>
+                      <Box display="flex" alignItems="center">
+                        <Chip 
+                          label={status} 
+                          color={getStatusColor(status)}
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </Box>
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Order Date"
+                type="date"
+                value={newOrder.orderDate ? format(newOrder.orderDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                onChange={(e) => setNewOrder({ 
+                  ...newOrder, 
+                  orderDate: e.target.value ? new Date(e.target.value) : new Date() 
+                })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Expected Delivery Date"
+                type="date"
+                value={newOrder.expectedDeliveryDate ? format(newOrder.expectedDeliveryDate, 'yyyy-MM-dd') : ''}
+                onChange={(e) => setNewOrder({ 
+                  ...newOrder, 
+                  expectedDeliveryDate: e.target.value ? new Date(e.target.value) : undefined 
+                })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
             <Grid item xs={12}>
               <TextField

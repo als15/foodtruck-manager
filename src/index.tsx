@@ -10,6 +10,7 @@ import './index.css'
 import './i18n'
 import App from './App'
 import reportWebVitals from './reportWebVitals'
+import { nomNomTheme, nomNomColors } from './theme/nomnom-theme'
 
 // Create RTL cache
 const cacheRtl = createCache({
@@ -22,32 +23,47 @@ const cacheLtr = createCache({
   key: 'muiltr'
 })
 
-// Function to create theme with direction
+// Function to create theme with direction using NomNom theme
 const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
   createTheme({
+    ...nomNomTheme,
     direction,
-    palette: {
-      primary: {
-        main: '#2196f3'
-      },
-      secondary: {
-        main: '#ff9800'
-      }
-    },
     typography: {
-      fontFamily: direction === 'rtl' ? '"Heebo", "Roboto", "Arial", sans-serif' : '"Roboto", "Helvetica", "Arial", sans-serif'
+      ...nomNomTheme.typography,
+      fontFamily: direction === 'rtl' ? '"Heebo", "Inter", "Roboto", "Arial", sans-serif' : '"Inter", "Roboto", "Helvetica", "Arial", sans-serif'
     },
     components: {
+      ...nomNomTheme.components,
       MuiCssBaseline: {
         styleOverrides: {
           body: {
-            direction: direction
+            direction: direction,
+            backgroundColor: nomNomColors.background,
+            backgroundImage: `
+              radial-gradient(circle at 20% 50%, ${nomNomColors.primaryLight}15 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, ${nomNomColors.accent}15 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, ${nomNomColors.secondaryLight}15 0%, transparent 50%)
+            `,
           }
         }
       },
       MuiTextField: {
         styleOverrides: {
           root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 10,
+              backgroundColor: nomNomColors.white,
+              '& fieldset': {
+                borderColor: `${nomNomColors.primary}40`,
+              },
+              '&:hover fieldset': {
+                borderColor: nomNomColors.primaryDark,
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: nomNomColors.primaryDark,
+                borderWidth: 2,
+              },
+            },
             '& .MuiInputLabel-root': {
               transformOrigin: direction === 'rtl' ? 'top right' : 'top left'
             }
@@ -56,13 +72,22 @@ const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
       },
       MuiDrawer: {
         styleOverrides: {
-          paper:
-            direction === 'rtl'
+          paper: {
+            backgroundColor: nomNomColors.white,
+            borderRight: `1px solid ${nomNomColors.primaryLight}60`,
+            backgroundImage: `
+              linear-gradient(180deg, 
+                ${nomNomColors.white} 0%, 
+                ${nomNomColors.background}30 100%
+              )
+            `,
+            ...(direction === 'rtl'
               ? {
                   right: 0,
                   left: 'auto !important'
                 }
-              : {}
+              : {})
+          }
         }
       }
     }
