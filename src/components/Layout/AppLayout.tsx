@@ -14,19 +14,19 @@ interface AppLayoutProps {
 }
 
 interface NavigationItem {
-  textKey: string;
-  text: string;
-  icon: React.ReactNode;
-  path?: string;
-  children?: NavigationItem[];
+  textKey: string
+  text: string
+  icon: React.ReactNode
+  path?: string
+  children?: NavigationItem[]
 }
 
 const getNavigationItems = (t: any): NavigationItem[] => [
-  { 
-    textKey: 'dashboard', 
-    text: t('dashboard'), 
-    icon: <DashboardIcon />, 
-    path: '/' 
+  {
+    textKey: 'dashboard',
+    text: t('dashboard'),
+    icon: <DashboardIcon />,
+    path: '/'
   },
   {
     textKey: 'operations',
@@ -34,8 +34,8 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     icon: <StoreIcon />,
     children: [
       { textKey: 'orders', text: t('orders'), icon: <OrdersIcon />, path: '/orders' },
-      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
-      { textKey: 'customers', text: t('customers') || 'Customers', icon: <CustomerIcon />, path: '/customers' },
+      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' }
+      // { textKey: 'customers', text: t('customers') || 'Customers', icon: <CustomerIcon />, path: '/customers' },
     ]
   },
   {
@@ -46,7 +46,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
       { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
       { textKey: 'ingredients', text: t('ingredients'), icon: <MenuManagementIcon />, path: '/ingredients' },
       { textKey: 'suppliers', text: t('suppliers'), icon: <SupplierIcon />, path: '/suppliers' },
-      { textKey: 'supplier_orders', text: t('supplier_orders'), icon: <SupplierOrdersIcon />, path: '/supplier-orders' },
+      { textKey: 'supplier_orders', text: t('supplier_orders'), icon: <SupplierOrdersIcon />, path: '/supplier-orders' }
     ]
   },
   {
@@ -64,7 +64,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     icon: <EmployeeIcon />,
     children: [
       { textKey: 'employees', text: t('employees'), icon: <EmployeeIcon />, path: '/employees' },
-      { textKey: 'logistics', text: t('logistics') || 'Logistics', icon: <LogisticsIcon />, path: '/logistics' },
+      { textKey: 'logistics', text: t('logistics') || 'Logistics', icon: <LogisticsIcon />, path: '/logistics' }
     ]
   }
 ]
@@ -86,20 +86,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // Auto-expand section if current path matches a child
   React.useEffect(() => {
-    const currentPath = location.pathname;
-    const newExpanded: Record<string, boolean> = {};
-    
+    const currentPath = location.pathname
+    const newExpanded: Record<string, boolean> = {}
+
     navigationItems.forEach(item => {
       if (item.children) {
-        const hasActiveChild = item.children.some(child => child.path === currentPath);
+        const hasActiveChild = item.children.some(child => child.path === currentPath)
         if (hasActiveChild) {
-          newExpanded[item.textKey] = true;
+          newExpanded[item.textKey] = true
         }
       }
-    });
-    
-    setExpandedSections(prev => ({ ...prev, ...newExpanded }));
-  }, [location.pathname, navigationItems]);
+    })
+
+    setExpandedSections(prev => ({ ...prev, ...newExpanded }))
+  }, [location.pathname, navigationItems])
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -116,7 +116,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setExpandedSections(prev => ({
       ...prev,
       [sectionKey]: !prev[sectionKey]
-    }));
+    }))
   }
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -139,30 +139,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // Helper function to find the current page title
   const getCurrentPageTitle = () => {
-    const currentPath = location.pathname;
-    
+    const currentPath = location.pathname
+
     // Check direct paths first
     for (const item of navigationItems) {
       if (item.path === currentPath) {
-        return item.text;
+        return item.text
       }
       // Check children
       if (item.children) {
         for (const child of item.children) {
           if (child.path === currentPath) {
-            return child.text;
+            return child.text
           }
         }
       }
     }
-    return t('dashboard');
+    return t('dashboard')
   }
 
   // Render navigation item (recursive for nested items)
   const renderNavigationItem = (item: NavigationItem, level = 0) => {
-    const isSelected = item.path === location.pathname;
-    const isExpanded = expandedSections[item.textKey];
-    const hasChildren = item.children && item.children.length > 0;
+    const isSelected = item.path === location.pathname
+    const isExpanded = expandedSections[item.textKey]
+    const hasChildren = item.children && item.children.length > 0
 
     return (
       <React.Fragment key={item.textKey}>
@@ -171,9 +171,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             selected={isSelected}
             onClick={() => {
               if (item.path) {
-                handleNavigation(item.path);
+                handleNavigation(item.path)
               } else if (hasChildren) {
-                handleSectionToggle(item.textKey);
+                handleSectionToggle(item.textKey)
               }
             }}
             sx={{
@@ -185,27 +185,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
               minHeight: 48,
               backgroundColor: level > 0 ? 'transparent' : undefined,
               '&:hover': {
-                backgroundColor: level > 0 
-                  ? 'rgba(127, 255, 212, 0.08)'
-                  : 'rgba(127, 255, 212, 0.12)',
+                backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.08)' : 'rgba(127, 255, 212, 0.12)',
                 transform: 'translateX(4px)',
-                transition: 'all 0.2s ease-in-out',
+                transition: 'all 0.2s ease-in-out'
               },
               '&.Mui-selected': {
-                backgroundColor: level > 0 
-                  ? 'rgba(127, 255, 212, 0.15)'
-                  : 'rgba(127, 255, 212, 0.20)',
+                backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.15)' : 'rgba(127, 255, 212, 0.20)',
                 borderLeft: level > 0 ? '3px solid #4dccaa' : 'none',
                 '&:hover': {
-                  backgroundColor: level > 0 
-                    ? 'rgba(127, 255, 212, 0.20)'
-                    : 'rgba(127, 255, 212, 0.25)',
+                  backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.20)' : 'rgba(127, 255, 212, 0.25)'
                 }
               }
             }}
           >
-            <ListItemIcon 
-              sx={{ 
+            <ListItemIcon
+              sx={{
                 minWidth: 40,
                 color: level > 0 ? 'text.secondary' : 'text.primary',
                 fontSize: level > 0 ? '1.2rem' : '1.5rem'
@@ -213,7 +207,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               {item.icon}
             </ListItemIcon>
-            <ListItemText 
+            <ListItemText
               primary={item.text}
               primaryTypographyProps={{
                 variant: level > 0 ? 'body2' : 'body1',
@@ -221,16 +215,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 color: level > 0 ? 'text.secondary' : 'text.primary'
               }}
             />
-            {hasChildren && (
-              isExpanded ? <ExpandLess /> : <ExpandMore />
-            )}
+            {hasChildren && (isExpanded ? <ExpandLess /> : <ExpandMore />)}
           </ListItemButton>
         </ListItem>
-        
+
         {hasChildren && (
           <Collapse in={isExpanded} timeout={300} unmountOnExit>
-            <List 
-              component="div" 
+            <List
+              component="div"
               disablePadding
               sx={{
                 backgroundColor: 'rgba(252, 243, 238, 0.5)',
@@ -245,7 +237,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Collapse>
         )}
       </React.Fragment>
-    );
+    )
   }
 
   const drawer = (
@@ -254,9 +246,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <NomNomLogo size="medium" showText={true} />
       </Toolbar>
       <Divider />
-      <List sx={{ px: 1 }}>
-        {navigationItems.map(item => renderNavigationItem(item))}
-      </List>
+      <List sx={{ px: 1 }}>{navigationItems.map(item => renderNavigationItem(item))}</List>
     </div>
   )
 
@@ -299,9 +289,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <MenuIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography 
-              variant="h5" 
-              noWrap 
+            <Typography
+              variant="h5"
+              noWrap
               component="div"
               sx={{
                 fontWeight: 600,
@@ -309,7 +299,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 background: 'linear-gradient(135deg, #4dccaa 0%, #5bb5a8 100%)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                WebkitTextFillColor: 'transparent'
               }}
             >
               {getCurrentPageTitle()}
