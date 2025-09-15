@@ -101,7 +101,34 @@ const resources = {
       "failed_to_create_order": "Failed to create order",
       "order_deleted_successfully": "Order deleted successfully",
       "failed_to_delete_order": "Failed to delete order",
-      "failed_to_load_data": "Failed to load data"
+      "failed_to_load_data": "Failed to load data",
+      
+      // Authentication
+      "login": "Login",
+      "signup": "Sign Up",
+      "sign_out": "Sign Out",
+      "password": "Password",
+      "confirm_password": "Confirm Password",
+      "dont_have_account": "Don't have an account? Sign up",
+      "already_have_account": "Already have an account? Login",
+      "passwords_dont_match": "Passwords don't match",
+      "password_too_short": "Password must be at least 6 characters",
+      "signup_success_message": "Account created successfully! Please check your email to verify your account.",
+      "user_management": "User Management",
+      "profile_information": "Profile Information",
+      "account_created": "Account Created",
+      "last_sign_in": "Last Sign In",
+      "email_verified": "Email Verified",
+      "verified": "Verified",
+      "not_verified": "Not Verified",
+      "never": "Never",
+      "account_actions": "Account Actions",
+      "reset_password": "Reset Password",
+      "user_id": "User ID",
+      "password_reset_confirmation": "Are you sure you want to reset your password? A reset link will be sent to your email.",
+      "send_reset_email": "Send Reset Email",
+      "password_reset_email_sent": "Password reset email sent successfully!",
+      "no_user_data": "No user data available"
     }
   },
   he: {
@@ -201,7 +228,34 @@ const resources = {
       "failed_to_create_order": "נכשל ביצירת ההזמנה",
       "order_deleted_successfully": "ההזמנה נמחקה בהצלחה",
       "failed_to_delete_order": "נכשל במחיקת ההזמנה",
-      "failed_to_load_data": "נכשל בטעינת הנתונים"
+      "failed_to_load_data": "נכשל בטעינת הנתונים",
+      
+      // Authentication
+      "login": "התחברות",
+      "signup": "הרשמה",
+      "sign_out": "התנתקות",
+      "password": "סיסמה",
+      "confirm_password": "אימות סיסמה",
+      "dont_have_account": "אין לך חשבון? הירשם",
+      "already_have_account": "יש לך כבר חשבון? התחבר",
+      "passwords_dont_match": "הסיסמאות לא תואמות",
+      "password_too_short": "הסיסמה חייבת להיות לפחות 6 תווים",
+      "signup_success_message": "החשבון נוצר בהצלחה! אנא בדוק את האימייל שלך כדי לאמת את החשבון.",
+      "user_management": "ניהול משתמש",
+      "profile_information": "פרטי פרופיל",
+      "account_created": "החשבון נוצר",
+      "last_sign_in": "התחברות אחרונה",
+      "email_verified": "האימייל מאומת",
+      "verified": "מאומת",
+      "not_verified": "לא מאומת",
+      "never": "אף פעם",
+      "account_actions": "פעולות חשבון",
+      "reset_password": "איפוס סיסמה",
+      "user_id": "מזהה משתמש",
+      "password_reset_confirmation": "האם אתה בטוח שברצונך לאפס את הסיסמה? קישור איפוס יישלח לאימייל שלך.",
+      "send_reset_email": "שלח אימייל איפוס",
+      "password_reset_email_sent": "אימייל איפוס סיסמה נשלח בהצלחה!",
+      "no_user_data": "אין נתוני משתמש זמינים"
     }
   }
 };

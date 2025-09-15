@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon } from '@mui/icons-material'
+import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider } from '@mui/material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
+import { useAuth } from '../../contexts/AuthContext'
 
 const drawerWidth = 240
 
@@ -25,12 +26,14 @@ const getNavigationItems = (t: any) => [
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
-  
+  const { user, signOut } = useAuth()
+
   const navigationItems = getNavigationItems(t)
   const isRtl = theme.direction === 'rtl'
 
@@ -43,6 +46,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (isMobile) {
       setMobileOpen(false)
     }
+  }
+
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget)
+  }
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null)
+  }
+
+  const handleSignOut = async () => {
+    handleUserMenuClose()
+    await signOut()
+  }
+
+  const handleUserManagement = () => {
+    handleUserMenuClose()
+    navigate('/user-management')
   }
 
   const drawer = (
@@ -71,15 +92,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          ...(isRtl ? {
-            left: 0,
-            right: { md: `${drawerWidth}px` },
-            ml: 0,
-            mr: 0
-          } : {
-            ml: { md: `${drawerWidth}px` },
-            mr: { md: 0 }
-          })
+          ...(isRtl
+            ? {
+                left: 0,
+                right: { md: `${drawerWidth}px` },
+                ml: 0,
+                mr: 0
+              }
+            : {
+                ml: { md: `${drawerWidth}px` },
+                mr: { md: 0 }
+              })
         }}
       >
         <Toolbar>
@@ -90,6 +113,60 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {navigationItems.find(item => item.path === location.pathname)?.text || t('dashboard')}
           </Typography>
           <LanguageSwitcher />
+          {user && (
+            <>
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="user-menu"
+                aria-haspopup="true"
+                onClick={handleUserMenuOpen}
+                color="inherit"
+                sx={{ ml: 1 }}
+              >
+                <Avatar sx={{ width: 32, height: 32 }}>
+                  {user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}
+                </Avatar>
+              </IconButton>
+              <Menu
+                id="user-menu"
+                anchorEl={userMenuAnchor}
+                open={Boolean(userMenuAnchor)}
+                onClose={handleUserMenuClose}
+                onClick={handleUserMenuClose}
+                PaperProps={{
+                  elevation: 0,
+                  sx: {
+                    overflow: 'visible',
+                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                    mt: 1.5,
+                    '& .MuiAvatar-root': {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                  },
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem onClick={handleUserManagement}>
+                  <ListItemIcon>
+                    <Settings fontSize="small" />
+                  </ListItemIcon>
+                  {t('user_management')}
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleSignOut}>
+                  <ListItemIcon>
+                    <Logout fontSize="small" />
+                  </ListItemIcon>
+                  {t('sign_out')}
+                </MenuItem>
+              </Menu>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
@@ -128,14 +205,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ...(isRtl ? {
-            marginLeft: 0,
-            marginRight: { md: `${drawerWidth}px` }
-          } : {
-            ml: { md: `${drawerWidth}px` },
-            mr: { md: 0 }
-          })
+          width: '100%',
+          ...(isRtl
+            ? {
+                marginLeft: 0,
+                marginRight: { md: `${16}px` }
+              }
+            : {
+                ml: { md: `${16}px` },
+                mr: { md: 0 }
+              })
         }}
       >
         <Toolbar />

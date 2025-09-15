@@ -12,24 +12,44 @@ import Inventory from './pages/Inventory';
 import Customers from './pages/Customers';
 import Suppliers from './pages/Suppliers';
 import Analytics from './pages/Analytics';
+import { Auth } from './pages/Auth';
+import { UserManagement } from './pages/UserManagement';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 
 function App() {
   return (
-    <AppLayout>
+    <AuthProvider>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/finances" element={<FinancialManagement />} />
-        <Route path="/menu" element={<MenuManagement />} />
-        <Route path="/ingredients" element={<Ingredients />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/logistics" element={<Logistics />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/suppliers" element={<Suppliers />} />
-        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/user-management" element={
+          <ProtectedRoute>
+            <AppLayout>
+              <UserManagement />
+            </AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/finances" element={<FinancialManagement />} />
+                <Route path="/menu" element={<MenuManagement />} />
+                <Route path="/ingredients" element={<Ingredients />} />
+                <Route path="/employees" element={<Employees />} />
+                <Route path="/logistics" element={<Logistics />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/suppliers" element={<Suppliers />} />
+                <Route path="/analytics" element={<Analytics />} />
+              </Routes>
+            </AppLayout>
+          </ProtectedRoute>
+        } />
       </Routes>
-    </AppLayout>
+    </AuthProvider>
   );
 }
 
