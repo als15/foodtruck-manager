@@ -31,11 +31,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const navigate = useNavigate()
   const location = useLocation()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, signOut } = useAuth()
 
   const navigationItems = getNavigationItems(t)
-  const isRtl = theme.direction === 'rtl'
+  // Check both theme direction and current language for RTL
+  const isRtl = theme.direction === 'rtl' || i18n.language === 'he'
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
@@ -87,7 +88,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   )
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ 
+      display: 'flex',
+      flexDirection: isRtl ? 'row-reverse' : 'row'
+    }}>
       <AppBar
         position="fixed"
         sx={{
@@ -188,6 +192,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         <Drawer
+          key={`temp-drawer-${i18n.language}`}
           variant="temporary"
           anchor={isRtl ? 'right' : 'left'}
           open={mobileOpen}
@@ -203,6 +208,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {drawer}
         </Drawer>
         <Drawer
+          key={`perm-drawer-${i18n.language}`}
           variant="permanent"
           anchor={isRtl ? 'right' : 'left'}
           sx={{

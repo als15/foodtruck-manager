@@ -13,6 +13,13 @@ export default function LanguageSwitcher() {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
+  // Set initial direction on component mount
+  React.useEffect(() => {
+    const isRtl = i18n.language === 'he';
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
+
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -24,6 +31,11 @@ export default function LanguageSwitcher() {
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode);
     handleClose();
+    
+    // Set document direction based on language
+    const isRtl = languageCode === 'he';
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.documentElement.lang = languageCode;
     
     // Trigger custom event for theme direction change
     const event = new StorageEvent('storage', {

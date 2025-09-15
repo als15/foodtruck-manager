@@ -24,15 +24,31 @@ body {
   min-width: auto;
 }
 
-/* Drawer positioning for RTL */
-[dir="rtl"] .MuiDrawer-paperAnchorLeft {
-  right: 0;
-  left: auto;
+/* Drawer positioning for RTL - Force right side positioning */
+[dir="rtl"] .MuiDrawer-root {
+  position: fixed;
+  right: 0 !important;
+  left: auto !important;
 }
 
-[dir="rtl"] .MuiDrawer-paperAnchorRight {
-  left: 0;
-  right: auto;
+[dir="rtl"] .MuiDrawer-paperAnchorRight,
+[dir="rtl"] .MuiDrawer-paperAnchorLeft {
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* Ensure all drawer papers are on the right in RTL */
+[dir="rtl"] .MuiDrawer-paper {
+  right: 0 !important;
+  left: auto !important;
+}
+
+/* Force the nav container to be on the right */
+[dir="rtl"] nav[role="navigation"] {
+  order: 2;
+  position: fixed !important;
+  right: 0 !important;
+  left: auto !important;
 }
 
 /* Language switcher and navigation icons should not flip */
