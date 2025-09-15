@@ -1,4 +1,6 @@
 {
+  "framework": "create-react-app",
+  "buildCommand": "npm install --force && npm run build",
   "rewrites": [
     {
       "source": "/(.*)",

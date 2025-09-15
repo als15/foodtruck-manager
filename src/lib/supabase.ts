@@ -1,15 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+// For local development, create a .env.local file with your credentials
+// For production, replace these with your actual Supabase credentials
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'REPLACE_WITH_YOUR_SUPABASE_URL';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'REPLACE_WITH_YOUR_SUPABASE_KEY';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:');
-  console.error('REACT_APP_SUPABASE_URL:', supabaseUrl ? '✓ Set' : '✗ Missing');
-  console.error('REACT_APP_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✓ Set' : '✗ Missing');
-  throw new Error(
-    'Missing Supabase environment variables. Please check your deployment platform environment variables and ensure REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY are set.'
-  );
+if (supabaseUrl === 'REPLACE_WITH_YOUR_SUPABASE_URL') {
+  console.warn('🔧 Setup Required: Please update your Supabase credentials');
+  console.warn('📝 Edit src/lib/supabase.ts and replace the placeholder values');
+  console.warn('🌐 Or set environment variables in your deployment platform');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
