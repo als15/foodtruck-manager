@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Button, keyframes } from '@mui/material';
+import { Card, CardContent, Typography, Box, Button, keyframes, useTheme } from '@mui/material';
 import { Restaurant, TrendingUp, LocalShipping } from '@mui/icons-material';
 import { nomNomColors } from '../../theme/nomnom-theme';
 import NomNomLogo from '../NomNomLogo';
@@ -17,11 +17,20 @@ const pulse = keyframes`
 `;
 
 const slideIn = keyframes`
-  0% { opacity: 0; transform: translateX(-30px); }
-  100% { opacity: 1; transform: translateX(0); }
+  0% { 
+    opacity: 0; 
+    transform: translateX(var(--slide-offset, -30px)); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
 `;
 
 const WelcomeCard: React.FC = () => {
+  const theme = useTheme();
+  const isRtl = theme.direction === 'rtl';
+  
   return (
     <Card
       sx={{
@@ -32,6 +41,7 @@ const WelcomeCard: React.FC = () => {
         position: 'relative',
         boxShadow: `0 8px 24px rgba(0, 0, 0, 0.08)`,
         animation: `${slideIn} 0.6s ease-out`,
+        '--slide-offset': isRtl ? '30px' : '-30px',
         transition: 'all 0.3s ease-out',
         '&:hover': {
           transform: 'translateY(-4px)',
@@ -42,7 +52,7 @@ const WelcomeCard: React.FC = () => {
           content: '""',
           position: 'absolute',
           top: -20,
-          right: -20,
+          insetInlineEnd: -20,
           width: '250px',
           height: '250px',
           background: `radial-gradient(circle, ${nomNomColors.primary}20 0%, transparent 70%)`,
@@ -54,7 +64,7 @@ const WelcomeCard: React.FC = () => {
           content: '""',
           position: 'absolute',
           bottom: -15,
-          left: -15,
+          insetInlineStart: -15,
           width: '150px',
           height: '150px',
           background: `radial-gradient(circle, ${nomNomColors.secondary}15 0%, transparent 70%)`,
@@ -129,19 +139,19 @@ const WelcomeCard: React.FC = () => {
                 content: '""',
                 position: 'absolute',
                 top: '50%',
-                left: '-100%',
+                insetInlineStart: '-100%',
                 width: '100%',
                 height: '100%',
                 background: 'rgba(255, 255, 255, 0.3)',
                 transform: 'translateY(-50%) skewX(-30deg)',
-                transition: 'left 0.5s ease-out',
+                transition: 'inset-inline-start 0.5s ease-out',
               },
               '&:hover': {
                 background: nomNomColors.primaryDark,
                 transform: 'translateY(-2px)',
                 boxShadow: `0 6px 20px rgba(127, 255, 212, 0.4)`,
                 '&::before': {
-                  left: '100%',
+                  insetInlineStart: '100%',
                 },
               },
               '&:active': {
@@ -232,7 +242,7 @@ const WelcomeCard: React.FC = () => {
           sx={{
             position: 'absolute',
             bottom: 20,
-            right: 30,
+            insetInlineEnd: 30,
             fontSize: '5rem',
             zIndex: 0,
             animation: `${float} 4s ease-in-out infinite`,
@@ -245,7 +255,7 @@ const WelcomeCard: React.FC = () => {
           sx={{
             position: 'absolute',
             top: 30,
-            right: 100,
+            insetInlineEnd: 100,
             fontSize: '3rem',
             zIndex: 0,
             animation: `${float} 4s ease-in-out infinite 0.5s`,
@@ -258,7 +268,7 @@ const WelcomeCard: React.FC = () => {
           sx={{
             position: 'absolute',
             bottom: 50,
-            left: 50,
+            insetInlineStart: 50,
             fontSize: '2.5rem',
             zIndex: 0,
             animation: `${float} 4s ease-in-out infinite 1s`,

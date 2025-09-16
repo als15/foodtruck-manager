@@ -31,7 +31,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
   },
   {
     textKey: 'products_inventory',
-    text: 'Products & Inventory',
+    text: t('products_inventory'),
     icon: <ProductsIcon />,
     children: [
       { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
@@ -41,7 +41,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
   },
   {
     textKey: 'supplies',
-    text: 'Supplies',
+    text: t('supplies'),
     icon: <SuppliesIcon />,
     children: [
       { textKey: 'suppliers', text: t('suppliers'), icon: <SupplierIcon />, path: '/suppliers' },
@@ -50,7 +50,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
   },
   {
     textKey: 'finance_insights',
-    text: 'Finance & Insights',
+    text: t('finance_insights'),
     icon: <InsightsIcon />,
     children: [
       { textKey: 'financial', text: t('financial'), icon: <FinanceIcon />, path: '/finances' },
@@ -187,7 +187,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               minHeight: 44,
               '&:hover': {
                 backgroundColor: 'rgba(127, 255, 212, 0.1)',
-                transform: 'translateX(2px)',
+                transform: isRtl ? 'translateX(-2px)' : 'translateX(2px)',
                 transition: 'all 0.2s ease-out'
               },
               '&.Mui-selected': {
@@ -296,19 +296,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
               mr: isRtl ? 0 : 2,
               ml: isRtl ? 2 : 0,
               display: { md: 'none' },
-              transition: 'all 0.3s ease-out',
-              '&:hover': {
-                transform: 'rotate(90deg) scale(1.1)',
-                backgroundColor: 'rgba(127, 255, 212, 0.2)'
-              },
-              '&:active': {
-                transform: 'rotate(90deg) scale(0.95)'
-              }
+              order: isRtl ? 2 : 0,
             }}
           >
             <MenuIcon />
           </IconButton>
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 2,
+            order: isRtl ? 1 : 0,
+            justifyContent: isRtl ? 'flex-end' : 'flex-start',
+          }}>
             <Typography
               variant="h5"
               noWrap
@@ -321,8 +321,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {getCurrentPageTitle()}
             </Typography>
           </Box>
-          <LanguageSwitcher />
-          {user && (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            order: isRtl ? 0 : 1,
+          }}>
+            <LanguageSwitcher />
+            {user && (
             <>
               <IconButton
                 size="large"
@@ -332,7 +338,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onClick={handleUserMenuOpen}
                 color="inherit"
                 sx={{
-                  ml: 1,
+                  marginInlineStart: 1,
                   transition: 'all 0.3s ease-out',
                   '&:hover': {
                     transform: 'scale(1.1)',
@@ -404,7 +410,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </MenuItem>
               </Menu>
             </>
-          )}
+            )}
+          </Box>
         </Toolbar>
       </AppBar>
 

@@ -144,6 +144,10 @@ export const nomNomTheme: Theme = createTheme({
           backgroundColor: nomNomColors.white,
           // Clean white background without gradients
         },
+        '*': {
+          // Ensure all text aligns properly in RTL
+          textAlign: 'start',
+        },
       },
     },
     MuiAppBar: {
@@ -197,6 +201,17 @@ export const nomNomTheme: Theme = createTheme({
           transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
           position: 'relative',
           overflow: 'hidden',
+          // RTL-aware icon spacing
+          '& .MuiButton-startIcon': {
+            marginInlineEnd: 8,
+            marginLeft: 0,
+            marginRight: 0,
+          },
+          '& .MuiButton-endIcon': {
+            marginInlineStart: 8,
+            marginLeft: 0,
+            marginRight: 0,
+          },
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -440,6 +455,31 @@ export const nomNomTheme: Theme = createTheme({
         },
       },
     },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: {
+          textAlign: 'start',
+        },
+      },
+    },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: {
+          textAlign: 'start',
+        },
+      },
+    },
+    MuiDialogActions: {
+      styleOverrides: {
+        root: {
+          padding: '16px 24px',
+          '& > :not(:first-of-type)': {
+            marginInlineStart: 8,
+            marginLeft: 0,
+          },
+        },
+      },
+    },
     MuiAlert: {
       styleOverrides: {
         root: {
@@ -503,6 +543,55 @@ export const nomNomTheme: Theme = createTheme({
           },
           '&:active': {
             transform: 'scale(1.05) rotate(2deg)',
+          },
+        },
+      },
+    },
+    MuiStack: {
+      defaultProps: {
+        useFlexGap: true,
+      },
+    },
+    MuiButtonGroup: {
+      styleOverrides: {
+        root: {
+          '& .MuiButton-root:not(:last-child)': {
+            marginInlineEnd: -1,
+            borderInlineEndWidth: 0,
+          },
+        },
+      },
+    },
+    MuiGrid: {
+      styleOverrides: {
+        root: {
+          // Ensure Grid items align properly in RTL
+          textAlign: 'start',
+        },
+      },
+    },
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          textAlign: 'inherit',
+        },
+      },
+    },
+    MuiFormLabel: {
+      styleOverrides: {
+        root: {
+          textAlign: 'start',
+          transformOrigin: 'top start',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          textAlign: 'start',
+          transformOrigin: 'top start',
+          '&.MuiInputLabel-shrink': {
+            transformOrigin: 'top start',
           },
         },
       },

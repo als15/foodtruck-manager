@@ -24,7 +24,7 @@ const StatCard = ({ title, value, icon, color, subtitle }: any) => (
   <Card>
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-        <Box sx={{ color, mr: 1 }}>{icon}</Box>
+        <Box sx={{ color, marginInlineEnd: 1 }}>{icon}</Box>
         <Typography variant="h6" component="div">
           {title}
         </Typography>

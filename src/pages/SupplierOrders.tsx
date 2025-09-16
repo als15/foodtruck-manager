@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Fab } from '@mui/material'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Fab, Stack, useTheme } from '@mui/material'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as ScheduleIcon, AutoMode as AutoOrderIcon, Warning as WarningIcon, Check as CheckIcon } from '@mui/icons-material'
 import { format } from 'date-fns'
 import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types'
 import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService'
 import { nomNomColors } from '../theme/nomnom-theme'
+import { useTranslation } from 'react-i18next'
 
 const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
 const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
@@ -44,6 +45,10 @@ const getPriorityColor = (priority: SupplierOrder['priority']) => {
 }
 
 export default function SupplierOrders() {
+  const theme = useTheme()
+  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
+  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
+  const { t } = useTranslation()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingOrder, setEditingOrder] = useState<SupplierOrder | null>(null)
   const [orders, setOrders] = useState<SupplierOrder[]>([])
@@ -97,7 +102,7 @@ export default function SupplierOrders() {
       const data = await supplierOrdersService.getAll()
       setOrders(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load supplier orders')
+      setError(err instanceof Error ? err.message : t('failed_to_load_data'))
     } finally {
       setLoading(false)
     }
@@ -302,31 +307,31 @@ export default function SupplierOrders() {
   return (
     <Box>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Supplier Orders
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexDirection={isRtl ? 'row-reverse' : 'row'}>
+        <Typography variant="h4" component="h1" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+          {t('supplier_orders')}
         </Typography>
-        <Box>
-          <Button variant="outlined" startIcon={<AutoOrderIcon />} onClick={handleGenerateAutoOrders} sx={{ mr: 2 }} disabled={loading}>
-            Generate Auto Orders
+        <Stack direction={isRtl ? 'row-reverse' : 'row'} spacing={2}>
+          <Button variant="outlined" startIcon={<AutoOrderIcon />} onClick={handleGenerateAutoOrders} disabled={loading}>
+            {t('generate_auto_orders')}
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-            New Order
+            {t('new_order')}
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} mb={3}>
+      <Grid container spacing={3} mb={3} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <OrderIcon color="primary" sx={{ mr: 1 }} />
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                <OrderIcon color="primary" sx={{ marginInlineEnd: 1 }} />
                 <Box>
                   <Typography variant="h6">{orders.length}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Total Orders
+                    {t('total_orders')}
                   </Typography>
                 </Box>
               </Box>
@@ -336,13 +341,13 @@ export default function SupplierOrders() {
 
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <ScheduleIcon color="warning" sx={{ mr: 1 }} />
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                <ScheduleIcon color="warning" sx={{ marginInlineEnd: 1 }} />
                 <Box>
                   <Typography variant="h6">{orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Pending Orders
+                    {t('pending_orders')}
                   </Typography>
                 </Box>
               </Box>
@@ -352,13 +357,13 @@ export default function SupplierOrders() {
 
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <WarningIcon color="error" sx={{ mr: 1 }} />
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                <WarningIcon color="error" sx={{ marginInlineEnd: 1 }} />
                 <Box>
                   <Typography variant="h6">{ordersNeedingAttention.length}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Need Attention
+                    {t('need_attention')}
                   </Typography>
                 </Box>
               </Box>
@@ -368,13 +373,13 @@ export default function SupplierOrders() {
 
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center">
-                <CheckIcon color="success" sx={{ mr: 1 }} />
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                <CheckIcon color="success" sx={{ marginInlineEnd: 1 }} />
                 <Box>
                   <Typography variant="h6">{orders.filter(o => o.status === 'delivered').length}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Delivered
+                    {t('delivered_text')}
                   </Typography>
                 </Box>
               </Box>
@@ -388,12 +393,12 @@ export default function SupplierOrders() {
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom color="error">
-              Orders Needing Attention
+              {t('orders_needing_attention')}
             </Typography>
             <List>
               {ordersNeedingAttention.map(order => (
                 <ListItem key={order.id}>
-                  <ListItemText primary={`${order.orderNumber} - ${order.supplier?.name}`} secondary={order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? `Overdue delivery (expected ${format(order.expectedDeliveryDate, 'MMM dd, yyyy')})` : order.status === 'submitted' && order.submittedDate ? `Submitted ${Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24))} days ago - needs follow-up` : 'Needs attention'} />
+                  <ListItemText primary={`${order.orderNumber} - ${order.supplier?.name}`} secondary={order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? t('overdue_delivery_expected', { date: format(order.expectedDeliveryDate, 'MMM dd, yyyy') }) : order.status === 'submitted' && order.submittedDate ? t('submitted_days_ago', { count: Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24)) }) : t('needs_attention')} />
                   <ListItemSecondaryAction>
                     <IconButton onClick={() => handleOpenDialog(order)}>
                       <EditIcon />
@@ -416,33 +421,35 @@ export default function SupplierOrders() {
       {/* Orders Table */}
       <Card>
         <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+            <Table dir={isRtl ? 'rtl' : 'ltr'}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Order #</TableCell>
-                  <TableCell>Supplier</TableCell>
-                  <TableCell>Items</TableCell>
-                  <TableCell>Total Amount</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Priority</TableCell>
-                  <TableCell>Order Date</TableCell>
-                  <TableCell>Expected Delivery</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell>{t('order_number')}</TableCell>
+                  <TableCell>{t('supplier_label')}</TableCell>
+                  <TableCell>{t('items')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('total_amount')}</TableCell>
+                  <TableCell>{t('status')}</TableCell>
+                  <TableCell>{t('priority')}</TableCell>
+                  <TableCell>{t('order_date')}</TableCell>
+                  <TableCell>{t('expected_delivery')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {orders.map(order => (
                   <TableRow key={order.id}>
                     <TableCell>
-                      <Box display="flex" alignItems="center">
-                        {order.autoGenerated && <AutoOrderIcon color="info" sx={{ mr: 1, fontSize: 16 }} />}
+                      <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                        {order.autoGenerated && <AutoOrderIcon color="info" sx={{ marginInlineEnd: 1, fontSize: 16 }} />}
                         {order.orderNumber}
                       </Box>
                     </TableCell>
-                    <TableCell>{order.supplier?.name || 'Unknown'}</TableCell>
-                    <TableCell>{order.items.length} items</TableCell>
-                    <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>{order.supplier?.name || t('unknown')}</TableCell>
+                    <TableCell>
+                      {order.items.length} {t('items')}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${order.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
@@ -460,10 +467,7 @@ export default function SupplierOrders() {
                         >
                           {ORDER_STATUSES.map(status => (
                             <MuiMenuItem key={status} value={status}>
-                              <Box display="flex" alignItems="center">
-                                <Chip label={status} color={getStatusColor(status)} size="small" sx={{ mr: 1 }} />
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                              </Box>
+                              <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
                             </MuiMenuItem>
                           ))}
                         </Select>
@@ -474,11 +478,11 @@ export default function SupplierOrders() {
                     </TableCell>
                     <TableCell>{format(order.orderDate, 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title="Edit Order">
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                      <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title={t('edit_order')} sx={{ marginInlineEnd: 1 }}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title="Delete Order">
+                      <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title={t('delete_order')}>
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
@@ -526,11 +530,7 @@ export default function SupplierOrders() {
                 <Select value={newOrder.status || 'draft'} onChange={e => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })} label="Status">
                   {ORDER_STATUSES.map(status => (
                     <MuiMenuItem key={status} value={status}>
-                      <Chip 
-                        label={status.charAt(0).toUpperCase() + status.slice(1)} 
-                        color={getStatusColor(status)} 
-                        size="small" 
-                      />
+                      <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
                     </MuiMenuItem>
                   ))}
                 </Select>
@@ -573,8 +573,10 @@ export default function SupplierOrders() {
 
           <Divider sx={{ my: 2 }} />
 
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">Order Items</Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexDirection={isRtl ? 'row-reverse' : 'row'}>
+            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+              Order Items
+            </Typography>
             <Button startIcon={<AddIcon />} onClick={handleAddOrderItem} disabled={!newOrder.supplierId}>
               Add Item
             </Button>
@@ -628,7 +630,7 @@ export default function SupplierOrders() {
             </Grid>
           ))}
 
-          <Box mt={2} textAlign="right">
+          <Box mt={2} textAlign={isRtl ? 'left' : 'right'}>
             <Typography variant="h6">Total Amount: ${newOrder.totalAmount?.toFixed(2) || '0.00'}</Typography>
           </Box>
         </DialogContent>

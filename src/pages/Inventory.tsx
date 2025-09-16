@@ -1,153 +1,112 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  LinearProgress,
-  Alert,
-  Grid,
-  CircularProgress,
-  Snackbar,
-  Menu,
-  MenuItem as MuiMenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Autocomplete,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Warning as WarningIcon,
-  Inventory as InventoryIcon,
-  MoreVert as MoreVertIcon,
-  Input as ImportIcon,
-  ShoppingCart as OrderIcon,
-  LocalShipping as DeliveryIcon,
-  Schedule as LeadTimeIcon,
-  Visibility as ViewIcon,
-  VisibilityOff as HideIcon,
-} from '@mui/icons-material';
-import { InventoryItem, Ingredient, Supplier } from '../types';
-import { inventoryService, ingredientsService, suppliersService, subscriptions } from '../services/supabaseService';
+import React, { useState, useEffect } from 'react'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, LinearProgress, Alert, Grid, CircularProgress, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, Autocomplete, useTheme } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Warning as WarningIcon, Inventory as InventoryIcon, MoreVert as MoreVertIcon, Input as ImportIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as LeadTimeIcon, Visibility as ViewIcon, VisibilityOff as HideIcon } from '@mui/icons-material'
+import { InventoryItem, Ingredient, Supplier } from '../types'
+import { inventoryService, ingredientsService, suppliersService, subscriptions } from '../services/supabaseService'
+import { useTranslation } from 'react-i18next'
 
 export default function Inventory() {
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' | 'warning' });
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [showAutoOrders, setShowAutoOrders] = useState(false);
+  const theme = useTheme()
+  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
+  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
+  const { t } = useTranslation()
+  const [openDialog, setOpenDialog] = useState(false)
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' | 'warning' })
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [showAutoOrders, setShowAutoOrders] = useState(false)
 
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
 
   // Load data on component mount
   useEffect(() => {
-    loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const inventorySubscription = subscriptions.inventory((payload) => {
-      console.log('Inventory changed:', payload);
-      loadInventoryItems();
-    });
+    const inventorySubscription = subscriptions.inventory(payload => {
+      console.log('Inventory changed:', payload)
+      loadInventoryItems()
+    })
 
-    const ingredientSubscription = subscriptions.ingredients((payload) => {
-      console.log('Ingredients changed:', payload);
-      loadIngredients();
-    });
+    const ingredientSubscription = subscriptions.ingredients(payload => {
+      console.log('Ingredients changed:', payload)
+      loadIngredients()
+    })
 
     return () => {
-      inventorySubscription.unsubscribe();
-      ingredientSubscription.unsubscribe();
-    };
-  }, []);
+      inventorySubscription.unsubscribe()
+      ingredientSubscription.unsubscribe()
+    }
+  }, [])
 
   const loadData = async () => {
-    await Promise.all([loadInventoryItems(), loadIngredients(), loadSuppliers()]);
-  };
+    await Promise.all([loadInventoryItems(), loadIngredients(), loadSuppliers()])
+  }
 
   const loadInventoryItems = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await inventoryService.getAll();
-      setInventoryItems(data);
+      setLoading(true)
+      setError(null)
+      const data = await inventoryService.getAll()
+      setInventoryItems(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load inventory items');
-      setSnackbar({ open: true, message: 'Failed to load inventory items', severity: 'error' });
+      setError(err instanceof Error ? err.message : t('failed_to_load_data'))
+      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadIngredients = async () => {
     try {
-      const data = await ingredientsService.getAll();
-      setAvailableIngredients(data);
+      const data = await ingredientsService.getAll()
+      setAvailableIngredients(data)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' });
+      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
     }
-  };
+  }
 
   const loadSuppliers = async () => {
     try {
-      const data = await suppliersService.getAll();
-      setSuppliers(data);
+      const data = await suppliersService.getAll()
+      setSuppliers(data)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load suppliers', severity: 'error' });
+      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
     }
-  };
+  }
 
   const handleImportFromIngredients = async () => {
     try {
       // Get ingredients that are not already in inventory
-      const existingNames = new Set(inventoryItems.map(item => item.name.toLowerCase()));
-      const missingIngredients = availableIngredients.filter(ing => 
-        !existingNames.has(ing.name.toLowerCase())
-      );
+      const existingNames = new Set(inventoryItems.map(item => item.name.toLowerCase()))
+      const missingIngredients = availableIngredients.filter(ing => !existingNames.has(ing.name.toLowerCase()))
 
       if (missingIngredients.length === 0) {
-        setSnackbar({ open: true, message: 'All ingredients are already in inventory', severity: 'info' });
-        setMenuAnchor(null);
-        return;
+        setSnackbar({ open: true, message: 'All ingredients are already in inventory', severity: 'info' })
+        setMenuAnchor(null)
+        return
       }
 
-      await inventoryService.createFromIngredients(missingIngredients.map(ing => ing.id));
-      setSnackbar({ 
-        open: true, 
-        message: `Imported ${missingIngredients.length} ingredients to inventory`, 
-        severity: 'success' 
-      });
-      await loadInventoryItems();
+      await inventoryService.createFromIngredients(missingIngredients.map(ing => ing.id))
+      setSnackbar({
+        open: true,
+        message: `Imported ${missingIngredients.length} ingredients to inventory`,
+        severity: 'success'
+      })
+      await loadInventoryItems()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' })
     } finally {
-      setMenuAnchor(null);
+      setMenuAnchor(null)
     }
-  };
+  }
 
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({
     name: '',
@@ -158,7 +117,7 @@ export default function Inventory() {
     costPerUnit: 0,
     supplier: '',
     lastRestocked: new Date()
-  });
+  })
 
   const handleIngredientSelect = (selectedIngredient: Ingredient | null) => {
     if (selectedIngredient) {
@@ -169,7 +128,7 @@ export default function Inventory() {
         unit: selectedIngredient.unit,
         costPerUnit: selectedIngredient.costPerUnit,
         supplier: selectedIngredient.supplier
-      });
+      })
     } else {
       setNewItem({
         ...newItem,
@@ -178,22 +137,22 @@ export default function Inventory() {
         unit: '',
         costPerUnit: 0,
         supplier: ''
-      });
+      })
     }
-  };
+  }
 
   const handleSaveItem = async () => {
     try {
       if (editingItem) {
-        await inventoryService.update(editingItem.id, newItem);
-        setSnackbar({ open: true, message: 'Inventory item updated successfully', severity: 'success' });
+        await inventoryService.update(editingItem.id, newItem)
+        setSnackbar({ open: true, message: 'Inventory item updated successfully', severity: 'success' })
       } else {
-        await inventoryService.create(newItem as Omit<InventoryItem, 'id'>);
-        setSnackbar({ open: true, message: 'Inventory item created successfully', severity: 'success' });
+        await inventoryService.create(newItem as Omit<InventoryItem, 'id'>)
+        setSnackbar({ open: true, message: 'Inventory item created successfully', severity: 'success' })
       }
-      
-      await loadInventoryItems();
-      
+
+      await loadInventoryItems()
+
       setNewItem({
         name: '',
         category: '',
@@ -203,59 +162,55 @@ export default function Inventory() {
         costPerUnit: 0,
         supplier: '',
         lastRestocked: new Date()
-      });
-      setEditingItem(null);
-      setOpenDialog(false);
+      })
+      setEditingItem(null)
+      setOpenDialog(false)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to save inventory item', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to save inventory item', severity: 'error' })
     }
-  };
+  }
 
   const handleEditItem = (item: InventoryItem) => {
-    setNewItem(item);
-    setEditingItem(item);
-    setOpenDialog(true);
-  };
+    setNewItem(item)
+    setEditingItem(item)
+    setOpenDialog(true)
+  }
 
   const handleDeleteItem = async (id: string) => {
     try {
-      await inventoryService.delete(id);
-      setSnackbar({ open: true, message: 'Inventory item deleted successfully', severity: 'success' });
-      await loadInventoryItems();
+      await inventoryService.delete(id)
+      setSnackbar({ open: true, message: 'Inventory item deleted successfully', severity: 'success' })
+      await loadInventoryItems()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to delete inventory item', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to delete inventory item', severity: 'error' })
     }
-  };
+  }
 
   const getStockStatus = (item: InventoryItem) => {
-    const percentage = (item.currentStock / item.minThreshold) * 100;
-    if (percentage <= 50) return { status: 'critical', color: 'error' };
-    if (percentage <= 100) return { status: 'low', color: 'warning' };
-    return { status: 'good', color: 'success' };
-  };
+    const percentage = (item.currentStock / item.minThreshold) * 100
+    if (percentage <= 50) return { status: 'critical', color: 'error' }
+    if (percentage <= 100) return { status: 'low', color: 'warning' }
+    return { status: 'good', color: 'success' }
+  }
 
   const getStockPercentage = (item: InventoryItem) => {
-    return Math.min((item.currentStock / (item.minThreshold * 2)) * 100, 100);
-  };
+    return Math.min((item.currentStock / (item.minThreshold * 2)) * 100, 100)
+  }
 
-  const lowStockItems = inventoryItems.filter(item => item.currentStock <= item.minThreshold);
-  const totalInventoryValue = inventoryItems.reduce((total, item) => 
-    total + (item.currentStock * item.costPerUnit), 0
-  );
+  const lowStockItems = inventoryItems.filter(item => item.currentStock <= item.minThreshold)
+  const totalInventoryValue = inventoryItems.reduce((total, item) => total + item.currentStock * item.costPerUnit, 0)
 
   // Generate auto-order suggestions
   const autoOrderSuggestions = lowStockItems
     .map(item => {
-      const supplier = suppliers.find(sup => 
-        sup.name === item.supplier && sup.autoOrderEnabled && sup.isActive
-      );
-      if (!supplier) return null;
-      
+      const supplier = suppliers.find(sup => sup.name === item.supplier && sup.autoOrderEnabled && sup.isActive)
+      if (!supplier) return null
+
       const suggestedQuantity = Math.max(
         item.minThreshold * 2 - item.currentStock, // Restock to double the threshold
         supplier.minimumOrderAmount / item.costPerUnit // Or meet minimum order amount
-      );
-      
+      )
+
       return {
         item,
         supplier,
@@ -263,28 +218,25 @@ export default function Inventory() {
         totalCost: suggestedQuantity * item.costPerUnit,
         deliveryDays: supplier.deliveryDays,
         leadTime: supplier.leadTime
-      };
+      }
     })
     .filter(Boolean)
-    .sort((a, b) => (b?.totalCost || 0) - (a?.totalCost || 0)); // Sort by cost descending
+    .sort((a, b) => (b?.totalCost || 0) - (a?.totalCost || 0)) // Sort by cost descending
 
   // Get existing categories from inventory items (for display)
-  const categories = Array.from(new Set(inventoryItems.map(item => item.category))).sort();
-  
+  const categories = Array.from(new Set(inventoryItems.map(item => item.category))).sort()
+
   // Get all ingredient categories for autocomplete
-  const allCategories = Array.from(new Set([
-    ...availableIngredients.map(ing => ing.category),
-    ...inventoryItems.map(item => item.category)
-  ])).sort();
-  
-  const totalAutoOrderValue = autoOrderSuggestions.reduce((sum, order) => sum + (order?.totalCost || 0), 0);
+  const allCategories = Array.from(new Set([...availableIngredients.map(ing => ing.category), ...inventoryItems.map(item => item.category)])).sort()
+
+  const totalAutoOrderValue = autoOrderSuggestions.reduce((sum, order) => sum + (order?.totalCost || 0), 0)
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
         <CircularProgress />
       </Box>
-    );
+    )
   }
 
   if (error) {
@@ -297,41 +249,30 @@ export default function Inventory() {
           Retry
         </Button>
       </Box>
-    );
+    )
   }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Inventory Management</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+          {t('inventory_management')}
+        </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<MoreVertIcon />}
-            onClick={(e) => setMenuAnchor(e.currentTarget)}
-          >
-            Import
+          <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={e => setMenuAnchor(e.currentTarget)}>
+            {t('import')}
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpenDialog(true)}
-          >
-            Add Item
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+            {t('add_item')}
           </Button>
         </Box>
       </Box>
 
       {lowStockItems.length > 0 && (
-        <Alert 
-          severity="warning" 
-          icon={<WarningIcon />}
-          sx={{ mb: 3 }}
-        >
+        <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
           <Typography variant="h6">Low Stock Alert</Typography>
           <Typography>
-            {lowStockItems.length} item(s) are below minimum threshold: {' '}
-            {lowStockItems.map(item => item.name).join(', ')}
+            {lowStockItems.length} item(s) are below minimum threshold: {lowStockItems.map(item => item.name).join(', ')}
           </Typography>
         </Alert>
       )}
@@ -340,35 +281,30 @@ export default function Inventory() {
       {autoOrderSuggestions.length > 0 && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                <OrderIcon sx={{ mr: 1 }} />
-                Auto-Order Suggestions ({autoOrderSuggestions.length})
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <OrderIcon sx={{ marginInlineEnd: 1 }} />
+                {t('auto_order_suggestions')} ({autoOrderSuggestions.length})
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={showAutoOrders ? <HideIcon /> : <ViewIcon />}
-                onClick={() => setShowAutoOrders(!showAutoOrders)}
-              >
-                {showAutoOrders ? 'Hide' : 'View'} Suggestions
+              <Button variant="outlined" size="small" startIcon={showAutoOrders ? <HideIcon /> : <ViewIcon />} onClick={() => setShowAutoOrders(!showAutoOrders)}>
+                {showAutoOrders ? t('hide') : t('view')} {t('suggestions')}
               </Button>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Total estimated cost: <strong>${totalAutoOrderValue.toFixed(2)}</strong>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
+              {t('total_estimated_cost')}: <strong>${totalAutoOrderValue.toFixed(2)}</strong>
             </Typography>
-            
+
             {showAutoOrders && (
-              <TableContainer component={Paper} sx={{ mt: 2 }}>
-                <Table size="small">
+              <TableContainer component={Paper} sx={{ mt: 2 }} dir={isRtl ? 'rtl' : 'ltr'}>
+                <Table size="small" dir={isRtl ? 'rtl' : 'ltr'}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Item</TableCell>
                       <TableCell>Supplier</TableCell>
                       <TableCell>Current Stock</TableCell>
                       <TableCell>Suggested Qty</TableCell>
-                      <TableCell>Unit Cost</TableCell>
-                      <TableCell>Total Cost</TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Unit Cost</TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Total Cost</TableCell>
                       <TableCell>Delivery</TableCell>
                     </TableRow>
                   </TableHead>
@@ -390,24 +326,17 @@ export default function Inventory() {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip 
-                            label={`${suggestion?.item.currentStock} ${suggestion?.item.unit}`}
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                          />
+                          <Chip label={`${suggestion?.item.currentStock} ${suggestion?.item.unit}`} size="small" color="error" variant="outlined" />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="primary">
                             {suggestion?.suggestedQuantity} {suggestion?.item.unit}
                           </Typography>
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            ${suggestion?.item.costPerUnit.toFixed(2)}
-                          </Typography>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                          <Typography variant="body2">${suggestion?.item.costPerUnit.toFixed(2)}</Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                             ${suggestion?.totalCost.toFixed(2)}
                           </Typography>
@@ -415,15 +344,11 @@ export default function Inventory() {
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                             <DeliveryIcon sx={{ fontSize: 14 }} />
-                            <Typography variant="caption">
-                              {suggestion?.deliveryDays.join(', ')}
-                            </Typography>
+                            <Typography variant="caption">{suggestion?.deliveryDays.join(', ')}</Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <LeadTimeIcon sx={{ fontSize: 14 }} />
-                            <Typography variant="caption">
-                              {suggestion?.leadTime} days lead time
-                            </Typography>
+                            <Typography variant="caption">{suggestion?.leadTime} days lead time</Typography>
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -436,52 +361,44 @@ export default function Inventory() {
         </Card>
       )}
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 3 }} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
         <Grid item xs={12} md={3}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Typography variant="h6" color="primary">
-                Total Items
+                {t('total_items')}
               </Typography>
-              <Typography variant="h4">
-                {inventoryItems.length}
-              </Typography>
+              <Typography variant="h4">{inventoryItems.length}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Typography variant="h6" color="warning.main">
-                Low Stock Items
+                {t('low_stock_items')}
               </Typography>
-              <Typography variant="h4">
-                {lowStockItems.length}
-              </Typography>
+              <Typography variant="h4">{lowStockItems.length}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Typography variant="h6" color="success.main">
-                Total Value
+                {t('total_value')}
               </Typography>
-              <Typography variant="h4">
-                ${totalInventoryValue.toFixed(2)}
-              </Typography>
+              <Typography variant="h4">${totalInventoryValue.toFixed(2)}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={3}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Typography variant="h6" color="info.main">
-                Categories
+                {t('categories_text')}
               </Typography>
-              <Typography variant="h4">
-                {categories.length}
-              </Typography>
+              <Typography variant="h4">{categories.length}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -489,52 +406,46 @@ export default function Inventory() {
 
       {categories.map(category => (
         <Box key={category} sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-            <InventoryIcon sx={{ mr: 1 }} />
+          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+            <InventoryIcon sx={{ marginInlineEnd: 1 }} />
             {category}
           </Typography>
-          
-          <TableContainer component={Paper}>
-            <Table>
+
+          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+            <Table dir={isRtl ? 'rtl' : 'ltr'}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Item Name</TableCell>
-                  <TableCell>Current Stock</TableCell>
-                  <TableCell>Unit</TableCell>
-                  <TableCell>Min Threshold</TableCell>
-                  <TableCell>Stock Level</TableCell>
-                  <TableCell>Cost/Unit</TableCell>
-                  <TableCell>Total Value</TableCell>
-                  <TableCell>Supplier</TableCell>
-                  <TableCell>Last Restocked</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell>{t('item_name')}</TableCell>
+                  <TableCell>{t('current_stock')}</TableCell>
+                  <TableCell>{t('unit')}</TableCell>
+                  <TableCell>{t('min_threshold')}</TableCell>
+                  <TableCell>{t('stock_level')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('total_value')}</TableCell>
+                  <TableCell>{t('supplier_label')}</TableCell>
+                  <TableCell>{t('last_restocked')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {inventoryItems
                   .filter(item => item.category === category)
-                  .map((item) => {
-                    const stockStatus = getStockStatus(item);
-                    const stockPercentage = getStockPercentage(item);
-                    
+                  .map(item => {
+                    const stockStatus = getStockStatus(item)
+                    const stockPercentage = getStockPercentage(item)
+
                     return (
-                      <TableRow 
+                      <TableRow
                         key={item.id}
-                        sx={{ 
-                          backgroundColor: stockStatus.status === 'critical' ? 'error.light' : 
-                                          stockStatus.status === 'low' ? 'warning.light' : 'inherit',
+                        sx={{
+                          backgroundColor: stockStatus.status === 'critical' ? 'error.light' : stockStatus.status === 'low' ? 'warning.light' : 'inherit',
                           opacity: stockStatus.status === 'critical' ? 0.8 : 1
                         }}
                       >
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                             {item.name}
-                            {item.currentStock <= item.minThreshold && (
-                              <WarningIcon 
-                                sx={{ ml: 1, color: 'warning.main' }} 
-                                fontSize="small"
-                              />
-                            )}
+                            {item.currentStock <= item.minThreshold && <WarningIcon sx={{ marginInlineStart: 1, color: 'warning.main' }} fontSize="small" />}
                           </Box>
                         </TableCell>
                         <TableCell>{item.currentStock}</TableCell>
@@ -542,24 +453,15 @@ export default function Inventory() {
                         <TableCell>{item.minThreshold}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={stockPercentage}
-                              color={stockStatus.color as any}
-                              sx={{ flexGrow: 1, mr: 1 }}
-                            />
-                            <Chip
-                              label={stockStatus.status}
-                              color={stockStatus.color as any}
-                              size="small"
-                            />
+                            <LinearProgress variant="determinate" value={stockPercentage} color={stockStatus.color as any} sx={{ flexGrow: 1, mr: 1 }} />
+                            <Chip label={stockStatus.status} color={stockStatus.color as any} size="small" />
                           </Box>
                         </TableCell>
-                        <TableCell>${item.costPerUnit.toFixed(2)}</TableCell>
-                        <TableCell>${(item.currentStock * item.costPerUnit).toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${item.costPerUnit.toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${(item.currentStock * item.costPerUnit).toFixed(2)}</TableCell>
                         <TableCell>{item.supplier}</TableCell>
                         <TableCell>{item.lastRestocked.toLocaleDateString()}</TableCell>
-                        <TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <IconButton size="small" onClick={() => handleEditItem(item)}>
                             <EditIcon />
                           </IconButton>
@@ -568,7 +470,7 @@ export default function Inventory() {
                           </IconButton>
                         </TableCell>
                       </TableRow>
-                    );
+                    )
                   })}
               </TableBody>
             </Table>
@@ -577,25 +479,21 @@ export default function Inventory() {
       ))}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
-        </DialogTitle>
+        <DialogTitle>{editingItem ? t('edit_inventory_item') : t('add_new_inventory_item')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <Autocomplete
-                options={availableIngredients.filter(ing => 
-                  !inventoryItems.some(item => item.name.toLowerCase() === ing.name.toLowerCase())
-                )}
-                getOptionLabel={(option) => option.name}
+                options={availableIngredients.filter(ing => !inventoryItems.some(item => item.name.toLowerCase() === ing.name.toLowerCase()))}
+                getOptionLabel={option => option.name}
                 value={availableIngredients.find(ing => ing.name === newItem.name) || null}
                 onChange={(_, value) => handleIngredientSelect(value)}
-                renderInput={(params) => (
+                renderInput={params => (
                   <TextField
                     {...params}
                     fullWidth
-                    label="Select Ingredient"
-                    placeholder="Choose from existing ingredients"
+                    label={t('select_ingredient_label')}
+                    placeholder={t('select_ingredient_placeholder')}
                     disabled={editingItem !== null} // Disable when editing
                   />
                 )}
@@ -613,121 +511,50 @@ export default function Inventory() {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Autocomplete
-                freeSolo
-                options={allCategories}
-                value={newItem.category}
-                onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
-                onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    label="Category"
-                    placeholder="e.g., Meat, Vegetables, Dairy"
-                  />
-                )}
-              />
+              <Autocomplete freeSolo options={allCategories} value={newItem.category} onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label="Category" placeholder="e.g., Meat, Vegetables, Dairy" />} />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Current Stock"
-                type="number"
-                value={newItem.currentStock}
-                onChange={(e) => setNewItem({ ...newItem, currentStock: parseFloat(e.target.value) })}
-              />
+              <TextField fullWidth label="Current Stock" type="number" value={newItem.currentStock} onChange={e => setNewItem({ ...newItem, currentStock: parseFloat(e.target.value) })} />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Unit"
-                value={newItem.unit}
-                onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                placeholder="e.g., lbs, dozen, pieces"
-                InputProps={{ readOnly: !editingItem && !newItem.name }}
-                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
-              />
+              <TextField fullWidth label={t('unit')} value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} placeholder="e.g., lbs, dozen, pieces" InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Min Threshold"
-                type="number"
-                value={newItem.minThreshold}
-                onChange={(e) => setNewItem({ ...newItem, minThreshold: parseFloat(e.target.value) })}
-              />
+              <TextField fullWidth label={t('min_threshold')} type="number" value={newItem.minThreshold} onChange={e => setNewItem({ ...newItem, minThreshold: parseFloat(e.target.value) })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Cost Per Unit"
-                type="number"
-                inputProps={{ step: "0.01" }}
-                value={newItem.costPerUnit}
-                onChange={(e) => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) })}
-                InputProps={{ readOnly: !editingItem && !newItem.name }}
-                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
-              />
+              <TextField fullWidth label={t('cost_per_unit')} type="number" inputProps={{ step: '0.01' }} value={newItem.costPerUnit} onChange={e => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) })} InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Supplier"
-                value={newItem.supplier}
-                onChange={(e) => setNewItem({ ...newItem, supplier: e.target.value })}
-                InputProps={{ readOnly: !editingItem && !newItem.name }}
-                helperText={!editingItem && !newItem.name ? "Auto-filled from ingredient" : ""}
-              />
+              <TextField fullWidth label={t('supplier_label')} value={newItem.supplier} onChange={e => setNewItem({ ...newItem, supplier: e.target.value })} InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Last Restocked"
-                type="date"
-                value={newItem.lastRestocked?.toISOString().split('T')[0]}
-                onChange={(e) => setNewItem({ ...newItem, lastRestocked: new Date(e.target.value) })}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label={t('last_restocked')} type="date" value={newItem.lastRestocked?.toISOString().split('T')[0]} onChange={e => setNewItem({ ...newItem, lastRestocked: new Date(e.target.value) })} InputLabelProps={{ shrink: true }} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveItem} variant="contained">
-            {editingItem ? 'Update' : 'Add'} Item
+            {editingItem ? t('update_item') : t('add_item')}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => setMenuAnchor(null)}
-      >
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
         <MuiMenuItem onClick={handleImportFromIngredients}>
           <ListItemIcon>
             <ImportIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>
-            Import from Ingredients
-          </ListItemText>
+          <ListItemText>Import from Ingredients</ListItemText>
         </MuiMenuItem>
       </Menu>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
-  );
+  )
 }

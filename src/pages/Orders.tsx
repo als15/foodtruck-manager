@@ -33,6 +33,7 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -79,6 +80,7 @@ function TabPanel(props: TabPanelProps) {
 
 export default function Orders() {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -500,7 +502,7 @@ export default function Orders() {
             variant="outlined" 
             startIcon={<UploadIcon />} 
             onClick={() => setOpenImportDialog(true)}
-            sx={{ mr: 1 }}
+            sx={{ marginInlineEnd: 1 }}
           >
             {t('import_orders')}
           </Button>
@@ -767,18 +769,18 @@ export default function Orders() {
         {/* All Orders Tab */}
         <TabPanel value={tabValue} index={0}>
           <TableContainer>
-            <Table>
+            <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
               <TableHead>
                 <TableRow>
                   <TableCell>{t('order_number')}</TableCell>
                   <TableCell>{t('time')}</TableCell>
                   <TableCell>{t('customer')}</TableCell>
                   <TableCell>{t('items')}</TableCell>
-                  <TableCell>{t('total')}</TableCell>
+                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('total')}</TableCell>
                   <TableCell>{t('payment')}</TableCell>
                   <TableCell>{t('status')}</TableCell>
                   <TableCell>{t('source')}</TableCell>
-                  <TableCell>{t('actions')}</TableCell>
+                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -820,7 +822,7 @@ export default function Orders() {
                         ).join(', ')}
                       </Typography>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
                       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                         ${order.total.toFixed(2)}
                       </Typography>
@@ -855,8 +857,8 @@ export default function Orders() {
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
                         <IconButton 
                           size="small" 
                           onClick={() => handleDeleteOrder(order.id)}

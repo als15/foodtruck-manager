@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Avatar, Tab, Tabs, IconButton, Grid, Snackbar, Alert } from '@mui/material'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Avatar, Tab, Tabs, IconButton, Grid, Snackbar, Alert, useTheme } from '@mui/material'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Today as TodayIcon } from '@mui/icons-material'
 import { Employee, Shift } from '../types'
 import { employeesService, shiftsService, subscriptions } from '../services/supabaseService'
@@ -20,6 +20,8 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Employees() {
+  const theme = useTheme();
+  const isRtl = theme.direction === 'rtl';
   const [tabValue, setTabValue] = useState(0)
   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false)
   const [openShiftDialog, setOpenShiftDialog] = useState(false)
@@ -336,10 +338,10 @@ export default function Employees() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Employee Management</Typography>
-        <Box>
-          <Button variant="outlined" startIcon={<ScheduleIcon />} onClick={() => setOpenShiftDialog(true)} sx={{ mr: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>Employee Management</Typography>
+        <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button variant="outlined" startIcon={<ScheduleIcon />} onClick={() => setOpenShiftDialog(true)} sx={{ marginInlineEnd: 1 }}>
             Add Shift
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenEmployeeDialog(true)}>
@@ -361,11 +363,11 @@ export default function Employees() {
               <Grid item xs={12} sm={6} md={4} key={employee.id}>
                 <Card>
                   <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ mr: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                      <Avatar sx={{ marginInlineEnd: 2 }}>
                         <PersonIcon />
                       </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
+                      <Box sx={{ flexGrow: 1, textAlign: isRtl ? 'right' : 'left' }}>
                         <Typography variant="h6">
                           {employee.firstName} {employee.lastName}
                         </Typography>
@@ -373,7 +375,7 @@ export default function Employees() {
                           {employee.position}
                         </Typography>
                       </Box>
-                      <Box>
+                      <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                         <IconButton size="small" onClick={() => handleEditEmployee(employee)}>
                           <EditIcon />
                         </IconButton>
@@ -406,17 +408,17 @@ export default function Employees() {
 
         <TabPanel value={tabValue} index={1}>
           <TableContainer>
-            <Table>
+            <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Employee</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Start Time</TableCell>
                   <TableCell>End Time</TableCell>
-                  <TableCell>Hours</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hours</TableCell>
                   <TableCell>Role</TableCell>
                   <TableCell>Location</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -426,10 +428,10 @@ export default function Employees() {
                     <TableCell>{shift.date.toLocaleDateString()}</TableCell>
                     <TableCell>{shift.startTime}</TableCell>
                     <TableCell>{shift.endTime}</TableCell>
-                    <TableCell>{shift.hoursWorked}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{shift.hoursWorked}</TableCell>
                     <TableCell>{shift.role}</TableCell>
                     <TableCell>{shift.location}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                       <IconButton size="small" onClick={() => handleEditShift(shift)}>
                         <EditIcon />
                       </IconButton>
@@ -445,9 +447,9 @@ export default function Employees() {
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6">Payroll Summary</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>Payroll Summary</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
               <IconButton onClick={() => navigateWeek('prev')} size="small">
                 <ChevronLeftIcon />
               </IconButton>
@@ -479,14 +481,14 @@ export default function Employees() {
             </Alert>
           ) : (
             <TableContainer>
-              <Table>
+              <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                 <TableHead>
                   <TableRow>
                     <TableCell>Employee</TableCell>
-                    <TableCell>Hours This Week</TableCell>
-                    <TableCell>All Hours (This Week)</TableCell>
-                    <TableCell>Hourly Rate</TableCell>
-                    <TableCell>Weekly Pay</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hours This Week</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>All Hours (This Week)</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hourly Rate</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Weekly Pay</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -499,17 +501,17 @@ export default function Employees() {
                         <TableCell>
                           {employee.firstName} {employee.lastName}
                           {weeklyHours === 0 && (
-                            <Chip label="No shifts" size="small" variant="outlined" sx={{ ml: 1 }} />
+                            <Chip label="No shifts" size="small" variant="outlined" sx={{ marginInlineStart: 1 }} />
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: weeklyHours > 0 ? 'bold' : 'normal' }}>
                             {weeklyHours.toFixed(2)}
                           </Typography>
                         </TableCell>
-                        <TableCell>{totalHours.toFixed(2)}</TableCell>
-                        <TableCell>${employee.hourlyRate.toFixed(2)}</TableCell>
-                        <TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{totalHours.toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${employee.hourlyRate.toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: weeklyPay > 0 ? 'bold' : 'normal' }}>
                             ${weeklyPay.toFixed(2)}
                           </Typography>
@@ -519,14 +521,14 @@ export default function Employees() {
                   })}
                   <TableRow sx={{ borderTop: 2, borderColor: 'divider' }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>TOTALS</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
                       {employees.reduce((total, emp) => total + calculateWeeklyHours(emp.id, selectedWeek), 0).toFixed(2)}
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
                       {employees.reduce((total, emp) => total + calculateTotalHours(emp.id, selectedWeek), 0).toFixed(2)}
                     </TableCell>
-                    <TableCell>-</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>-</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
                       ${employees.reduce((total, emp) => {
                         const weeklyHours = calculateWeeklyHours(emp.id, selectedWeek)
                         return total + (weeklyHours * emp.hourlyRate)

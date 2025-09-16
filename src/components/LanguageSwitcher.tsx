@@ -43,13 +43,18 @@ export default function LanguageSwitcher() {
       newValue: languageCode
     })
     window.dispatchEvent(event)
+    
+    // Force reload to ensure theme direction is properly updated
+    setTimeout(() => {
+      window.location.reload()
+    }, 100)
   }
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0]
 
   return (
     <>
-      <IconButton onClick={handleClick} size="small" className="no-flip" sx={{ ml: 2 }} aria-controls={open ? 'language-menu' : undefined} aria-haspopup="true" aria-expanded={open ? 'true' : undefined} title="Change Language">
+      <IconButton onClick={handleClick} size="small" className="no-flip" sx={{ marginInlineStart: 2 }} aria-controls={open ? 'language-menu' : undefined} aria-haspopup="true" aria-expanded={open ? 'true' : undefined} title="Change Language">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <span style={{ fontSize: '16px' }}>{currentLanguage.flag}</span>
           <LanguageIcon fontSize="small" />
