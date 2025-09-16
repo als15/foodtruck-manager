@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, keyframes } from '@mui/material';
 import { nomNomColors } from '../theme/nomnom-theme';
 
 interface NomNomLogoProps {
@@ -8,58 +8,56 @@ interface NomNomLogoProps {
   variant?: 'light' | 'dark';
 }
 
+const bounce = keyframes`
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.1); }
+`;
+
+const wiggle = keyframes`
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+`;
+
 const NomNomLogo: React.FC<NomNomLogoProps> = ({ 
   size = 'medium', 
   showText = true, 
   variant = 'light' 
 }) => {
   const logoSizes = {
-    small: { icon: 24, text: '1rem' },
-    medium: { icon: 32, text: '1.25rem' },
-    large: { icon: 48, text: '1.75rem' }
+    small: { icon: 28, text: '1.1rem' },
+    medium: { icon: 36, text: '1.4rem' },
+    large: { icon: 56, text: '2rem' }
   };
 
   const currentSize = logoSizes[size];
 
   return (
-    <Box display="flex" alignItems="center" gap={showText ? 1 : 0}>
-      {/* Chef Character Icon - Inspired by the logo */}
+    <Box display="flex" alignItems="center" gap={showText ? 1.5 : 0}>
+      {/* Food Truck Icon with Playful Animation */}
       <Box
         sx={{
           width: currentSize.icon,
           height: currentSize.icon,
-          borderRadius: '50%',
-          background: `linear-gradient(135deg, ${nomNomColors.primaryDark} 0%, ${nomNomColors.secondaryDark} 100%)`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           position: 'relative',
-          boxShadow: '0 2px 8px rgba(127, 255, 212, 0.3)',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 2,
-            left: 2,
-            right: 2,
-            bottom: 2,
-            borderRadius: '50%',
-            background: variant === 'light' ? nomNomColors.white : nomNomColors.textPrimary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }
+          transition: 'all 0.3s ease-out',
+          cursor: 'pointer',
+          '&:hover': {
+            transform: 'scale(1.1)',
+          },
         }}
       >
         <Box
           sx={{
-            fontSize: currentSize.icon * 0.5,
-            fontWeight: 'bold',
-            color: variant === 'light' ? nomNomColors.primaryDark : nomNomColors.white,
-            zIndex: 1,
-            position: 'relative',
+            fontSize: currentSize.icon,
+            color: nomNomColors.primary,
+            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
           }}
         >
-          👨‍🍳
+          🚚
         </Box>
       </Box>
       
@@ -70,12 +68,14 @@ const NomNomLogo: React.FC<NomNomLogoProps> = ({
           sx={{
             fontSize: currentSize.text,
             fontWeight: 700,
-            background: `linear-gradient(135deg, ${nomNomColors.primaryDark} 0%, ${nomNomColors.secondaryDark} 100%)`,
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: '#1a1a1a',
             letterSpacing: '-0.02em',
-            fontFamily: '"Inter", "Roboto", sans-serif',
+            fontFamily: '"Fredoka", "Quicksand", "Inter", sans-serif',
+            transition: 'all 0.3s ease-out',
+            cursor: 'pointer',
+            '&:hover': {
+              color: nomNomColors.primaryDark,
+            },
           }}
         >
           NomNom

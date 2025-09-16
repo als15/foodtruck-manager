@@ -30,7 +30,7 @@ const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
     direction,
     typography: {
       ...nomNomTheme.typography,
-      fontFamily: direction === 'rtl' ? '"Heebo", "Inter", "Roboto", "Arial", sans-serif' : '"Inter", "Roboto", "Helvetica", "Arial", sans-serif'
+      fontFamily: direction === 'rtl' ? '"Heebo", "Quicksand", "Fredoka", "Inter", sans-serif' : '"Quicksand", "Fredoka", "Inter", "Roboto", sans-serif'
     },
     components: {
       ...nomNomTheme.components,
@@ -38,12 +38,8 @@ const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
         styleOverrides: {
           body: {
             direction: direction,
-            backgroundColor: nomNomColors.background,
-            backgroundImage: `
-              radial-gradient(circle at 20% 50%, ${nomNomColors.primaryLight}15 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, ${nomNomColors.accent}15 0%, transparent 50%),
-              radial-gradient(circle at 40% 80%, ${nomNomColors.secondaryLight}15 0%, transparent 50%)
-            `,
+            backgroundColor: nomNomColors.white,
+            // Clean white background
           }
         }
       },

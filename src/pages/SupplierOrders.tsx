@@ -1,90 +1,57 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Grid,
-  CircularProgress,
-  Alert,
-  Snackbar,
-  Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem as MuiMenuItem,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Fab,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ShoppingCart as OrderIcon,
-  LocalShipping as DeliveryIcon,
-  Schedule as ScheduleIcon,
-  AutoMode as AutoOrderIcon,
-  Warning as WarningIcon,
-  Check as CheckIcon,
-} from '@mui/icons-material';
-import { format } from 'date-fns';
-import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types';
-import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService';
-import { nomNomColors } from '../theme/nomnom-theme';
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Fab } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as ScheduleIcon, AutoMode as AutoOrderIcon, Warning as WarningIcon, Check as CheckIcon } from '@mui/icons-material'
+import { format } from 'date-fns'
+import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types'
+import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService'
+import { nomNomColors } from '../theme/nomnom-theme'
 
-const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
-const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
+const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
 
 const getStatusColor = (status: SupplierOrder['status']) => {
   switch (status) {
-    case 'draft': return 'default';
-    case 'submitted': return 'info';
-    case 'confirmed': return 'primary';
-    case 'shipped': return 'warning';
-    case 'delivered': return 'success';
-    case 'cancelled': return 'error';
-    default: return 'default';
+    case 'draft':
+      return 'default'
+    case 'submitted':
+      return 'info'
+    case 'confirmed':
+      return 'primary'
+    case 'shipped':
+      return 'warning'
+    case 'delivered':
+      return 'success'
+    case 'cancelled':
+      return 'error'
+    default:
+      return 'default'
   }
-};
+}
 
 const getPriorityColor = (priority: SupplierOrder['priority']) => {
   switch (priority) {
-    case 'low': return 'default';
-    case 'medium': return 'info';
-    case 'high': return 'warning';
-    case 'urgent': return 'error';
-    default: return 'default';
+    case 'low':
+      return 'default'
+    case 'medium':
+      return 'info'
+    case 'high':
+      return 'warning'
+    case 'urgent':
+      return 'error'
+    default:
+      return 'default'
   }
-};
+}
 
 export default function SupplierOrders() {
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<SupplierOrder | null>(null);
-  const [orders, setOrders] = useState<SupplierOrder[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [openDialog, setOpenDialog] = useState(false)
+  const [editingOrder, setEditingOrder] = useState<SupplierOrder | null>(null)
+  const [orders, setOrders] = useState<SupplierOrder[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
 
   const [newOrder, setNewOrder] = useState<Partial<SupplierOrder>>({
     supplierId: '',
@@ -95,75 +62,77 @@ export default function SupplierOrders() {
     orderDate: new Date(),
     autoGenerated: false,
     notes: ''
-  });
+  })
 
   // Use interface with stable ID for order items
   interface OrderItemWithId extends SupplierOrderItem {
-    tempId: string;
+    tempId: string
   }
-  
-  const [orderItems, setOrderItems] = useState<OrderItemWithId[]>([]);
+
+  const [orderItems, setOrderItems] = useState<OrderItemWithId[]>([])
 
   // Load data on component mount
   useEffect(() => {
-    loadOrders();
-    loadSuppliers();
-    loadIngredients();
-  }, []);
+    loadOrders()
+    loadSuppliers()
+    loadIngredients()
+  }, [])
 
   // Set up real-time subscription
   useEffect(() => {
-    const subscription = subscriptions.supplierOrders((payload) => {
-      console.log('Supplier orders changed:', payload);
-      loadOrders();
-    });
+    const subscription = subscriptions.supplierOrders(payload => {
+      console.log('Supplier orders changed:', payload)
+      loadOrders()
+    })
 
     return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const loadOrders = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await supplierOrdersService.getAll();
-      setOrders(data);
+      setLoading(true)
+      setError(null)
+      const data = await supplierOrdersService.getAll()
+      setOrders(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load supplier orders');
+      setError(err instanceof Error ? err.message : 'Failed to load supplier orders')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadSuppliers = async () => {
     try {
-      const data = await suppliersService.getAll();
-      setSuppliers(data.filter(s => s.isActive));
+      const data = await suppliersService.getAll()
+      setSuppliers(data.filter(s => s.isActive))
     } catch (err) {
-      console.error('Failed to load suppliers:', err);
+      console.error('Failed to load suppliers:', err)
     }
-  };
+  }
 
   const loadIngredients = async () => {
     try {
-      const data = await ingredientsService.getAll();
-      setIngredients(data.filter(i => i.isAvailable));
+      const data = await ingredientsService.getAll()
+      setIngredients(data.filter(i => i.isAvailable))
     } catch (err) {
-      console.error('Failed to load ingredients:', err);
+      console.error('Failed to load ingredients:', err)
     }
-  };
+  }
 
   const handleOpenDialog = (order?: SupplierOrder) => {
     if (order) {
-      setEditingOrder(order);
-      setNewOrder(order);
-      setOrderItems(order.items.map(item => ({
-        ...item,
-        tempId: `temp-${Date.now()}-${Math.random()}`
-      })));
+      setEditingOrder(order)
+      setNewOrder(order)
+      setOrderItems(
+        order.items.map(item => ({
+          ...item,
+          tempId: `temp-${Date.now()}-${Math.random()}`
+        }))
+      )
     } else {
-      setEditingOrder(null);
+      setEditingOrder(null)
       setNewOrder({
         supplierId: '',
         items: [],
@@ -173,165 +142,161 @@ export default function SupplierOrders() {
         orderDate: new Date(),
         autoGenerated: false,
         notes: ''
-      });
-      setOrderItems([]);
+      })
+      setOrderItems([])
     }
-    setOpenDialog(true);
-  };
+    setOpenDialog(true)
+  }
 
   const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingOrder(null);
-    setOrderItems([]);
-  };
+    setOpenDialog(false)
+    setEditingOrder(null)
+    setOrderItems([])
+  }
 
   const handleAddOrderItem = useCallback(() => {
-    setOrderItems(prev => [...prev, {
-      tempId: `temp-${Date.now()}-${Math.random()}`, // Add unique temporary ID
-      ingredientId: '',
-      quantity: 1,
-      unitPrice: 0,
-      totalPrice: 0,
-      notes: ''
-    }]);
-  }, []);
+    setOrderItems(prev => [
+      ...prev,
+      {
+        tempId: `temp-${Date.now()}-${Math.random()}`, // Add unique temporary ID
+        ingredientId: '',
+        quantity: 1,
+        unitPrice: 0,
+        totalPrice: 0,
+        notes: ''
+      }
+    ])
+  }, [])
 
   // Get ingredients filtered by selected supplier (memoized to prevent re-renders)
   const filteredIngredients = useMemo(() => {
-    if (!newOrder.supplierId) return [];
-    const selectedSupplier = suppliers.find(s => s.id === newOrder.supplierId);
-    if (!selectedSupplier) return [];
-    
-    return ingredients.filter(ingredient => 
-      ingredient.supplier === selectedSupplier.name
-    );
-  }, [newOrder.supplierId, suppliers, ingredients]);
+    if (!newOrder.supplierId) return []
+    const selectedSupplier = suppliers.find(s => s.id === newOrder.supplierId)
+    if (!selectedSupplier) return []
+
+    return ingredients.filter(ingredient => ingredient.supplier === selectedSupplier.name)
+  }, [newOrder.supplierId, suppliers, ingredients])
 
   const handleUpdateOrderItem = useCallback((tempId: string, field: keyof SupplierOrderItem, value: any) => {
-    setOrderItems(prev => prev.map(item => {
-      if (item.tempId !== tempId) return item;
-      
-      const updatedItem = { ...item, [field]: value };
-      
-      // Recalculate total price for this item
-      if (field === 'quantity' || field === 'unitPrice') {
-        updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice;
-      }
-      
-      return updatedItem;
-    }));
-    
+    setOrderItems(prev =>
+      prev.map(item => {
+        if (item.tempId !== tempId) return item
+
+        const updatedItem = { ...item, [field]: value }
+
+        // Recalculate total price for this item
+        if (field === 'quantity' || field === 'unitPrice') {
+          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice
+        }
+
+        return updatedItem
+      })
+    )
+
     // Update total amount in next effect
-  }, []);
+  }, [])
 
   // Effect to update total amount when order items change
   useEffect(() => {
-    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
-    setNewOrder(prev => ({ ...prev, totalAmount }));
-  }, [orderItems]);
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0)
+    setNewOrder(prev => ({ ...prev, totalAmount }))
+  }, [orderItems])
 
   const handleRemoveOrderItem = useCallback((tempId: string) => {
-    setOrderItems(prev => prev.filter(item => item.tempId !== tempId));
-  }, []);
+    setOrderItems(prev => prev.filter(item => item.tempId !== tempId))
+  }, [])
 
   const handleSubmitOrder = async () => {
     try {
       // Remove tempId before submitting
-      const cleanItems = orderItems.map(({ tempId, ...item }) => item);
-      const orderData = { ...newOrder, items: cleanItems };
-      
+      const cleanItems = orderItems.map(({ tempId, ...item }) => item)
+      const orderData = { ...newOrder, items: cleanItems }
+
       if (editingOrder) {
-        await supplierOrdersService.update(editingOrder.id, orderData);
-        setSnackbar({ open: true, message: 'Supplier order updated successfully', severity: 'success' });
+        await supplierOrdersService.update(editingOrder.id, orderData)
+        setSnackbar({ open: true, message: 'Supplier order updated successfully', severity: 'success' })
       } else {
-        await supplierOrdersService.create(orderData as Omit<SupplierOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>);
-        setSnackbar({ open: true, message: 'Supplier order created successfully', severity: 'success' });
+        await supplierOrdersService.create(orderData as Omit<SupplierOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>)
+        setSnackbar({ open: true, message: 'Supplier order created successfully', severity: 'success' })
       }
-      handleCloseDialog();
-      loadOrders();
+      handleCloseDialog()
+      loadOrders()
     } catch (err) {
-      setSnackbar({ 
-        open: true, 
-        message: err instanceof Error ? err.message : 'Failed to save supplier order', 
-        severity: 'error' 
-      });
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to save supplier order',
+        severity: 'error'
+      })
     }
-  };
+  }
 
   const handleUpdateStatus = async (orderId: string, status: SupplierOrder['status']) => {
     try {
-      await supplierOrdersService.updateStatus(orderId, status);
-      setSnackbar({ open: true, message: 'Order status updated successfully', severity: 'success' });
-      loadOrders();
+      await supplierOrdersService.updateStatus(orderId, status)
+      setSnackbar({ open: true, message: 'Order status updated successfully', severity: 'success' })
+      loadOrders()
     } catch (err) {
-      setSnackbar({ 
-        open: true, 
-        message: err instanceof Error ? err.message : 'Failed to update order status', 
-        severity: 'error' 
-      });
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to update order status',
+        severity: 'error'
+      })
     }
-  };
+  }
 
   const handleDeleteOrder = async (orderId: string) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       try {
-        await supplierOrdersService.delete(orderId);
-        setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' });
-        loadOrders();
+        await supplierOrdersService.delete(orderId)
+        setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' })
+        loadOrders()
       } catch (err) {
-        setSnackbar({ 
-          open: true, 
-          message: err instanceof Error ? err.message : 'Failed to delete order', 
-          severity: 'error' 
-        });
+        setSnackbar({
+          open: true,
+          message: err instanceof Error ? err.message : 'Failed to delete order',
+          severity: 'error'
+        })
       }
     }
-  };
+  }
 
   const handleGenerateAutoOrders = async () => {
     try {
-      setLoading(true);
-      const autoOrders = await supplierOrdersService.generateAutoOrders();
-      setSnackbar({ 
-        open: true, 
-        message: `Generated ${autoOrders.length} automatic orders based on low stock`, 
-        severity: 'success' 
-      });
-      loadOrders();
+      setLoading(true)
+      const autoOrders = await supplierOrdersService.generateAutoOrders()
+      setSnackbar({
+        open: true,
+        message: `Generated ${autoOrders.length} automatic orders based on low stock`,
+        severity: 'success'
+      })
+      loadOrders()
     } catch (err) {
-      setSnackbar({ 
-        open: true, 
-        message: err instanceof Error ? err.message : 'Failed to generate auto orders', 
-        severity: 'error' 
-      });
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Failed to generate auto orders',
+        severity: 'error'
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const ordersNeedingAttention = orders.filter(order => {
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    
+    const now = new Date()
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
     // Only flag as needing attention if:
     // 1. Delivery is overdue by more than 1 day AND not delivered/cancelled
     // 2. OR submitted orders older than 7 days
-    return (
-      (order.expectedDeliveryDate && 
-       order.expectedDeliveryDate < oneDayAgo && 
-       !['delivered', 'cancelled'].includes(order.status)) ||
-      (order.status === 'submitted' && 
-       order.submittedDate && 
-       (now.getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24) > 7)
-    );
-  });
+    return (order.expectedDeliveryDate && order.expectedDeliveryDate < oneDayAgo && !['delivered', 'cancelled'].includes(order.status)) || (order.status === 'submitted' && order.submittedDate && (now.getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24) > 7)
+  })
 
   if (loading && orders.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
       </Box>
-    );
+    )
   }
 
   return (
@@ -342,20 +307,10 @@ export default function SupplierOrders() {
           Supplier Orders
         </Typography>
         <Box>
-          <Button
-            variant="outlined"
-            startIcon={<AutoOrderIcon />}
-            onClick={handleGenerateAutoOrders}
-            sx={{ mr: 2 }}
-            disabled={loading}
-          >
+          <Button variant="outlined" startIcon={<AutoOrderIcon />} onClick={handleGenerateAutoOrders} sx={{ mr: 2 }} disabled={loading}>
             Generate Auto Orders
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
             New Order
           </Button>
         </Box>
@@ -378,16 +333,14 @@ export default function SupplierOrders() {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
                 <ScheduleIcon color="warning" sx={{ mr: 1 }} />
                 <Box>
-                  <Typography variant="h6">
-                    {orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}
-                  </Typography>
+                  <Typography variant="h6">{orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     Pending Orders
                   </Typography>
@@ -396,7 +349,7 @@ export default function SupplierOrders() {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -412,16 +365,14 @@ export default function SupplierOrders() {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
                 <CheckIcon color="success" sx={{ mr: 1 }} />
                 <Box>
-                  <Typography variant="h6">
-                    {orders.filter(o => o.status === 'delivered').length}
-                  </Typography>
+                  <Typography variant="h6">{orders.filter(o => o.status === 'delivered').length}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     Delivered
                   </Typography>
@@ -440,18 +391,9 @@ export default function SupplierOrders() {
               Orders Needing Attention
             </Typography>
             <List>
-              {ordersNeedingAttention.map((order) => (
+              {ordersNeedingAttention.map(order => (
                 <ListItem key={order.id}>
-                  <ListItemText
-                    primary={`${order.orderNumber} - ${order.supplier?.name}`}
-                    secondary={
-                      order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - (24 * 60 * 60 * 1000))
-                        ? `Overdue delivery (expected ${format(order.expectedDeliveryDate, 'MMM dd, yyyy')})`
-                        : order.status === 'submitted' && order.submittedDate
-                        ? `Submitted ${Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24))} days ago - needs follow-up`
-                        : 'Needs attention'
-                    }
-                  />
+                  <ListItemText primary={`${order.orderNumber} - ${order.supplier?.name}`} secondary={order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? `Overdue delivery (expected ${format(order.expectedDeliveryDate, 'MMM dd, yyyy')})` : order.status === 'submitted' && order.submittedDate ? `Submitted ${Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24))} days ago - needs follow-up` : 'Needs attention'} />
                   <ListItemSecondaryAction>
                     <IconButton onClick={() => handleOpenDialog(order)}>
                       <EditIcon />
@@ -490,7 +432,7 @@ export default function SupplierOrders() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {orders.map((order) => (
+                {orders.map(order => (
                   <TableRow key={order.id}>
                     <TableCell>
                       <Box display="flex" alignItems="center">
@@ -505,18 +447,12 @@ export default function SupplierOrders() {
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
                           value={order.status}
-                          onChange={(e) => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
+                          onChange={e => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
                           variant="outlined"
                           sx={{
                             '& .MuiSelect-select': {
                               padding: '4px 8px',
-                              backgroundColor: 
-                                order.status === 'draft' ? '#f5f5f5' :
-                                order.status === 'submitted' ? '#e3f2fd' :
-                                order.status === 'confirmed' ? '#e8f5e8' :
-                                order.status === 'shipped' ? '#fff3e0' :
-                                order.status === 'delivered' ? '#e8f5e8' :
-                                order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
+                              backgroundColor: order.status === 'draft' ? '#f5f5f5' : order.status === 'submitted' ? '#e3f2fd' : order.status === 'confirmed' ? '#e8f5e8' : order.status === 'shipped' ? '#fff3e0' : order.status === 'delivered' ? '#e8f5e8' : order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
                               fontSize: '0.75rem',
                               fontWeight: 500
                             }
@@ -525,12 +461,7 @@ export default function SupplierOrders() {
                           {ORDER_STATUSES.map(status => (
                             <MuiMenuItem key={status} value={status}>
                               <Box display="flex" alignItems="center">
-                                <Chip 
-                                  label={status} 
-                                  color={getStatusColor(status)}
-                                  size="small"
-                                  sx={{ mr: 1 }}
-                                />
+                                <Chip label={status} color={getStatusColor(status)} size="small" sx={{ mr: 1 }} />
                                 {status.charAt(0).toUpperCase() + status.slice(1)}
                               </Box>
                             </MuiMenuItem>
@@ -539,31 +470,15 @@ export default function SupplierOrders() {
                       </FormControl>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={order.priority} 
-                        color={getPriorityColor(order.priority)}
-                        size="small"
-                      />
+                      <Chip label={order.priority} color={getPriorityColor(order.priority)} size="small" />
                     </TableCell>
                     <TableCell>{format(order.orderDate, 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>{order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}</TableCell>
                     <TableCell>
-                      {order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <IconButton 
-                        onClick={() => handleOpenDialog(order)} 
-                        size="small"
-                        color="primary"
-                        title="Edit Order"
-                      >
+                      <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title="Edit Order">
                         <EditIcon />
                       </IconButton>
-                      <IconButton 
-                        onClick={() => handleDeleteOrder(order.id)} 
-                        size="small" 
-                        color="error"
-                        title="Delete Order"
-                      >
+                      <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title="Delete Order">
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
@@ -577,34 +492,26 @@ export default function SupplierOrders() {
 
       {/* Create/Edit Order Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingOrder ? 'Edit Supplier Order' : 'Create New Supplier Order'}
-        </DialogTitle>
+        <DialogTitle>{editingOrder ? 'Edit Supplier Order' : 'Create New Supplier Order'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <Autocomplete
                 options={suppliers}
-                getOptionLabel={(option) => option.name}
+                getOptionLabel={option => option.name}
                 value={suppliers.find(s => s.id === newOrder.supplierId) || null}
                 onChange={(_, supplier) => {
-                  setNewOrder({ ...newOrder, supplierId: supplier?.id || '', totalAmount: 0 });
+                  setNewOrder({ ...newOrder, supplierId: supplier?.id || '', totalAmount: 0 })
                   // Clear existing order items when supplier changes
-                  setOrderItems([]);
+                  setOrderItems([])
                 }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Supplier" fullWidth required />
-                )}
+                renderInput={params => <TextField {...params} label="Supplier" fullWidth required />}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Priority</InputLabel>
-                <Select
-                  value={newOrder.priority || 'medium'}
-                  onChange={(e) => setNewOrder({ ...newOrder, priority: e.target.value as SupplierOrder['priority'] })}
-                  label="Priority"
-                >
+                <Select value={newOrder.priority || 'medium'} onChange={e => setNewOrder({ ...newOrder, priority: e.target.value as SupplierOrder['priority'] })} label="Priority">
                   {ORDER_PRIORITIES.map(priority => (
                     <MuiMenuItem key={priority} value={priority}>
                       {priority.charAt(0).toUpperCase() + priority.slice(1)}
@@ -616,22 +523,14 @@ export default function SupplierOrders() {
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
-                <Select
-                  value={newOrder.status || 'draft'}
-                  onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })}
-                  label="Status"
-                >
+                <Select value={newOrder.status || 'draft'} onChange={e => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })} label="Status">
                   {ORDER_STATUSES.map(status => (
                     <MuiMenuItem key={status} value={status}>
-                      <Box display="flex" alignItems="center">
-                        <Chip 
-                          label={status} 
-                          color={getStatusColor(status)}
-                          size="small"
-                          sx={{ mr: 1 }}
-                        />
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                      </Box>
+                      <Chip 
+                        label={status.charAt(0).toUpperCase() + status.slice(1)} 
+                        color={getStatusColor(status)} 
+                        size="small" 
+                      />
                     </MuiMenuItem>
                   ))}
                 </Select>
@@ -642,10 +541,12 @@ export default function SupplierOrders() {
                 label="Order Date"
                 type="date"
                 value={newOrder.orderDate ? format(newOrder.orderDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
-                onChange={(e) => setNewOrder({ 
-                  ...newOrder, 
-                  orderDate: e.target.value ? new Date(e.target.value) : new Date() 
-                })}
+                onChange={e =>
+                  setNewOrder({
+                    ...newOrder,
+                    orderDate: e.target.value ? new Date(e.target.value) : new Date()
+                  })
+                }
                 fullWidth
                 InputLabelProps={{ shrink: true }}
               />
@@ -655,23 +556,18 @@ export default function SupplierOrders() {
                 label="Expected Delivery Date"
                 type="date"
                 value={newOrder.expectedDeliveryDate ? format(newOrder.expectedDeliveryDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setNewOrder({ 
-                  ...newOrder, 
-                  expectedDeliveryDate: e.target.value ? new Date(e.target.value) : undefined 
-                })}
+                onChange={e =>
+                  setNewOrder({
+                    ...newOrder,
+                    expectedDeliveryDate: e.target.value ? new Date(e.target.value) : undefined
+                  })
+                }
                 fullWidth
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                label="Notes"
-                value={newOrder.notes || ''}
-                onChange={(e) => setNewOrder({ ...newOrder, notes: e.target.value })}
-                multiline
-                rows={2}
-                fullWidth
-              />
+              <TextField label="Notes" value={newOrder.notes || ''} onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })} multiline rows={2} fullWidth />
             </Grid>
           </Grid>
 
@@ -679,11 +575,7 @@ export default function SupplierOrders() {
 
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h6">Order Items</Typography>
-            <Button 
-              startIcon={<AddIcon />} 
-              onClick={handleAddOrderItem}
-              disabled={!newOrder.supplierId}
-            >
+            <Button startIcon={<AddIcon />} onClick={handleAddOrderItem} disabled={!newOrder.supplierId}>
               Add Item
             </Button>
           </Box>
@@ -700,59 +592,33 @@ export default function SupplierOrders() {
             </Alert>
           )}
 
-          {orderItems.map((item) => (
+          {orderItems.map(item => (
             <Grid container spacing={2} key={item.tempId} sx={{ mb: 2, alignItems: 'center' }}>
               <Grid item xs={12} sm={4}>
                 <Autocomplete
                   options={filteredIngredients}
-                  getOptionLabel={(option) => option.name}
+                  getOptionLabel={option => option.name}
                   value={filteredIngredients.find(i => i.id === item.ingredientId) || null}
                   onChange={(_, ingredient) => {
-                    handleUpdateOrderItem(item.tempId, 'ingredientId', ingredient?.id || '');
+                    handleUpdateOrderItem(item.tempId, 'ingredientId', ingredient?.id || '')
                     if (ingredient) {
-                      handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit);
+                      handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit)
                     }
                   }}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Ingredient" size="small" />
-                  )}
+                  renderInput={params => <TextField {...params} label="Ingredient" size="small" />}
                   disabled={!newOrder.supplierId}
-                  noOptionsText={
-                    !newOrder.supplierId 
-                      ? "Please select a supplier first" 
-                      : "No ingredients available for this supplier"
-                  }
+                  noOptionsText={!newOrder.supplierId ? 'Please select a supplier first' : 'No ingredients available for this supplier'}
                   isOptionEqualToValue={(option, value) => option.id === value.id}
                 />
               </Grid>
               <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Quantity"
-                  type="number"
-                  value={item.quantity}
-                  onChange={(e) => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))}
-                  size="small"
-                  fullWidth
-                />
+                <TextField label="Quantity" type="number" value={item.quantity} onChange={e => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))} size="small" fullWidth />
               </Grid>
               <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Unit Price"
-                  type="number"
-                  value={item.unitPrice}
-                  onChange={(e) => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))}
-                  size="small"
-                  fullWidth
-                />
+                <TextField label="Unit Price" type="number" value={item.unitPrice} onChange={e => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))} size="small" fullWidth />
               </Grid>
               <Grid item xs={6} sm={2}>
-                <TextField
-                  label="Total"
-                  value={item.totalPrice.toFixed(2)}
-                  size="small"
-                  fullWidth
-                  disabled
-                />
+                <TextField label="Total" value={item.totalPrice.toFixed(2)} size="small" fullWidth disabled />
               </Grid>
               <Grid item xs={6} sm={2}>
                 <IconButton onClick={() => handleRemoveOrderItem(item.tempId)} color="error">
@@ -763,36 +629,23 @@ export default function SupplierOrders() {
           ))}
 
           <Box mt={2} textAlign="right">
-            <Typography variant="h6">
-              Total Amount: ${newOrder.totalAmount?.toFixed(2) || '0.00'}
-            </Typography>
+            <Typography variant="h6">Total Amount: ${newOrder.totalAmount?.toFixed(2) || '0.00'}</Typography>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSubmitOrder} 
-            variant="contained"
-            disabled={!newOrder.supplierId || orderItems.length === 0}
-          >
+          <Button onClick={handleSubmitOrder} variant="contained" disabled={!newOrder.supplierId || orderItems.length === 0}>
             {editingOrder ? 'Update Order' : 'Create Order'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
-        >
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
-  );
+  )
 }

@@ -1,33 +1,34 @@
 import { createTheme, Theme } from '@mui/material/styles';
 
-// NomNom Brand Color Palette
+// NomNom Brand Color Palette - Clean White Design with Dominant Aquamarine
 export const nomNomColors = {
-  primary: '#7fffd4',      // Aquamarine - Primary brand color
-  secondary: '#6dded0',    // Medium turquoise - Secondary actions
-  background: '#fcf3ee',   // Warm cream - Background
-  accent: '#ffd4d4',       // Light pink - Accents and highlights
+  primary: '#7fffd4',      // Aquamarine - Dominant brand color
+  secondary: '#5a9fd4',    // Blue from logo - Secondary actions
+  background: '#ffffff',   // Pure white - Clean background
+  accent: '#e8f9f5',       // Very light aquamarine - Subtle accents
   white: '#ffffff',        // Pure white - Cards and surfaces
   
   // Extended palette for UI elements
   primaryLight: '#b3ffe0',
-  primaryDark: '#4dccaa',
-  secondaryLight: '#9de6dc',
-  secondaryDark: '#5bb5a8',
+  primaryDark: '#3da58a',  // Darker for better contrast
+  primaryVibrant: '#7fffd4', // The main brand color for prominent elements
+  secondaryLight: '#8bb4e0',
+  secondaryDark: '#3d6699', // Darker for better contrast
   
   // Semantic colors
-  success: '#6dded0',
-  warning: '#ffd4d4',
-  error: '#ff9999',
+  success: '#7fffd4',      // Use primary for success
+  warning: '#ffb366',
+  error: '#ff6b6b',
   info: '#7fffd4',
   
   // Text colors
-  textPrimary: '#2d3748',
-  textSecondary: '#4a5568',
-  textLight: '#718096',
+  textPrimary: '#1a1a1a',
+  textSecondary: '#666666',
+  textLight: '#999999',
   
   // Accessible versions for text
-  primaryText: '#2d8a5a',     // Darker version of primary for text
-  secondaryText: '#2d6e5e',   // Darker version of secondary for text
+  primaryText: '#1f5c3d',     // Much darker for better contrast
+  secondaryText: '#2a4a6f',   // Much darker for better contrast
 } as const;
 
 // Custom NomNom Material-UI Theme
@@ -47,7 +48,7 @@ export const nomNomTheme: Theme = createTheme({
       contrastText: '#ffffff',         // White text on secondary backgrounds
     },
     background: {
-      default: nomNomColors.background,
+      default: nomNomColors.white,
       paper: nomNomColors.white,
     },
     text: {
@@ -60,9 +61,9 @@ export const nomNomTheme: Theme = createTheme({
       dark: '#4db3a4',
     },
     warning: {
-      main: nomNomColors.accent,
-      light: '#ffe6e6',
-      dark: '#ffb3b3',
+      main: nomNomColors.warning,
+      light: '#ffe0cc',
+      dark: '#ff9933',
     },
     error: {
       main: nomNomColors.error,
@@ -76,60 +77,63 @@ export const nomNomTheme: Theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Quicksand", "Fredoka", "Inter", "Roboto", sans-serif',
     h1: {
-      fontSize: '2.5rem',
+      fontSize: '3rem',
+      fontWeight: 800,
+      color: nomNomColors.textPrimary,
+      letterSpacing: '-0.03em',
+      fontFamily: '"Fredoka", "Quicksand", sans-serif',
+    },
+    h2: {
+      fontSize: '2.25rem',
       fontWeight: 700,
       color: nomNomColors.textPrimary,
       letterSpacing: '-0.02em',
+      fontFamily: '"Fredoka", "Quicksand", sans-serif',
     },
-    h2: {
-      fontSize: '2rem',
+    h3: {
+      fontSize: '1.875rem',
       fontWeight: 600,
       color: nomNomColors.textPrimary,
       letterSpacing: '-0.01em',
     },
-    h3: {
-      fontSize: '1.75rem',
-      fontWeight: 600,
-      color: nomNomColors.textPrimary,
-    },
     h4: {
       fontSize: '1.5rem',
-      fontWeight: 500,
+      fontWeight: 600,
       color: nomNomColors.textPrimary,
     },
     h5: {
       fontSize: '1.25rem',
-      fontWeight: 500,
+      fontWeight: 600,
       color: nomNomColors.textPrimary,
     },
     h6: {
       fontSize: '1.125rem',
-      fontWeight: 500,
+      fontWeight: 600,
       color: nomNomColors.textPrimary,
     },
     body1: {
       fontSize: '1rem',
-      fontWeight: 400,
-      lineHeight: 1.6,
+      fontWeight: 500,
+      lineHeight: 1.7,
       color: nomNomColors.textPrimary,
     },
     body2: {
-      fontSize: '0.875rem',
+      fontSize: '0.9rem',
       fontWeight: 400,
-      lineHeight: 1.5,
+      lineHeight: 1.6,
       color: nomNomColors.textSecondary,
     },
     button: {
-      fontSize: '0.875rem',
-      fontWeight: 500,
+      fontSize: '0.9rem',
+      fontWeight: 600,
       textTransform: 'none',
-      letterSpacing: '0.01em',
+      letterSpacing: '0.02em',
     },
   },
   shape: {
-    borderRadius: 12, // Rounded corners matching the friendly logo style
+    borderRadius: 20, // Super rounded corners for playful feel
   },
   spacing: 8,
   components: {
@@ -137,12 +141,8 @@ export const nomNomTheme: Theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: nomNomColors.background,
-          backgroundImage: `
-            radial-gradient(circle at 20% 50%, ${nomNomColors.primaryLight}15 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, ${nomNomColors.accent}15 0%, transparent 50%),
-            radial-gradient(circle at 40% 80%, ${nomNomColors.secondaryLight}15 0%, transparent 50%)
-          `,
+          backgroundColor: nomNomColors.white,
+          // Clean white background without gradients
         },
       },
     },
@@ -151,8 +151,8 @@ export const nomNomTheme: Theme = createTheme({
         root: {
           backgroundColor: nomNomColors.white,
           color: nomNomColors.textPrimary,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          borderBottom: `1px solid ${nomNomColors.primaryLight}40`,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
+          borderBottom: `3px solid ${nomNomColors.primary}`,
         },
       },
     },
@@ -160,13 +160,8 @@ export const nomNomTheme: Theme = createTheme({
       styleOverrides: {
         paper: {
           backgroundColor: nomNomColors.white,
-          borderRight: `1px solid ${nomNomColors.primaryLight}60`,
-          backgroundImage: `
-            linear-gradient(180deg, 
-              ${nomNomColors.white} 0%, 
-              ${nomNomColors.background}30 100%
-            )
-          `,
+          borderRight: `1px solid rgba(0, 0, 0, 0.12)`,
+          boxShadow: '2px 0 8px rgba(0, 0, 0, 0.05)',
         },
       },
     },
@@ -174,13 +169,18 @@ export const nomNomTheme: Theme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: nomNomColors.white,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-          border: `1px solid ${nomNomColors.primaryLight}40`,
-          borderRadius: 16,
-          transition: 'all 0.3s ease-in-out',
+          boxShadow: '0 8px 32px rgba(127, 255, 212, 0.2)',
+          border: `3px solid ${nomNomColors.primary}30`,
+          borderRadius: 24,
+          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          overflow: 'visible',
           '&:hover': {
-            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-            transform: 'translateY(-2px)',
+            boxShadow: '0 12px 48px rgba(127, 255, 212, 0.35)',
+            borderColor: nomNomColors.primary,
+            transform: 'translateY(-4px) scale(1.02)',
+          },
+          '&:active': {
+            transform: 'translateY(-2px) scale(1.01)',
           },
         },
       },
@@ -188,33 +188,58 @@ export const nomNomTheme: Theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
-          padding: '10px 24px',
-          fontSize: '0.875rem',
-          fontWeight: 500,
+          borderRadius: 16,
+          padding: '12px 28px',
+          fontSize: '0.9rem',
+          fontWeight: 600,
           textTransform: 'none',
-          boxShadow: 'none',
-          transition: 'all 0.3s ease-in-out',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '0',
+            height: '0',
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.5)',
+            transform: 'translate(-50%, -50%)',
+            transition: 'width 0.4s, height 0.4s',
+          },
           '&:hover': {
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            transform: 'translateY(-1px)',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            transform: 'translateY(-2px) scale(1.05)',
+          },
+          '&:active': {
+            transform: 'translateY(0) scale(1.02)',
+            '&::before': {
+              width: '300px',
+              height: '300px',
+            },
           },
         },
         contained: {
-          background: `linear-gradient(135deg, ${nomNomColors.primaryDark} 0%, ${nomNomColors.secondaryDark} 100%)`,
-          color: '#ffffff',
+          background: nomNomColors.primary,
+          color: '#1a1a1a',
           fontWeight: 600,
+          boxShadow: `0 4px 16px rgba(127, 255, 212, 0.3)`,
           '&:hover': {
-            background: `linear-gradient(135deg, #3da58a 0%, #4a9b8e 100%)`,
+            background: nomNomColors.primaryDark,
+            boxShadow: `0 6px 24px rgba(127, 255, 212, 0.4)`,
           },
         },
         outlined: {
           borderColor: nomNomColors.primaryDark,
-          color: nomNomColors.primaryText,
+          borderWidth: '2px',
+          color: nomNomColors.primaryDark,
           '&:hover': {
-            backgroundColor: `${nomNomColors.primary}20`,
-            borderColor: '#3da58a',
-            color: '#3da58a',
+            backgroundColor: `${nomNomColors.primary}15`,
+            borderColor: nomNomColors.primaryDark,
+            borderWidth: '2px',
+            color: nomNomColors.primaryDark,
           },
         },
       },
@@ -222,8 +247,14 @@ export const nomNomTheme: Theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          fontWeight: 500,
+          borderRadius: 12,
+          fontWeight: 600,
+          fontSize: '0.85rem',
+          padding: '6px 16px',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'scale(1.05)',
+          },
         },
         colorPrimary: {
           backgroundColor: `${nomNomColors.primary}20`,
@@ -239,17 +270,30 @@ export const nomNomTheme: Theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 10,
+            borderRadius: 12,
             backgroundColor: nomNomColors.white,
+            transition: 'all 0.3s ease-in-out',
             '& fieldset': {
-              borderColor: `${nomNomColors.primaryDark}60`,
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+              borderWidth: '1px',
+              transition: 'all 0.3s ease-in-out',
             },
             '&:hover fieldset': {
               borderColor: nomNomColors.primaryDark,
+              boxShadow: '0 2px 8px rgba(127, 255, 212, 0.15)',
             },
-            '&.Mui-focused fieldset': {
-              borderColor: nomNomColors.primaryDark,
-              borderWidth: 2,
+            '&.Mui-focused': {
+              '& fieldset': {
+                borderColor: nomNomColors.primary,
+                borderWidth: '1px',
+                boxShadow: '0 2px 8px rgba(127, 255, 212, 0.15)',
+              },
+            },
+            '&.Mui-error': {
+              '& fieldset': {
+                borderColor: nomNomColors.error,
+                borderWidth: '1px',
+              },
             },
           },
         },
@@ -258,17 +302,87 @@ export const nomNomTheme: Theme = createTheme({
     MuiSelect: {
       styleOverrides: {
         outlined: {
-          borderRadius: 10,
+          borderRadius: 12,
           backgroundColor: nomNomColors.white,
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'rgba(0, 0, 0, 0.2)',
+            borderWidth: '1px',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: nomNomColors.primaryDark,
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: nomNomColors.primary,
+            borderWidth: '1px',
+          },
         },
       },
     },
     MuiAutocomplete: {
       styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+            backgroundColor: nomNomColors.white,
+            '& fieldset': {
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+              borderWidth: '1px',
+            },
+            '&:hover fieldset': {
+              borderColor: nomNomColors.primaryDark,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: nomNomColors.primary,
+              borderWidth: '1px',
+            },
+          },
+        },
         paper: {
           borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-          border: `1px solid ${nomNomColors.primaryLight}60`,
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+          border: `1px solid rgba(0, 0, 0, 0.1)`,
+        },
+      },
+    },
+    MuiFormControl: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+            backgroundColor: nomNomColors.white,
+            '& fieldset': {
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+              borderWidth: '1px',
+            },
+            '&:hover fieldset': {
+              borderColor: nomNomColors.primaryDark,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: nomNomColors.primary,
+              borderWidth: '1px',
+            },
+          },
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          '&.MuiOutlinedInput-root': {
+            borderRadius: 12,
+            backgroundColor: nomNomColors.white,
+            '& fieldset': {
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+              borderWidth: '1px',
+            },
+            '&:hover fieldset': {
+              borderColor: nomNomColors.primaryDark,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: nomNomColors.primary,
+              borderWidth: '1px',
+            },
+          },
         },
       },
     },
@@ -309,16 +423,30 @@ export const nomNomTheme: Theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: 16,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
-          border: `1px solid ${nomNomColors.primaryLight}60`,
+          borderRadius: 24,
+          boxShadow: '0 32px 80px rgba(127, 255, 212, 0.3)',
+          border: `3px solid ${nomNomColors.primary}50`,
+          animation: 'dialogSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          '@keyframes dialogSlideIn': {
+            '0%': {
+              opacity: 0,
+              transform: 'translateY(-20px) scale(0.95)',
+            },
+            '100%': {
+              opacity: 1,
+              transform: 'translateY(0) scale(1)',
+            },
+          },
         },
       },
     },
     MuiAlert: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: 16,
+          padding: '16px',
+          fontSize: '0.95rem',
+          fontWeight: 500,
         },
         standardInfo: {
           backgroundColor: `${nomNomColors.primary}15`,
@@ -367,11 +495,14 @@ export const nomNomTheme: Theme = createTheme({
     MuiIconButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          transition: 'all 0.2s ease-in-out',
+          borderRadius: 12,
+          transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
           '&:hover': {
-            backgroundColor: `${nomNomColors.primary}15`,
-            transform: 'scale(1.05)',
+            backgroundColor: `${nomNomColors.primary}20`,
+            transform: 'scale(1.1) rotate(5deg)',
+          },
+          '&:active': {
+            transform: 'scale(1.05) rotate(2deg)',
           },
         },
       },

@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider, Collapse } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
 import { useAuth } from '../../contexts/AuthContext'
 import NomNomLogo from '../NomNomLogo'
+import { nomNomColors } from '../../theme/nomnom-theme'
 
 const drawerWidth = 240
 
@@ -29,43 +30,44 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     path: '/'
   },
   {
-    textKey: 'operations',
-    text: t('operations') || 'Operations',
-    icon: <StoreIcon />,
+    textKey: 'products_inventory',
+    text: 'Products & Inventory',
+    icon: <ProductsIcon />,
     children: [
-      { textKey: 'orders', text: t('orders'), icon: <OrdersIcon />, path: '/orders' },
-      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' }
-      // { textKey: 'customers', text: t('customers') || 'Customers', icon: <CustomerIcon />, path: '/customers' },
+      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
+      { textKey: 'ingredients', text: t('ingredients'), icon: <InventoryIcon />, path: '/ingredients' },
+      { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' }
     ]
   },
   {
-    textKey: 'inventory_management',
-    text: t('inventory_management') || 'Inventory',
-    icon: <InventoryIcon />,
+    textKey: 'supplies',
+    text: 'Supplies',
+    icon: <SuppliesIcon />,
     children: [
-      { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
-      { textKey: 'ingredients', text: t('ingredients'), icon: <MenuManagementIcon />, path: '/ingredients' },
       { textKey: 'suppliers', text: t('suppliers'), icon: <SupplierIcon />, path: '/suppliers' },
       { textKey: 'supplier_orders', text: t('supplier_orders'), icon: <SupplierOrdersIcon />, path: '/supplier-orders' }
     ]
   },
   {
-    textKey: 'finance',
-    text: t('finance') || 'Finance',
-    icon: <WalletIcon />,
+    textKey: 'finance_insights',
+    text: 'Finance & Insights',
+    icon: <InsightsIcon />,
     children: [
       { textKey: 'financial', text: t('financial'), icon: <FinanceIcon />, path: '/finances' },
       { textKey: 'analytics', text: t('analytics'), icon: <AnalyticsIcon />, path: '/analytics' }
     ]
   },
   {
-    textKey: 'workforce',
-    text: t('workforce') || 'Workforce',
+    textKey: 'employees',
+    text: t('employees'),
     icon: <EmployeeIcon />,
-    children: [
-      { textKey: 'employees', text: t('employees'), icon: <EmployeeIcon />, path: '/employees' },
-      { textKey: 'logistics', text: t('logistics') || 'Logistics', icon: <LogisticsIcon />, path: '/logistics' }
-    ]
+    path: '/employees'
+  },
+  {
+    textKey: 'orders',
+    text: t('orders'),
+    icon: <OrdersIcon />,
+    path: '/orders'
   }
 ]
 
@@ -181,19 +183,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
               pr: 2,
               borderRadius: 1,
               mx: 1,
-              my: 0.5,
-              minHeight: 48,
-              backgroundColor: level > 0 ? 'transparent' : undefined,
+              my: 0.25,
+              minHeight: 44,
               '&:hover': {
-                backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.08)' : 'rgba(127, 255, 212, 0.12)',
-                transform: 'translateX(4px)',
-                transition: 'all 0.2s ease-in-out'
+                backgroundColor: 'rgba(127, 255, 212, 0.1)',
+                transform: 'translateX(2px)',
+                transition: 'all 0.2s ease-out'
               },
               '&.Mui-selected': {
-                backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.15)' : 'rgba(127, 255, 212, 0.20)',
-                borderLeft: level > 0 ? '3px solid #4dccaa' : 'none',
+                backgroundColor: '#7fffd4',
+                color: '#1a1a1a',
+                fontWeight: 600,
                 '&:hover': {
-                  backgroundColor: level > 0 ? 'rgba(127, 255, 212, 0.20)' : 'rgba(127, 255, 212, 0.25)'
+                  backgroundColor: '#6ee6bb'
+                },
+                '& .MuiListItemIcon-root': {
+                  color: '#1a1a1a'
                 }
               }
             }}
@@ -201,8 +206,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <ListItemIcon
               sx={{
                 minWidth: 40,
-                color: level > 0 ? 'text.secondary' : 'text.primary',
-                fontSize: level > 0 ? '1.2rem' : '1.5rem'
+                color: isSelected ? 'inherit' : level > 0 ? 'text.secondary' : 'text.primary',
+                fontSize: level > 0 ? '1.2rem' : '1.3rem'
               }}
             >
               {item.icon}
@@ -211,11 +216,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
               primary={item.text}
               primaryTypographyProps={{
                 variant: level > 0 ? 'body2' : 'body1',
-                fontWeight: level > 0 ? 400 : 500,
-                color: level > 0 ? 'text.secondary' : 'text.primary'
+                fontWeight: isSelected ? 600 : level > 0 ? 400 : 500,
+                color: 'inherit'
               }}
             />
-            {hasChildren && (isExpanded ? <ExpandLess /> : <ExpandMore />)}
+            {hasChildren && <Box sx={{ color: isSelected ? 'inherit' : 'text.secondary' }}>{isExpanded ? <ExpandLess /> : <ExpandMore />}</Box>}
           </ListItemButton>
         </ListItem>
 
@@ -225,11 +230,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               component="div"
               disablePadding
               sx={{
-                backgroundColor: 'rgba(252, 243, 238, 0.5)',
+                backgroundColor: 'rgba(0, 0, 0, 0.02)',
                 borderRadius: 1,
                 mx: 1,
-                my: 0.5,
-                overflow: 'hidden'
+                my: 0.5
               }}
             >
               {item.children?.map(child => renderNavigationItem(child, level + 1))}
@@ -242,7 +246,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const drawer = (
     <div>
-      <Toolbar>
+      <Toolbar
+        sx={{
+          py: 2,
+          px: 2,
+          display: 'flex',
+          justifyContent: 'center',
+          borderBottom: '1px solid rgba(0,0,0,0.1)'
+        }}
+      >
         <NomNomLogo size="medium" showText={true} />
       </Toolbar>
       <Divider />
@@ -283,7 +295,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
             sx={{
               mr: isRtl ? 0 : 2,
               ml: isRtl ? 2 : 0,
-              display: { md: 'none' }
+              display: { md: 'none' },
+              transition: 'all 0.3s ease-out',
+              '&:hover': {
+                transform: 'rotate(90deg) scale(1.1)',
+                backgroundColor: 'rgba(127, 255, 212, 0.2)'
+              },
+              '&:active': {
+                transform: 'rotate(90deg) scale(0.95)'
+              }
             }}
           >
             <MenuIcon />
@@ -295,11 +315,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               component="div"
               sx={{
                 fontWeight: 600,
-                color: 'text.primary',
-                background: 'linear-gradient(135deg, #4dccaa 0%, #5bb5a8 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
+                color: '#1a1a1a'
               }}
             >
               {getCurrentPageTitle()}
@@ -308,8 +324,41 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <LanguageSwitcher />
           {user && (
             <>
-              <IconButton size="large" aria-label="account of current user" aria-controls="user-menu" aria-haspopup="true" onClick={handleUserMenuOpen} color="inherit" sx={{ ml: 1 }}>
-                <Avatar sx={{ width: 32, height: 32 }}>{user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}</Avatar>
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="user-menu"
+                aria-haspopup="true"
+                onClick={handleUserMenuOpen}
+                color="inherit"
+                sx={{
+                  ml: 1,
+                  transition: 'all 0.3s ease-out',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    '& .MuiAvatar-root': {
+                      boxShadow: '0 4px 12px rgba(127, 255, 212, 0.4)'
+                    }
+                  }
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    backgroundColor: '#7fffd4',
+                    color: '#1a1a1a',
+                    fontWeight: 600,
+                    border: `2px solid #7fffd4`,
+                    transition: 'all 0.3s ease-out',
+                    '&:hover': {
+                      backgroundColor: '#6ee6bb',
+                      borderColor: '#6ee6bb'
+                    }
+                  }}
+                >
+                  {user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}
+                </Avatar>
               </IconButton>
               <Menu
                 id="user-menu"
