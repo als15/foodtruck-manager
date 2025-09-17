@@ -5,6 +5,8 @@ import { Expense, ExpenseCategory, FinancialGoal, FinancialProjection, CashFlow,
 import { expensesService, expenseCategoriesService, financialGoalsService, financialProjectionsService, menuItemsService, employeesService, shiftsService, subscriptions } from '../services/supabaseService'
 import LaborCostManager from '../components/LaborCostManager'
 import { Employee, Shift } from '../types'
+import { useTheme } from '@mui/material/styles'
+import { useTranslation } from 'react-i18next'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -22,6 +24,10 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function FinancialManagement() {
+  const theme = useTheme()
+  const { t } = useTranslation()
+  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : 'ltr'
+  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
   const [currentTab, setCurrentTab] = useState(0)
   const [openExpenseDialog, setOpenExpenseDialog] = useState(false)
   const [openGoalDialog, setOpenGoalDialog] = useState(false)
@@ -115,7 +121,7 @@ export default function FinancialManagement() {
     try {
       await Promise.all([loadExpenses(), loadExpenseCategories(), loadGoals(), loadProjections(), loadMenuItems(), loadEmployees(), loadShifts()])
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to load financial data', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_load_financial_data'), severity: 'error' })
     } finally {
       setLoading(false)
     }
@@ -356,10 +362,10 @@ export default function FinancialManagement() {
   const handleDeleteExpense = async (id: string) => {
     try {
       await expensesService.delete(id)
-      setSnackbar({ open: true, message: 'Expense deleted successfully', severity: 'success' })
+      setSnackbar({ open: true, message: t('expense_deleted_success'), severity: 'success' })
       await loadExpenses()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to delete expense', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_delete_expense'), severity: 'error' })
     }
   }
 
@@ -392,10 +398,10 @@ export default function FinancialManagement() {
 
       if (editingExpense) {
         await expensesService.update(editingExpense.id, expense)
-        setSnackbar({ open: true, message: 'Expense updated successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('expense_updated_success'), severity: 'success' })
       } else {
         await expensesService.create(expense as Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>)
-        setSnackbar({ open: true, message: 'Expense added successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('expense_added_success'), severity: 'success' })
       }
 
       setNewExpense({
@@ -413,7 +419,7 @@ export default function FinancialManagement() {
       // Reload expenses to get the latest data
       await loadExpenses()
     } catch (error) {
-      setSnackbar({ open: true, message: editingExpense ? 'Failed to update expense' : 'Failed to add expense', severity: 'error' })
+      setSnackbar({ open: true, message: editingExpense ? t('failed_to_update_expense') : t('failed_to_add_expense'), severity: 'error' })
     }
   }
 
@@ -438,12 +444,12 @@ export default function FinancialManagement() {
         isActive: true
       })
       setOpenGoalDialog(false)
-      setSnackbar({ open: true, message: 'Goal created successfully', severity: 'success' })
+      setSnackbar({ open: true, message: t('goal_created_success'), severity: 'success' })
 
       // Reload goals to get the latest data
       await loadGoals()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to create goal', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_create_goal'), severity: 'error' })
     }
   }
 
@@ -475,48 +481,34 @@ export default function FinancialManagement() {
       await financialProjectionsService.create(projection as Omit<FinancialProjection, 'id' | 'createdAt' | 'updatedAt'>)
 
       setOpenProjectionDialog(false)
-      setSnackbar({ open: true, message: 'Financial projection calculated successfully', severity: 'success' })
+      setSnackbar({ open: true, message: t('projection_created_success'), severity: 'success' })
 
       // Reload projections to get the latest data
       await loadProjections()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to create projection', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_create_projection'), severity: 'error' })
     }
   }
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Financial Management
+      <Typography variant="h4" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
+        {t('financial_management')}
       </Typography>
 
       {/* Financial Overview Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 3 }} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
         <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ExpenseIcon color="error" />
-                <Typography variant="h6" color="error">
-                  Monthly Expenses
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <ExpenseIcon color="error" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
+                <Typography variant="h6" color="error" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('monthly_expenses')}
                 </Typography>
               </Box>
-              <Typography variant="h4">${calculateMonthlyExpenses().toFixed(2)}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <GoalIcon color="primary" />
-                <Typography variant="h6" color="primary">
-                  Break-Even Orders
-                </Typography>
-              </Box>
-              <Typography variant="h4">{calculateBreakEvenPoint()}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {calculateDailyBreakEven().workingDaysPerMonth} operating days/month
+              <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                ${calculateMonthlyExpenses().toFixed(2)}
               </Typography>
             </CardContent>
           </Card>
@@ -524,10 +516,26 @@ export default function FinancialManagement() {
         <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AnalyticsIcon color="success" />
-                <Typography variant="h6" color="success">
-                  Active Goals
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <GoalIcon color="primary" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
+                <Typography variant="h6" color="primary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('break_even_orders')}
+                </Typography>
+              </Box>
+              <Typography variant="h4">{calculateBreakEvenPoint()}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {calculateDailyBreakEven().workingDaysPerMonth} {t('operating_days_per_month')}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <AnalyticsIcon color="success" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
+                <Typography variant="h6" color="success" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('active_goals')}
                 </Typography>
               </Box>
               <Typography variant="h4">{goals.filter(g => g.isActive).length}</Typography>
@@ -537,10 +545,10 @@ export default function FinancialManagement() {
         <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ChartIcon color="info" />
-                <Typography variant="h6" color="info">
-                  Projections
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <ChartIcon color="info" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
+                <Typography variant="h6" color="info" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('projections')}
                 </Typography>
               </Box>
               <Typography variant="h4">{projections.length}</Typography>
@@ -552,20 +560,22 @@ export default function FinancialManagement() {
       {/* Tabs for different sections */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
-          <Tab label="Expenses" />
-          <Tab label="Labor Costs" />
-          <Tab label="Projections" />
-          <Tab label="Goals" />
-          <Tab label="Reports" />
+          <Tab label={t('expenses')} />
+          <Tab label={t('labor_costs')} />
+          <Tab label={t('projections')} />
+          <Tab label={t('goals')} />
+          <Tab label={t('reports')} />
         </Tabs>
       </Box>
 
       {/* Expenses Tab */}
       <TabPanel value={currentTab} index={0}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">Expense Management</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+            {t('expense_management')}
+          </Typography>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenExpenseDialog(true)}>
-            Add Expense
+            {t('add_expense')}
           </Button>
         </Box>
 
@@ -573,20 +583,20 @@ export default function FinancialManagement() {
           <Grid item xs={12} md={12}>
             <Card>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Current Expenses
+                <Typography variant="h6" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('current_expenses')}
                 </Typography>
-                <TableContainer>
-                  <Table>
+                <TableContainer dir={isRtl ? 'rtl' : 'ltr'}>
+                  <Table dir={isRtl ? 'rtl' : 'ltr'}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Name & Category</TableCell>
-                        <TableCell>Amount</TableCell>
-                        <TableCell>Frequency</TableCell>
-                        <TableCell>Category</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Monthly Impact</TableCell>
-                        <TableCell>Actions</TableCell>
+                        <TableCell>{t('name_and_category')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('amount')}</TableCell>
+                        <TableCell>{t('frequency')}</TableCell>
+                        <TableCell>{t('category')}</TableCell>
+                        <TableCell>{t('type_text')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('monthly_impact')}</TableCell>
+                        <TableCell>{t('actions')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -615,15 +625,15 @@ export default function FinancialManagement() {
                           <TableRow key={expense.id}>
                             <TableCell>
                               {expense.name}
-                              {category && <Chip label={category.name} size="small" variant="outlined" sx={{ ml: 1, fontSize: '0.7rem' }} />}
+                              {category && <Chip label={category.name} size="small" variant="outlined" sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0, fontSize: '0.7rem' }} />}
                             </TableCell>
-                            <TableCell>${expense.amount.toFixed(2)}</TableCell>
-                            <TableCell>{expense.frequency}</TableCell>
+                            <TableCell align={isRtl ? 'left' : 'right'}>${expense.amount.toFixed(2)}</TableCell>
+                            <TableCell>{t(expense.frequency)}</TableCell>
                             <TableCell>{category?.name}</TableCell>
                             <TableCell>
-                              <Chip label={expense.type} size="small" color={expense.type === 'fixed' ? 'primary' : expense.type === 'variable' ? 'warning' : 'default'} />
+                              <Chip label={t(expense.type)} size="small" color={expense.type === 'fixed' ? 'primary' : expense.type === 'variable' ? 'warning' : 'default'} />
                             </TableCell>
-                            <TableCell>${monthlyImpact.toFixed(2)}</TableCell>
+                            <TableCell align={isRtl ? 'left' : 'right'}>${monthlyImpact.toFixed(2)}</TableCell>
                             <TableCell>
                               <IconButton size="small" onClick={() => handleEditExpense(expense)}>
                                 <EditIcon />
@@ -878,17 +888,17 @@ export default function FinancialManagement() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+        <DialogTitle>{editingExpense ? t('edit_expense') : t('add_new_expense')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Expense Name" value={newExpense.name} onChange={e => setNewExpense({ ...newExpense, name: e.target.value })} required />
+              <TextField fullWidth label={t('expense_name')} value={newExpense.name} onChange={e => setNewExpense({ ...newExpense, name: e.target.value })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
+                <InputLabel>{t('category')}</InputLabel>
                 <Select value={newExpense.categoryId || ''} onChange={e => setNewExpense({ ...newExpense, categoryId: e.target.value })}>
-                  <MuiMenuItem value="">No Category</MuiMenuItem>
+                  <MuiMenuItem value="">{t('no_category')}</MuiMenuItem>
                   {expenseCategories.map(category => (
                     <MuiMenuItem key={category.id} value={category.id}>
                       {category.name}
@@ -898,39 +908,39 @@ export default function FinancialManagement() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Amount" type="number" inputProps={{ step: '0.01' }} value={newExpense.amount} onChange={e => setNewExpense({ ...newExpense, amount: parseFloat(e.target.value) || 0 })} required />
+              <TextField fullWidth label={t('amount')} type="number" inputProps={{ step: '0.01' }} value={newExpense.amount} onChange={e => setNewExpense({ ...newExpense, amount: parseFloat(e.target.value) || 0 })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
+                <InputLabel>{t('type_text')}</InputLabel>
                 <Select value={newExpense.type} onChange={e => setNewExpense({ ...newExpense, type: e.target.value as any })}>
-                  <MuiMenuItem value="fixed">Fixed</MuiMenuItem>
-                  <MuiMenuItem value="variable">Variable</MuiMenuItem>
-                  <MuiMenuItem value="one_time">One-time</MuiMenuItem>
+                  <MuiMenuItem value="fixed">{t('fixed')}</MuiMenuItem>
+                  <MuiMenuItem value="variable">{t('variable')}</MuiMenuItem>
+                  <MuiMenuItem value="one_time">{t('one_time')}</MuiMenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Frequency</InputLabel>
+                <InputLabel>{t('frequency')}</InputLabel>
                 <Select value={newExpense.frequency} onChange={e => setNewExpense({ ...newExpense, frequency: e.target.value as any })}>
-                  <MuiMenuItem value="daily">Daily</MuiMenuItem>
-                  <MuiMenuItem value="weekly">Weekly</MuiMenuItem>
-                  <MuiMenuItem value="monthly">Monthly</MuiMenuItem>
-                  <MuiMenuItem value="yearly">Yearly</MuiMenuItem>
-                  <MuiMenuItem value="one_time">One-time</MuiMenuItem>
+                  <MuiMenuItem value="daily">{t('daily')}</MuiMenuItem>
+                  <MuiMenuItem value="weekly">{t('weekly')}</MuiMenuItem>
+                  <MuiMenuItem value="monthly">{t('monthly')}</MuiMenuItem>
+                  <MuiMenuItem value="yearly">{t('yearly')}</MuiMenuItem>
+                  <MuiMenuItem value="one_time">{t('one_time')}</MuiMenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Description" multiline rows={3} value={newExpense.description} onChange={e => setNewExpense({ ...newExpense, description: e.target.value })} />
+              <TextField fullWidth label={t('description')} multiline rows={3} value={newExpense.description} onChange={e => setNewExpense({ ...newExpense, description: e.target.value })} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenExpenseDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenExpenseDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveExpense} variant="contained">
-            {editingExpense ? 'Update Expense' : 'Add Expense'}
+            {editingExpense ? t('update_expense') : t('add_expense')}
           </Button>
         </DialogActions>
       </Dialog>

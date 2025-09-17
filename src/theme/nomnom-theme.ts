@@ -181,10 +181,6 @@ export const nomNomTheme: Theme = createTheme({
           '&:hover': {
             boxShadow: '0 12px 48px rgba(127, 255, 212, 0.35)',
             borderColor: nomNomColors.primary,
-            transform: 'translateY(-4px) scale(1.02)',
-          },
-          '&:active': {
-            transform: 'translateY(-2px) scale(1.01)',
           },
         },
       },

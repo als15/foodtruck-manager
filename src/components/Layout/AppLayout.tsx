@@ -34,9 +34,9 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     text: t('products_inventory'),
     icon: <ProductsIcon />,
     children: [
-      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
       { textKey: 'ingredients', text: t('ingredients'), icon: <InventoryIcon />, path: '/ingredients' },
-      { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' }
+      { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
+      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' }
     ]
   },
   {
@@ -296,19 +296,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
               mr: isRtl ? 0 : 2,
               ml: isRtl ? 2 : 0,
               display: { md: 'none' },
-              order: isRtl ? 2 : 0,
+              order: isRtl ? 2 : 0
             }}
           >
             <MenuIcon />
           </IconButton>
-          <Box sx={{ 
-            flexGrow: 1, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2,
-            order: isRtl ? 1 : 0,
-            justifyContent: isRtl ? 'flex-end' : 'flex-start',
-          }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              order: isRtl ? 1 : 0,
+              justifyContent: isRtl ? 'flex-end' : 'flex-start'
+            }}
+          >
             <Typography
               variant="h5"
               noWrap
@@ -321,95 +323,97 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {getCurrentPageTitle()}
             </Typography>
           </Box>
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            order: isRtl ? 0 : 1,
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              order: isRtl ? 0 : 1
+            }}
+          >
             <LanguageSwitcher />
             {user && (
-            <>
-              <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="user-menu"
-                aria-haspopup="true"
-                onClick={handleUserMenuOpen}
-                color="inherit"
-                sx={{
-                  marginInlineStart: 1,
-                  transition: 'all 0.3s ease-out',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                    '& .MuiAvatar-root': {
-                      boxShadow: '0 4px 12px rgba(127, 255, 212, 0.4)'
-                    }
-                  }
-                }}
-              >
-                <Avatar
+              <>
+                <IconButton
+                  size="large"
+                  aria-label="account of current user"
+                  aria-controls="user-menu"
+                  aria-haspopup="true"
+                  onClick={handleUserMenuOpen}
+                  color="inherit"
                   sx={{
-                    width: 36,
-                    height: 36,
-                    backgroundColor: '#7fffd4',
-                    color: '#1a1a1a',
-                    fontWeight: 600,
-                    border: `2px solid #7fffd4`,
+                    marginInlineStart: 1,
                     transition: 'all 0.3s ease-out',
                     '&:hover': {
-                      backgroundColor: '#6ee6bb',
-                      borderColor: '#6ee6bb'
+                      transform: 'scale(1.1)',
+                      '& .MuiAvatar-root': {
+                        boxShadow: '0 4px 12px rgba(127, 255, 212, 0.4)'
+                      }
                     }
                   }}
                 >
-                  {user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}
-                </Avatar>
-              </IconButton>
-              <Menu
-                id="user-menu"
-                anchorEl={userMenuAnchor}
-                open={Boolean(userMenuAnchor)}
-                onClose={handleUserMenuClose}
-                onClick={handleUserMenuClose}
-                PaperProps={{
-                  elevation: 0,
-                  sx: {
-                    overflow: 'visible',
-                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                    mt: 1.5,
-                    '& .MuiAvatar-root': {
-                      width: 32,
-                      height: 32,
-                      ml: isRtl ? 1 : -0.5,
-                      mr: isRtl ? -0.5 : 1
+                  <Avatar
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      backgroundColor: '#7fffd4',
+                      color: '#1a1a1a',
+                      fontWeight: 600,
+                      border: `2px solid #7fffd4`,
+                      transition: 'all 0.3s ease-out',
+                      '&:hover': {
+                        backgroundColor: '#6ee6bb',
+                        borderColor: '#6ee6bb'
+                      }
+                    }}
+                  >
+                    {user.user_metadata?.first_name?.[0] || user.email?.[0] || <AccountCircle />}
+                  </Avatar>
+                </IconButton>
+                <Menu
+                  id="user-menu"
+                  anchorEl={userMenuAnchor}
+                  open={Boolean(userMenuAnchor)}
+                  onClose={handleUserMenuClose}
+                  onClick={handleUserMenuClose}
+                  PaperProps={{
+                    elevation: 0,
+                    sx: {
+                      overflow: 'visible',
+                      filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                      mt: 1.5,
+                      '& .MuiAvatar-root': {
+                        width: 32,
+                        height: 32,
+                        ml: isRtl ? 1 : -0.5,
+                        mr: isRtl ? -0.5 : 1
+                      }
                     }
-                  }
-                }}
-                transformOrigin={{
-                  horizontal: isRtl ? 'left' : 'right',
-                  vertical: 'top'
-                }}
-                anchorOrigin={{
-                  horizontal: isRtl ? 'left' : 'right',
-                  vertical: 'bottom'
-                }}
-              >
-                <MenuItem onClick={handleUserManagement}>
-                  <ListItemIcon>
-                    <Settings fontSize="small" />
-                  </ListItemIcon>
-                  {t('user_management')}
-                </MenuItem>
-                <Divider />
-                <MenuItem onClick={handleSignOut}>
-                  <ListItemIcon>
-                    <Logout fontSize="small" />
-                  </ListItemIcon>
-                  {t('sign_out')}
-                </MenuItem>
-              </Menu>
-            </>
+                  }}
+                  transformOrigin={{
+                    horizontal: isRtl ? 'left' : 'right',
+                    vertical: 'top'
+                  }}
+                  anchorOrigin={{
+                    horizontal: isRtl ? 'left' : 'right',
+                    vertical: 'bottom'
+                  }}
+                >
+                  <MenuItem onClick={handleUserManagement}>
+                    <ListItemIcon>
+                      <Settings fontSize="small" />
+                    </ListItemIcon>
+                    {t('user_management')}
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={handleSignOut}>
+                    <ListItemIcon>
+                      <Logout fontSize="small" />
+                    </ListItemIcon>
+                    {t('sign_out')}
+                  </MenuItem>
+                </Menu>
+              </>
             )}
           </Box>
         </Toolbar>

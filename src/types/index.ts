@@ -7,6 +7,11 @@ export interface Ingredient {
   category: string;
   isAvailable: boolean;
   lastUpdated: Date;
+  // Packaging information
+  unitsPerPackage?: number; // e.g., 12 for a box of 12 bottles
+  packageType?: string; // e.g., "box", "case", "bag", "crate"
+  minimumOrderQuantity?: number; // Minimum units that can be ordered
+  orderByPackage?: boolean; // Whether this ingredient must be ordered by package
 }
 
 export interface MenuItemIngredient {

@@ -29,6 +29,10 @@ export default function Ingredients() {
     supplier: '',
     category: '',
     isAvailable: true,
+    unitsPerPackage: undefined,
+    packageType: '',
+    minimumOrderQuantity: undefined,
+    orderByPackage: false,
     lastUpdated: new Date()
   })
 
@@ -94,6 +98,10 @@ export default function Ingredients() {
         supplier: '',
         category: '',
         isAvailable: true,
+        unitsPerPackage: undefined,
+        packageType: '',
+        minimumOrderQuantity: undefined,
+        orderByPackage: false,
         lastUpdated: new Date()
       })
       setEditingIngredient(null)
@@ -180,7 +188,11 @@ export default function Ingredients() {
               unit: row.unit.trim(),
               supplier: row.supplier.trim(),
               category: row.category.trim(),
-              isAvailable: row.isAvailable?.toLowerCase() !== 'false'
+              isAvailable: row.isAvailable?.toLowerCase() !== 'false',
+              unitsPerPackage: row.unitsPerPackage ? parseInt(row.unitsPerPackage) : undefined,
+              packageType: row.packageType?.trim() || undefined,
+              minimumOrderQuantity: row.minimumOrderQuantity ? parseInt(row.minimumOrderQuantity) : undefined,
+              orderByPackage: row.orderByPackage?.toLowerCase() === 'true'
             })
           })
 
@@ -226,7 +238,11 @@ export default function Ingredients() {
       unit: ingredient.unit,
       supplier: ingredient.supplier,
       category: ingredient.category,
-      isAvailable: ingredient.isAvailable
+      isAvailable: ingredient.isAvailable,
+      unitsPerPackage: ingredient.unitsPerPackage || '',
+      packageType: ingredient.packageType || '',
+      minimumOrderQuantity: ingredient.minimumOrderQuantity || '',
+      orderByPackage: ingredient.orderByPackage || false
     }))
 
     const csv = Papa.unparse(csvData)
@@ -247,7 +263,11 @@ export default function Ingredients() {
         unit: 'lbs',
         supplier: 'Local Butcher',
         category: 'Meat',
-        isAvailable: true
+        isAvailable: true,
+        unitsPerPackage: 5,
+        packageType: 'box',
+        minimumOrderQuantity: 5,
+        orderByPackage: true
       },
       {
         name: 'Tomatoes',
@@ -255,7 +275,11 @@ export default function Ingredients() {
         unit: 'lbs',
         supplier: 'Fresh Farms',
         category: 'Vegetables',
-        isAvailable: true
+        isAvailable: true,
+        unitsPerPackage: 10,
+        packageType: 'crate',
+        minimumOrderQuantity: 1,
+        orderByPackage: false
       }
     ]
 
@@ -443,6 +467,21 @@ export default function Ingredients() {
             </Grid>
             <Grid item xs={12}>
               <Autocomplete freeSolo options={categoriesForAutocomplete} value={newIngredient.category} onChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })} onInputChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label={t('category')} placeholder="e.g., Meat, Vegetables, Dairy" />} />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('packaging_information')}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label={t('units_per_package')} type="number" inputProps={{ step: '1' }} value={newIngredient.unitsPerPackage || ''} onChange={e => setNewIngredient({ ...newIngredient, unitsPerPackage: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="e.g., 12" />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label={t('package_type')} value={newIngredient.packageType || ''} onChange={e => setNewIngredient({ ...newIngredient, packageType: e.target.value })} placeholder="e.g., box, case, bag" />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label={t('minimum_order_quantity')} type="number" inputProps={{ step: '1' }} value={newIngredient.minimumOrderQuantity || ''} onChange={e => setNewIngredient({ ...newIngredient, minimumOrderQuantity: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="e.g., 5" />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel control={<Switch checked={newIngredient.orderByPackage || false} onChange={e => setNewIngredient({ ...newIngredient, orderByPackage: e.target.checked })} />} label={t('order_by_package')} />
             </Grid>
             <Grid item xs={12}>
               <FormControlLabel control={<Switch checked={newIngredient.isAvailable} onChange={e => setNewIngredient({ ...newIngredient, isAvailable: e.target.checked })} />} label={t('available')} />

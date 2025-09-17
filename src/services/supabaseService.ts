@@ -45,7 +45,11 @@ export const ingredientsService = {
       supplier: item.supplier,
       category: item.category,
       isAvailable: item.is_available,
-      lastUpdated: new Date(item.last_updated)
+      lastUpdated: new Date(item.last_updated),
+      unitsPerPackage: item.units_per_package,
+      packageType: item.package_type,
+      minimumOrderQuantity: item.minimum_order_quantity,
+      orderByPackage: item.order_by_package
     }));
   },
 
@@ -58,7 +62,11 @@ export const ingredientsService = {
         unit: ingredient.unit,
         supplier: ingredient.supplier,
         category: ingredient.category,
-        is_available: ingredient.isAvailable
+        is_available: ingredient.isAvailable,
+        units_per_package: ingredient.unitsPerPackage,
+        package_type: ingredient.packageType,
+        minimum_order_quantity: ingredient.minimumOrderQuantity,
+        order_by_package: ingredient.orderByPackage
       })
       .select()
       .single();
@@ -73,7 +81,11 @@ export const ingredientsService = {
       supplier: data.supplier,
       category: data.category,
       isAvailable: data.is_available,
-      lastUpdated: new Date(data.last_updated)
+      lastUpdated: new Date(data.last_updated),
+      unitsPerPackage: data.units_per_package,
+      packageType: data.package_type,
+      minimumOrderQuantity: data.minimum_order_quantity,
+      orderByPackage: data.order_by_package
     };
   },
 
@@ -85,6 +97,10 @@ export const ingredientsService = {
     if (ingredient.supplier !== undefined) updateData.supplier = ingredient.supplier;
     if (ingredient.category !== undefined) updateData.category = ingredient.category;
     if (ingredient.isAvailable !== undefined) updateData.is_available = ingredient.isAvailable;
+    if (ingredient.unitsPerPackage !== undefined) updateData.units_per_package = ingredient.unitsPerPackage;
+    if (ingredient.packageType !== undefined) updateData.package_type = ingredient.packageType;
+    if (ingredient.minimumOrderQuantity !== undefined) updateData.minimum_order_quantity = ingredient.minimumOrderQuantity;
+    if (ingredient.orderByPackage !== undefined) updateData.order_by_package = ingredient.orderByPackage;
     
     const { data, error } = await supabase
       .from('ingredients')
@@ -103,7 +119,11 @@ export const ingredientsService = {
       supplier: data.supplier,
       category: data.category,
       isAvailable: data.is_available,
-      lastUpdated: new Date(data.last_updated)
+      lastUpdated: new Date(data.last_updated),
+      unitsPerPackage: data.units_per_package,
+      packageType: data.package_type,
+      minimumOrderQuantity: data.minimum_order_quantity,
+      orderByPackage: data.order_by_package
     };
   },
 
@@ -903,6 +923,7 @@ export const supplierOrdersService = {
     const updateData: any = {};
     if (supplierOrder.status !== undefined) updateData.status = supplierOrder.status;
     if (supplierOrder.priority !== undefined) updateData.priority = supplierOrder.priority;
+    if (supplierOrder.orderDate !== undefined) updateData.order_date = supplierOrder.orderDate.toISOString();
     if (supplierOrder.expectedDeliveryDate !== undefined) updateData.expected_delivery_date = supplierOrder.expectedDeliveryDate.toISOString();
     if (supplierOrder.actualDeliveryDate !== undefined) updateData.actual_delivery_date = supplierOrder.actualDeliveryDate.toISOString();
     if (supplierOrder.submittedDate !== undefined) updateData.submitted_date = supplierOrder.submittedDate.toISOString();
