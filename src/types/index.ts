@@ -1,5 +1,44 @@
+// Business Management Interfaces
+export interface Business {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  settings?: Record<string, any>;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxId?: string;
+  currency?: string;
+  timezone?: string;
+  subscriptionTier?: 'free' | 'starter' | 'professional' | 'enterprise';
+  subscriptionStatus?: 'active' | 'inactive' | 'trial' | 'suspended';
+}
+
+export interface UserBusiness {
+  id: string;
+  userId: string;
+  businessId: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  joinedAt: Date;
+  permissions?: Record<string, boolean>;
+}
+
+export interface BusinessInvitation {
+  id: string;
+  businessId: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  invitedBy: string;
+  token: string;
+  expiresAt: Date;
+  acceptedAt?: Date;
+  createdAt: Date;
+}
+
 export interface Ingredient {
   id: string;
+  businessId: string;
   name: string;
   costPerUnit: number;
   unit: string; // e.g., "lbs", "oz", "cups", "pieces"
@@ -23,6 +62,7 @@ export interface MenuItemIngredient {
 
 export interface MenuItem {
   id: string;
+  businessId: string;
   name: string;
   description: string;
   price: number;
@@ -37,6 +77,7 @@ export interface MenuItem {
 
 export interface MenuCategory {
   id: string;
+  businessId: string;
   name: string;
   description: string;
   displayOrder: number;
@@ -44,6 +85,7 @@ export interface MenuCategory {
 
 export interface Employee {
   id: string;
+  businessId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -56,6 +98,7 @@ export interface Employee {
 
 export interface Shift {
   id: string;
+  businessId: string;
   employeeId: string;
   date: Date;
   startTime: string;
@@ -90,6 +133,7 @@ export interface Route {
 
 export interface Transaction {
   id: string;
+  businessId: string;
   date: Date;
   type: 'revenue' | 'expense';
   category: string;
@@ -101,6 +145,7 @@ export interface Transaction {
 
 export interface InventoryItem {
   id: string;
+  businessId: string;
   name: string;
   category: string;
   currentStock: number;
@@ -113,6 +158,7 @@ export interface InventoryItem {
 
 export interface Customer {
   id: string;
+  businessId: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -126,6 +172,7 @@ export interface Customer {
 
 export interface Supplier {
   id: string;
+  businessId: string;
   name: string;
   contactPerson: string;
   email: string;
@@ -160,6 +207,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  businessId: string;
   orderNumber?: string;
   customerId?: string;
   customer?: Customer;
@@ -185,6 +233,7 @@ export interface Order {
 // Financial Management Interfaces
 export interface FinancialGoal {
   id: string;
+  businessId: string;
   name: string;
   type: 'monthly_revenue' | 'monthly_profit' | 'break_even' | 'custom';
   targetAmount: number;
@@ -197,6 +246,7 @@ export interface FinancialGoal {
 
 export interface ExpenseCategory {
   id: string;
+  businessId: string;
   name: string;
   type: 'fixed' | 'variable' | 'one_time';
   description?: string;
@@ -205,6 +255,7 @@ export interface ExpenseCategory {
 
 export interface Expense {
   id: string;
+  businessId: string;
   categoryId?: string | null;
   name: string;
   amount: number;
@@ -220,6 +271,7 @@ export interface Expense {
 
 export interface FinancialProjection {
   id: string;
+  businessId: string;
   name: string;
   projectionPeriod: 'monthly' | 'quarterly' | 'yearly';
   projectedRevenue: number;
@@ -313,6 +365,7 @@ export interface SupplierOrderItem {
 
 export interface SupplierOrder {
   id: string;
+  businessId: string;
   orderNumber: string;
   supplierId: string;
   supplier?: Supplier;

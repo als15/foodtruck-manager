@@ -26,19 +26,32 @@ const handleError = (error: any, operation: string) => {
   throw new Error(`Failed to ${operation}: ${error.message}`);
 };
 
+// Helper function to get current business ID
+const getCurrentBusinessId = (): string => {
+  const businessId = localStorage.getItem('currentBusinessId');
+  if (!businessId) {
+    throw new Error('No business selected. Please select a business to continue.');
+  }
+  return businessId;
+};
+
 // ==================== INGREDIENTS ====================
 
 export const ingredientsService = {
   async getAll(): Promise<Ingredient[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('ingredients')
       .select('*')
-      .order('category', { ascending: true });
+      .eq('business_id', businessId)
+      .order('category', { ascending: true })
+      .order('name', { ascending: true });
     
     if (error) handleError(error, 'fetch ingredients');
     
     return (data || []).map(item => ({
       id: item.id,
+      businessId: item.business_id,
       name: item.name,
       costPerUnit: item.cost_per_unit,
       unit: item.unit,
@@ -53,10 +66,40 @@ export const ingredientsService = {
     }));
   },
 
-  async create(ingredient: Omit<Ingredient, 'id' | 'lastUpdated'>): Promise<Ingredient> {
+  async getById(id: string): Promise<Ingredient> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('ingredients')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch ingredient');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      costPerUnit: data.cost_per_unit,
+      unit: data.unit,
+      supplier: data.supplier,
+      category: data.category,
+      isAvailable: data.is_available,
+      lastUpdated: new Date(data.last_updated),
+      unitsPerPackage: data.units_per_package,
+      packageType: data.package_type,
+      minimumOrderQuantity: data.minimum_order_quantity,
+      orderByPackage: data.order_by_package
+    };
+  },
+
+  async create(ingredient: Omit<Ingredient, 'id' | 'lastUpdated' | 'businessId'>): Promise<Ingredient> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('ingredients')
       .insert({
+        business_id: businessId,
         name: ingredient.name,
         cost_per_unit: ingredient.costPerUnit,
         unit: ingredient.unit,
@@ -75,6 +118,7 @@ export const ingredientsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       costPerUnit: data.cost_per_unit,
       unit: data.unit,
@@ -90,6 +134,7 @@ export const ingredientsService = {
   },
 
   async update(id: string, ingredient: Partial<Ingredient>): Promise<Ingredient> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (ingredient.name !== undefined) updateData.name = ingredient.name;
     if (ingredient.costPerUnit !== undefined) updateData.cost_per_unit = ingredient.costPerUnit;
@@ -106,6 +151,7 @@ export const ingredientsService = {
       .from('ingredients')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -113,6 +159,7 @@ export const ingredientsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       costPerUnit: data.cost_per_unit,
       unit: data.unit,
@@ -128,10 +175,12 @@ export const ingredientsService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('ingredients')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete ingredient');
   }
@@ -141,6 +190,7 @@ export const ingredientsService = {
 
 export const menuItemsService = {
   async getAll(): Promise<MenuItem[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('menu_items')
       .select(`
@@ -158,12 +208,14 @@ export const menuItemsService = {
           )
         )
       `)
+      .eq('business_id', businessId)
       .order('category', { ascending: true });
     
     if (error) handleError(error, 'fetch menu items');
     
     return (data || []).map(item => ({
       id: item.id,
+      businessId: item.business_id,
       name: item.name,
       description: item.description,
       price: item.price,
@@ -182,11 +234,59 @@ export const menuItemsService = {
     }));
   },
 
-  async create(menuItem: Omit<MenuItem, 'id' | 'totalIngredientCost' | 'profitMargin'>): Promise<MenuItem> {
+  async getById(id: string): Promise<MenuItem> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select(`
+        *,
+        menu_item_ingredients (
+          id,
+          ingredient_id,
+          quantity,
+          unit,
+          cost,
+          ingredients (
+            name,
+            cost_per_unit,
+            unit
+          )
+        )
+      `)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch menu item');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      category: data.category,
+      ingredients: data.menu_item_ingredients.map((mii: any) => ({
+        ingredientId: mii.ingredient_id,
+        quantity: mii.quantity,
+        unit: mii.unit,
+        cost: mii.cost
+      })),
+      allergens: data.allergens || [],
+      isAvailable: data.is_available,
+      prepTime: data.prep_time,
+      totalIngredientCost: data.total_ingredient_cost,
+      profitMargin: data.profit_margin
+    };
+  },
+
+  async create(menuItem: Omit<MenuItem, 'id' | 'totalIngredientCost' | 'profitMargin' | 'businessId'>): Promise<MenuItem> {
+    const businessId = getCurrentBusinessId();
     // Start a transaction
     const { data: newMenuItem, error: menuItemError } = await supabase
       .from('menu_items')
       .insert({
+        business_id: businessId,
         name: menuItem.name,
         description: menuItem.description,
         price: menuItem.price,
@@ -236,6 +336,7 @@ export const menuItemsService = {
     
     return {
       id: completeMenuItem.id,
+      businessId: completeMenuItem.business_id,
       name: completeMenuItem.name,
       description: completeMenuItem.description,
       price: completeMenuItem.price,
@@ -255,6 +356,7 @@ export const menuItemsService = {
   },
 
   async update(id: string, menuItem: Partial<MenuItem>): Promise<MenuItem> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (menuItem.name !== undefined) updateData.name = menuItem.name;
     if (menuItem.description !== undefined) updateData.description = menuItem.description;
@@ -267,7 +369,8 @@ export const menuItemsService = {
     const { error: updateError } = await supabase
       .from('menu_items')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (updateError) handleError(updateError, 'update menu item');
     
@@ -318,6 +421,7 @@ export const menuItemsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       description: data.description,
       price: data.price,
@@ -337,29 +441,62 @@ export const menuItemsService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('menu_items')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete menu item');
   }
 };
 
+// ==================== MENU ITEM INGREDIENTS ====================
+
+export const menuItemIngredientsService = {
+  async getAll(): Promise<MenuItemIngredient[]> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('menu_item_ingredients')
+      .select(`
+        *,
+        menu_items!inner (
+          business_id
+        )
+      `)
+      .eq('menu_items.business_id', businessId);
+    
+    if (error) handleError(error, 'fetch menu item ingredients');
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      businessId: item.menu_items.business_id,
+      menuItemId: item.menu_item_id,
+      ingredientId: item.ingredient_id,
+      quantity: item.quantity,
+      unit: item.unit,
+      cost: item.cost
+    }));
+  }
+};
 
 // ==================== INVENTORY ITEMS ====================
 
 export const inventoryService = {
   async getAll(): Promise<InventoryItem[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('inventory_items')
       .select('*')
+      .eq('business_id', businessId)
       .order('category', { ascending: true });
     
     if (error) handleError(error, 'fetch inventory items');
     
     return (data || []).map(item => ({
       id: item.id,
+      businessId: item.business_id,
       name: item.name,
       category: item.category,
       currentStock: item.current_stock,
@@ -371,10 +508,37 @@ export const inventoryService = {
     }));
   },
 
-  async create(inventoryItem: Omit<InventoryItem, 'id'>): Promise<InventoryItem> {
+  async getById(id: string): Promise<InventoryItem> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch inventory item');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      category: data.category,
+      currentStock: data.current_stock,
+      unit: data.unit,
+      minThreshold: data.min_threshold,
+      costPerUnit: data.cost_per_unit,
+      supplier: data.supplier || '',
+      lastRestocked: new Date(data.last_restocked)
+    };
+  },
+
+  async create(inventoryItem: Omit<InventoryItem, 'id' | 'businessId'>): Promise<InventoryItem> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('inventory_items')
       .insert({
+        business_id: businessId,
         name: inventoryItem.name,
         category: inventoryItem.category,
         current_stock: inventoryItem.currentStock,
@@ -391,6 +555,7 @@ export const inventoryService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       category: data.category,
       currentStock: data.current_stock,
@@ -403,6 +568,7 @@ export const inventoryService = {
   },
 
   async update(id: string, inventoryItem: Partial<InventoryItem>): Promise<InventoryItem> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (inventoryItem.name !== undefined) updateData.name = inventoryItem.name;
     if (inventoryItem.category !== undefined) updateData.category = inventoryItem.category;
@@ -417,6 +583,7 @@ export const inventoryService = {
       .from('inventory_items')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -424,6 +591,7 @@ export const inventoryService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       category: data.category,
       currentStock: data.current_stock,
@@ -436,26 +604,31 @@ export const inventoryService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('inventory_items')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete inventory item');
   },
 
   // Create inventory items from existing ingredients
   async createFromIngredients(ingredientIds: string[]): Promise<InventoryItem[]> {
+    const businessId = getCurrentBusinessId();
     // Get ingredients data
     const { data: ingredients, error: ingredientsError } = await supabase
       .from('ingredients')
       .select('*')
-      .in('id', ingredientIds);
+      .in('id', ingredientIds)
+      .eq('business_id', businessId);
     
     if (ingredientsError) handleError(ingredientsError, 'fetch ingredients for inventory');
     
     // Create inventory items from ingredients
     const inventoryData = (ingredients || []).map(ing => ({
+      business_id: businessId,
       name: ing.name,
       category: ing.category,
       current_stock: 0, // Start with 0 stock
@@ -475,6 +648,7 @@ export const inventoryService = {
     
     return (data || []).map(item => ({
       id: item.id,
+      businessId: item.business_id,
       name: item.name,
       category: item.category,
       currentStock: item.current_stock,
@@ -491,15 +665,18 @@ export const inventoryService = {
 
 export const suppliersService = {
   async getAll(): Promise<Supplier[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('suppliers')
       .select('*')
+      .eq('business_id', businessId)
       .order('name', { ascending: true });
     
     if (error) handleError(error, 'fetch suppliers');
     
     return (data || []).map(supplier => ({
       id: supplier.id,
+      businessId: supplier.business_id,
       name: supplier.name,
       contactPerson: supplier.contact_person,
       email: supplier.email,
@@ -518,10 +695,44 @@ export const suppliersService = {
     }));
   },
 
-  async create(supplier: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>): Promise<Supplier> {
+  async getById(id: string): Promise<Supplier> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch supplier');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      contactPerson: data.contact_person,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      deliveryDays: data.delivery_days || [],
+      orderSubmissionDays: data.order_submission_days || [],
+      minimumOrderAmount: data.minimum_order_amount,
+      leadTime: data.lead_time,
+      autoOrderEnabled: data.auto_order_enabled,
+      paymentTerms: data.payment_terms,
+      notes: data.notes || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async create(supplier: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt' | 'businessId'>): Promise<Supplier> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('suppliers')
       .insert({
+        business_id: businessId,
         name: supplier.name,
         contact_person: supplier.contactPerson,
         email: supplier.email,
@@ -543,6 +754,7 @@ export const suppliersService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       contactPerson: data.contact_person,
       email: data.email,
@@ -562,6 +774,7 @@ export const suppliersService = {
   },
 
   async update(id: string, supplier: Partial<Supplier>): Promise<Supplier> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (supplier.name !== undefined) updateData.name = supplier.name;
     if (supplier.contactPerson !== undefined) updateData.contact_person = supplier.contactPerson;
@@ -581,6 +794,7 @@ export const suppliersService = {
       .from('suppliers')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -588,6 +802,7 @@ export const suppliersService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       contactPerson: data.contact_person,
       email: data.email,
@@ -607,19 +822,23 @@ export const suppliersService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('suppliers')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete supplier');
   },
 
   // Get low stock items for suppliers with auto-order enabled
   async getLowStockItemsForAutoOrder(): Promise<InventoryItem[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('inventory_items')
-      .select('*');
+      .select('*')
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'fetch inventory items for auto order');
     
@@ -628,6 +847,7 @@ export const suppliersService = {
     
     return lowStockItems.map(item => ({
       id: item.id,
+      businessId: item.business_id,
       name: item.name,
       category: item.category,
       currentStock: item.current_stock,
@@ -644,15 +864,18 @@ export const suppliersService = {
 
 export const transactionsService = {
   async getAll(): Promise<Transaction[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
+      .eq('business_id', businessId)
       .order('date', { ascending: false });
     
     if (error) handleError(error, 'fetch transactions');
     
     return (data || []).map(txn => ({
       id: txn.id,
+      businessId: txn.business_id,
       date: new Date(txn.date),
       type: txn.type as 'revenue' | 'expense',
       category: txn.category,
@@ -663,10 +886,36 @@ export const transactionsService = {
     }));
   },
 
-  async create(transaction: Omit<Transaction, 'id'>): Promise<Transaction> {
+  async getById(id: string): Promise<Transaction> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch transaction');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      date: new Date(data.date),
+      type: data.type as 'revenue' | 'expense',
+      category: data.category,
+      amount: data.amount,
+      description: data.description,
+      location: data.location,
+      paymentMethod: data.payment_method
+    };
+  },
+
+  async create(transaction: Omit<Transaction, 'id' | 'businessId'>): Promise<Transaction> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('transactions')
       .insert({
+        business_id: businessId,
         date: transaction.date.toISOString().split('T')[0],
         type: transaction.type,
         category: transaction.category,
@@ -682,6 +931,7 @@ export const transactionsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       date: new Date(data.date),
       type: data.type,
       category: data.category,
@@ -692,11 +942,47 @@ export const transactionsService = {
     };
   },
 
+  async update(id: string, transaction: Partial<Transaction>): Promise<Transaction> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+    if (transaction.date !== undefined) updateData.date = transaction.date.toISOString().split('T')[0];
+    if (transaction.type !== undefined) updateData.type = transaction.type;
+    if (transaction.category !== undefined) updateData.category = transaction.category;
+    if (transaction.amount !== undefined) updateData.amount = transaction.amount;
+    if (transaction.description !== undefined) updateData.description = transaction.description;
+    if (transaction.location !== undefined) updateData.location = transaction.location;
+    if (transaction.paymentMethod !== undefined) updateData.payment_method = transaction.paymentMethod;
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update transaction');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      date: new Date(data.date),
+      type: data.type as 'revenue' | 'expense',
+      category: data.category,
+      amount: data.amount,
+      description: data.description,
+      location: data.location,
+      paymentMethod: data.payment_method
+    };
+  },
+
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete transaction');
   }
@@ -706,6 +992,7 @@ export const transactionsService = {
 
 export const supplierOrdersService = {
   async getAll(): Promise<SupplierOrder[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('supplier_orders')
       .select(`
@@ -734,16 +1021,19 @@ export const supplierOrdersService = {
           lead_time
         )
       `)
+      .eq('business_id', businessId)
       .order('order_date', { ascending: false });
     
     if (error) handleError(error, 'fetch supplier orders');
     
     return (data || []).map(order => ({
       id: order.id,
+      businessId: order.business_id,
       orderNumber: order.order_number,
       supplierId: order.supplier_id,
       supplier: order.suppliers ? {
         id: order.suppliers.id,
+        businessId: order.business_id,
         name: order.suppliers.name,
         contactPerson: order.suppliers.contact_person,
         email: order.suppliers.email,
@@ -787,6 +1077,7 @@ export const supplierOrdersService = {
   },
 
   async getById(id: string): Promise<SupplierOrder> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('supplier_orders')
       .select(`
@@ -816,16 +1107,19 @@ export const supplierOrdersService = {
         )
       `)
       .eq('id', id)
+      .eq('business_id', businessId)
       .single();
     
     if (error) handleError(error, 'fetch supplier order');
     
     return {
       id: data.id,
+      businessId: data.business_id,
       orderNumber: data.order_number,
       supplierId: data.supplier_id,
       supplier: data.suppliers ? {
         id: data.suppliers.id,
+        businessId: data.business_id,
         name: data.suppliers.name,
         contactPerson: data.suppliers.contact_person,
         email: data.suppliers.email,
@@ -868,7 +1162,8 @@ export const supplierOrdersService = {
     };
   },
 
-  async create(supplierOrder: Omit<SupplierOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Promise<SupplierOrder> {
+  async create(supplierOrder: Omit<SupplierOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt' | 'businessId'>): Promise<SupplierOrder> {
+    const businessId = getCurrentBusinessId();
     // Generate order number
     const orderNumber = `SO-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
@@ -879,6 +1174,7 @@ export const supplierOrdersService = {
     }
     
     const orderData = {
+      business_id: businessId,
       order_number: orderNumber,
       supplier_id: supplierOrder.supplierId,
       total_amount: supplierOrder.totalAmount,
@@ -920,6 +1216,7 @@ export const supplierOrdersService = {
   },
 
   async update(id: string, supplierOrder: Partial<SupplierOrder>): Promise<SupplierOrder> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (supplierOrder.status !== undefined) updateData.status = supplierOrder.status;
     if (supplierOrder.priority !== undefined) updateData.priority = supplierOrder.priority;
@@ -932,7 +1229,8 @@ export const supplierOrdersService = {
     const { error } = await supabase
       .from('supplier_orders')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'update supplier order');
     
@@ -969,6 +1267,7 @@ export const supplierOrdersService = {
   },
 
   async updateStatus(id: string, status: SupplierOrder['status']): Promise<SupplierOrder> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = { status };
     
     if (status === 'submitted') {
@@ -980,7 +1279,8 @@ export const supplierOrdersService = {
     const { error } = await supabase
       .from('supplier_orders')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'update supplier order status');
     
@@ -988,10 +1288,12 @@ export const supplierOrdersService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('supplier_orders')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete supplier order');
   },
@@ -1067,110 +1369,176 @@ export const supplierOrdersService = {
 
 export const subscriptions = {
   ingredients: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('ingredients_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'ingredients' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'ingredients',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   menuItems: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('menu_items_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'menu_items' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'menu_items',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   transactions: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('transactions_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'transactions' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'transactions',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   inventory: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('inventory_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'inventory_items' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'inventory_items',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   suppliers: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('suppliers_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'suppliers' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'suppliers',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   expenses: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('expenses_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'expenses' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'expenses',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   financialGoals: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('financial_goals_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'financial_goals' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'financial_goals',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   employees: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('employees_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'employees' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'employees',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   shifts: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('shifts_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'shifts' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'shifts',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   orders: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('orders_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
   },
 
   supplierOrders: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
     return supabase
       .channel('supplier_orders_changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'supplier_orders' }, 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'supplier_orders',
+          filter: `business_id=eq.${businessId}`
+        }, 
         callback
       )
       .subscribe();
@@ -1180,15 +1548,18 @@ export const subscriptions = {
 // Financial Management Services
 export const expensesService = {
   async getAll(): Promise<Expense[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
+      .eq('business_id', businessId)
       .order('created_at', { ascending: false });
     
     if (error) handleError(error, 'fetch expenses');
     
     return (data || []).map(expense => ({
       id: expense.id,
+      businessId: expense.business_id,
       categoryId: expense.category_id || null,
       name: expense.name,
       amount: expense.amount,
@@ -1203,10 +1574,40 @@ export const expensesService = {
     }));
   },
 
-  async create(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<Expense> {
+  async getById(id: string): Promise<Expense> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch expense');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      categoryId: data.category_id || null,
+      name: data.name,
+      amount: data.amount,
+      type: data.type,
+      frequency: data.frequency,
+      startDate: new Date(data.start_date),
+      endDate: data.end_date ? new Date(data.end_date) : undefined,
+      description: data.description || '',
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async create(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'businessId'>): Promise<Expense> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('expenses')
       .insert({
+        business_id: businessId,
         category_id: expense.categoryId,
         name: expense.name,
         amount: expense.amount,
@@ -1224,6 +1625,7 @@ export const expensesService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       categoryId: data.category_id || null,
       name: data.name,
       amount: data.amount,
@@ -1239,6 +1641,7 @@ export const expensesService = {
   },
 
   async update(id: string, expense: Partial<Expense>): Promise<Expense> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (expense.categoryId !== undefined) updateData.category_id = expense.categoryId;
     if (expense.name !== undefined) updateData.name = expense.name;
@@ -1254,6 +1657,7 @@ export const expensesService = {
       .from('expenses')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -1261,6 +1665,7 @@ export const expensesService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       categoryId: data.category_id || null,
       name: data.name,
       amount: data.amount,
@@ -1276,10 +1681,12 @@ export const expensesService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('expenses')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete expense');
   }
@@ -1287,9 +1694,11 @@ export const expensesService = {
 
 export const expenseCategoriesService = {
   async getAll(): Promise<ExpenseCategory[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('expense_categories')
       .select('*')
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name', { ascending: true });
     
@@ -1297,24 +1706,109 @@ export const expenseCategoriesService = {
     
     return (data || []).map(category => ({
       id: category.id,
+      businessId: category.business_id,
       name: category.name,
       type: category.type,
       isActive: category.is_active
     }));
+  },
+
+  async getById(id: string): Promise<ExpenseCategory> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch expense category');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      type: data.type,
+      isActive: data.is_active
+    };
+  },
+
+  async create(category: Omit<ExpenseCategory, 'id' | 'businessId'>): Promise<ExpenseCategory> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .insert({
+        business_id: businessId,
+        name: category.name,
+        type: category.type,
+        is_active: category.isActive
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create expense category');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      type: data.type,
+      isActive: data.is_active
+    };
+  },
+
+  async update(id: string, category: Partial<ExpenseCategory>): Promise<ExpenseCategory> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+    if (category.name !== undefined) updateData.name = category.name;
+    if (category.type !== undefined) updateData.type = category.type;
+    if (category.isActive !== undefined) updateData.is_active = category.isActive;
+    
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update expense category');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      type: data.type,
+      isActive: data.is_active
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    const { error } = await supabase
+      .from('expense_categories')
+      .delete()
+      .eq('id', id)
+      .eq('business_id', businessId);
+    
+    if (error) handleError(error, 'delete expense category');
   }
 };
 
 export const financialGoalsService = {
   async getAll(): Promise<FinancialGoal[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('financial_goals')
       .select('*')
+      .eq('business_id', businessId)
       .order('created_at', { ascending: false });
     
     if (error) handleError(error, 'fetch financial goals');
     
     return (data || []).map(goal => ({
       id: goal.id,
+      businessId: goal.business_id,
       name: goal.name,
       type: goal.type,
       targetAmount: goal.target_amount,
@@ -1326,10 +1820,37 @@ export const financialGoalsService = {
     }));
   },
 
-  async create(goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>): Promise<FinancialGoal> {
+  async getById(id: string): Promise<FinancialGoal> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('financial_goals')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch financial goal');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      type: data.type,
+      targetAmount: data.target_amount,
+      currentAmount: data.current_amount,
+      targetDate: new Date(data.target_date),
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async create(goal: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt' | 'businessId'>): Promise<FinancialGoal> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('financial_goals')
       .insert({
+        business_id: businessId,
         name: goal.name,
         type: goal.type,
         target_amount: goal.targetAmount,
@@ -1344,6 +1865,7 @@ export const financialGoalsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       type: data.type,
       targetAmount: data.target_amount,
@@ -1356,6 +1878,7 @@ export const financialGoalsService = {
   },
 
   async update(id: string, goal: Partial<FinancialGoal>): Promise<FinancialGoal> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (goal.name !== undefined) updateData.name = goal.name;
     if (goal.type !== undefined) updateData.type = goal.type;
@@ -1368,6 +1891,7 @@ export const financialGoalsService = {
       .from('financial_goals')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -1375,6 +1899,7 @@ export const financialGoalsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       type: data.type,
       targetAmount: data.target_amount,
@@ -1387,10 +1912,12 @@ export const financialGoalsService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('financial_goals')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete financial goal');
   }
@@ -1398,15 +1925,18 @@ export const financialGoalsService = {
 
 export const financialProjectionsService = {
   async getAll(): Promise<FinancialProjection[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('financial_projections')
       .select('*')
+      .eq('business_id', businessId)
       .order('created_at', { ascending: false });
     
     if (error) handleError(error, 'fetch financial projections');
     
     return (data || []).map(projection => ({
       id: projection.id,
+      businessId: projection.business_id,
       name: projection.name,
       projectionPeriod: projection.projection_period,
       projectedRevenue: projection.projected_revenue,
@@ -1422,10 +1952,41 @@ export const financialProjectionsService = {
     }));
   },
 
-  async create(projection: Omit<FinancialProjection, 'id' | 'createdAt' | 'updatedAt'>): Promise<FinancialProjection> {
+  async getById(id: string): Promise<FinancialProjection> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('financial_projections')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch financial projection');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      projectionPeriod: data.projection_period,
+      projectedRevenue: data.projected_revenue,
+      projectedExpenses: data.projected_expenses,
+      projectedProfit: data.projected_profit,
+      averageOrderValue: data.average_order_value,
+      ordersPerDay: data.orders_per_day,
+      workingDaysPerMonth: data.working_days_per_month,
+      profitMarginPercentage: data.profit_margin_percentage,
+      breakEvenPoint: data.break_even_point,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async create(projection: Omit<FinancialProjection, 'id' | 'createdAt' | 'updatedAt' | 'businessId'>): Promise<FinancialProjection> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('financial_projections')
       .insert({
+        business_id: businessId,
         name: projection.name,
         projection_period: projection.projectionPeriod,
         projected_revenue: projection.projectedRevenue,
@@ -1444,6 +2005,7 @@ export const financialProjectionsService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       name: data.name,
       projectionPeriod: data.projection_period,
       projectedRevenue: data.projected_revenue,
@@ -1457,21 +2019,77 @@ export const financialProjectionsService = {
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };
+  },
+
+  async update(id: string, projection: Partial<FinancialProjection>): Promise<FinancialProjection> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+    if (projection.name !== undefined) updateData.name = projection.name;
+    if (projection.projectionPeriod !== undefined) updateData.projection_period = projection.projectionPeriod;
+    if (projection.projectedRevenue !== undefined) updateData.projected_revenue = projection.projectedRevenue;
+    if (projection.projectedExpenses !== undefined) updateData.projected_expenses = projection.projectedExpenses;
+    if (projection.projectedProfit !== undefined) updateData.projected_profit = projection.projectedProfit;
+    if (projection.averageOrderValue !== undefined) updateData.average_order_value = projection.averageOrderValue;
+    if (projection.ordersPerDay !== undefined) updateData.orders_per_day = projection.ordersPerDay;
+    if (projection.workingDaysPerMonth !== undefined) updateData.working_days_per_month = projection.workingDaysPerMonth;
+    if (projection.profitMarginPercentage !== undefined) updateData.profit_margin_percentage = projection.profitMarginPercentage;
+    if (projection.breakEvenPoint !== undefined) updateData.break_even_point = projection.breakEvenPoint;
+    
+    const { data, error } = await supabase
+      .from('financial_projections')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update financial projection');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      name: data.name,
+      projectionPeriod: data.projection_period,
+      projectedRevenue: data.projected_revenue,
+      projectedExpenses: data.projected_expenses,
+      projectedProfit: data.projected_profit,
+      averageOrderValue: data.average_order_value,
+      ordersPerDay: data.orders_per_day,
+      workingDaysPerMonth: data.working_days_per_month,
+      profitMarginPercentage: data.profit_margin_percentage,
+      breakEvenPoint: data.break_even_point,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    const { error } = await supabase
+      .from('financial_projections')
+      .delete()
+      .eq('id', id)
+      .eq('business_id', businessId);
+    
+    if (error) handleError(error, 'delete financial projection');
   }
 };
 
 // Employee Management Services
 export const employeesService = {
   async getAll(): Promise<Employee[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('employees')
       .select('*')
+      .eq('business_id', businessId)
       .order('first_name', { ascending: true });
     
     if (error) handleError(error, 'fetch employees');
     
     return (data || []).map(employee => ({
       id: employee.id,
+      businessId: employee.business_id,
       firstName: employee.first_name,
       lastName: employee.last_name,
       email: employee.email,
@@ -1483,10 +2101,37 @@ export const employeesService = {
     }));
   },
 
-  async create(employee: Omit<Employee, 'id'>): Promise<Employee> {
+  async getById(id: string): Promise<Employee> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch employee');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      position: data.position,
+      hourlyRate: data.hourly_rate,
+      hireDate: new Date(data.hire_date),
+      isActive: data.is_active
+    };
+  },
+
+  async create(employee: Omit<Employee, 'id' | 'businessId'>): Promise<Employee> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('employees')
       .insert({
+        business_id: businessId,
         first_name: employee.firstName,
         last_name: employee.lastName,
         email: employee.email,
@@ -1503,6 +2148,7 @@ export const employeesService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       firstName: data.first_name,
       lastName: data.last_name,
       email: data.email,
@@ -1515,6 +2161,7 @@ export const employeesService = {
   },
 
   async update(id: string, employee: Partial<Employee>): Promise<Employee> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = {};
     if (employee.firstName !== undefined) updateData.first_name = employee.firstName;
     if (employee.lastName !== undefined) updateData.last_name = employee.lastName;
@@ -1529,6 +2176,7 @@ export const employeesService = {
       .from('employees')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', businessId)
       .select()
       .single();
     
@@ -1536,6 +2184,7 @@ export const employeesService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       firstName: data.first_name,
       lastName: data.last_name,
       email: data.email,
@@ -1548,10 +2197,12 @@ export const employeesService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('employees')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete employee');
   }
@@ -1559,15 +2210,23 @@ export const employeesService = {
 
 export const shiftsService = {
   async getAll(): Promise<Shift[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('shifts')
-      .select('*')
+      .select(`
+        *,
+        employees!inner (
+          business_id
+        )
+      `)
+      .eq('employees.business_id', businessId)
       .order('date', { ascending: false });
     
     if (error) handleError(error, 'fetch shifts');
     
     return (data || []).map(shift => ({
       id: shift.id,
+      businessId: shift.employees.business_id,
       employeeId: shift.employee_id,
       date: new Date(shift.date),
       startTime: shift.start_time,
@@ -1578,7 +2237,50 @@ export const shiftsService = {
     }));
   },
 
-  async create(shift: Omit<Shift, 'id'>): Promise<Shift> {
+  async getById(id: string): Promise<Shift> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        employees!inner (
+          business_id
+        )
+      `)
+      .eq('id', id)
+      .eq('employees.business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch shift');
+    
+    return {
+      id: data.id,
+      businessId: data.employees.business_id,
+      employeeId: data.employee_id,
+      date: new Date(data.date),
+      startTime: data.start_time,
+      endTime: data.end_time,
+      hoursWorked: data.hours_worked,
+      role: data.role,
+      location: data.location
+    };
+  },
+
+  async create(shift: Omit<Shift, 'id' | 'businessId'>): Promise<Shift> {
+    const businessId = getCurrentBusinessId();
+    
+    // Verify employee belongs to current business
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('business_id')
+      .eq('id', shift.employeeId)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (employeeError || !employee) {
+      throw new Error('Employee not found or does not belong to current business');
+    }
+    
     const { data, error } = await supabase
       .from('shifts')
       .insert({
@@ -1597,6 +2299,7 @@ export const shiftsService = {
     
     return {
       id: data.id,
+      businessId: businessId,
       employeeId: data.employee_id,
       date: new Date(data.date),
       startTime: data.start_time,
@@ -1608,6 +2311,22 @@ export const shiftsService = {
   },
 
   async update(id: string, shift: Partial<Shift>): Promise<Shift> {
+    const businessId = getCurrentBusinessId();
+    
+    // If updating employee, verify they belong to current business
+    if (shift.employeeId) {
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('business_id')
+        .eq('id', shift.employeeId)
+        .eq('business_id', businessId)
+        .single();
+      
+      if (employeeError || !employee) {
+        throw new Error('Employee not found or does not belong to current business');
+      }
+    }
+    
     const updateData: any = {};
     if (shift.employeeId !== undefined) updateData.employee_id = shift.employeeId;
     if (shift.date !== undefined) updateData.date = shift.date.toISOString().split('T')[0];
@@ -1628,6 +2347,7 @@ export const shiftsService = {
     
     return {
       id: data.id,
+      businessId: businessId,
       employeeId: data.employee_id,
       date: new Date(data.date),
       startTime: data.start_time,
@@ -1639,6 +2359,25 @@ export const shiftsService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    
+    // Verify shift belongs to current business through employee
+    const { data: shift, error: verifyError } = await supabase
+      .from('shifts')
+      .select(`
+        id,
+        employees!inner (
+          business_id
+        )
+      `)
+      .eq('id', id)
+      .eq('employees.business_id', businessId)
+      .single();
+    
+    if (verifyError || !shift) {
+      throw new Error('Shift not found or does not belong to current business');
+    }
+    
     const { error } = await supabase
       .from('shifts')
       .delete()
@@ -1652,15 +2391,18 @@ export const shiftsService = {
 
 export const customersService = {
   async getAll(): Promise<Customer[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('customers')
       .select('*')
+      .eq('business_id', businessId)
       .order('first_name', { ascending: true });
     
     if (error) handleError(error, 'fetch customers');
     
     return (data || []).map(customer => ({
       id: customer.id,
+      businessId: customer.business_id,
       firstName: customer.first_name,
       lastName: customer.last_name,
       email: customer.email,
@@ -1672,10 +2414,37 @@ export const customersService = {
     }));
   },
 
-  async create(customer: Omit<Customer, 'id'>): Promise<Customer> {
+  async getById(id: string): Promise<Customer> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+    
+    if (error) handleError(error, 'fetch customer');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      loyaltyPoints: data.loyalty_points,
+      totalOrders: data.total_orders,
+      totalSpent: data.total_spent,
+      lastVisit: data.last_visit ? new Date(data.last_visit) : undefined
+    };
+  },
+
+  async create(customer: Omit<Customer, 'id' | 'businessId'>): Promise<Customer> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('customers')
       .insert({
+        business_id: businessId,
         first_name: customer.firstName,
         last_name: customer.lastName,
         email: customer.email,
@@ -1691,6 +2460,7 @@ export const customersService = {
     
     return {
       id: data.id,
+      businessId: data.business_id,
       firstName: data.first_name,
       lastName: data.last_name,
       email: data.email,
@@ -1699,6 +2469,53 @@ export const customersService = {
       totalOrders: data.total_orders,
       totalSpent: data.total_spent
     };
+  },
+
+  async update(id: string, customer: Partial<Customer>): Promise<Customer> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+    if (customer.firstName !== undefined) updateData.first_name = customer.firstName;
+    if (customer.lastName !== undefined) updateData.last_name = customer.lastName;
+    if (customer.email !== undefined) updateData.email = customer.email;
+    if (customer.phone !== undefined) updateData.phone = customer.phone;
+    if (customer.loyaltyPoints !== undefined) updateData.loyalty_points = customer.loyaltyPoints;
+    if (customer.totalOrders !== undefined) updateData.total_orders = customer.totalOrders;
+    if (customer.totalSpent !== undefined) updateData.total_spent = customer.totalSpent;
+    if (customer.lastVisit !== undefined) updateData.last_visit = customer.lastVisit.toISOString();
+    
+    const { data, error } = await supabase
+      .from('customers')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'update customer');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      loyaltyPoints: data.loyalty_points,
+      totalOrders: data.total_orders,
+      totalSpent: data.total_spent,
+      lastVisit: data.last_visit ? new Date(data.last_visit) : undefined
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    const { error } = await supabase
+      .from('customers')
+      .delete()
+      .eq('id', id)
+      .eq('business_id', businessId);
+    
+    if (error) handleError(error, 'delete customer');
   }
 };
 
@@ -1706,6 +2523,7 @@ export const customersService = {
 
 export const ordersService = {
   async getAll(): Promise<Order[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -1734,16 +2552,19 @@ export const ordersService = {
           total_spent
         )
       `)
+      .eq('business_id', businessId)
       .order('order_time', { ascending: false });
     
     if (error) handleError(error, 'fetch orders');
     
     return (data || []).map(order => ({
       id: order.id,
+      businessId: order.business_id,
       orderNumber: order.order_number,
       customerId: order.customer_id,
       customer: order.customers ? {
         id: order.customers.id,
+        businessId: order.business_id,
         firstName: order.customers.first_name,
         lastName: order.customers.last_name,
         email: order.customers.email,
@@ -1785,6 +2606,7 @@ export const ordersService = {
   },
 
   async getById(id: string): Promise<Order> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -1814,16 +2636,19 @@ export const ordersService = {
         )
       `)
       .eq('id', id)
+      .eq('business_id', businessId)
       .single();
     
     if (error) handleError(error, 'fetch order');
     
     return {
       id: data.id,
+      businessId: data.business_id,
       orderNumber: data.order_number,
       customerId: data.customer_id,
       customer: data.customers ? {
         id: data.customers.id,
+        businessId: data.business_id,
         firstName: data.customers.first_name,
         lastName: data.customers.last_name,
         email: data.customers.email,
@@ -1861,7 +2686,8 @@ export const ordersService = {
     };
   },
 
-  async create(order: Omit<Order, 'id' | 'orderNumber'>): Promise<Order> {
+  async create(order: Omit<Order, 'id' | 'orderNumber' | 'businessId'>): Promise<Order> {
+    const businessId = getCurrentBusinessId();
     // Generate order number
     const { data: orderNumberData, error: orderNumberError } = await supabase
       .rpc('generate_order_number');
@@ -1869,6 +2695,7 @@ export const ordersService = {
     if (orderNumberError) handleError(orderNumberError, 'generate order number');
     
     const orderData = {
+      business_id: businessId,
       order_number: orderNumberData,
       customer_id: order.customerId,
       total: order.total,
@@ -1916,7 +2743,67 @@ export const ordersService = {
     return this.getById(data.id);
   },
 
+  async update(id: string, order: Partial<Order>): Promise<Order> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+    if (order.customerId !== undefined) updateData.customer_id = order.customerId;
+    if (order.total !== undefined) updateData.total = order.total;
+    if (order.subtotal !== undefined) updateData.subtotal = order.subtotal;
+    if (order.taxAmount !== undefined) updateData.tax_amount = order.taxAmount;
+    if (order.tipAmount !== undefined) updateData.tip_amount = order.tipAmount;
+    if (order.discountAmount !== undefined) updateData.discount_amount = order.discountAmount;
+    if (order.status !== undefined) updateData.status = order.status;
+    if (order.orderTime !== undefined) updateData.order_time = order.orderTime.toISOString();
+    if (order.completedTime !== undefined) updateData.completed_time = order.completedTime.toISOString();
+    if (order.location !== undefined) updateData.location = order.location;
+    if (order.paymentMethod !== undefined) updateData.payment_method = order.paymentMethod;
+    if (order.paymentStatus !== undefined) updateData.payment_status = order.paymentStatus;
+    if (order.specialInstructions !== undefined) updateData.special_instructions = order.specialInstructions;
+    if (order.prepTimeMinutes !== undefined) updateData.prep_time_minutes = order.prepTimeMinutes;
+    if (order.employeeId !== undefined) updateData.employee_id = order.employeeId;
+    
+    const { error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId);
+    
+    if (error) handleError(error, 'update order');
+    
+    // Update items if provided
+    if (order.items !== undefined) {
+      // Delete existing items
+      const { error: deleteError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', id);
+      
+      if (deleteError) handleError(deleteError, 'delete old order items');
+      
+      // Insert new items
+      if (order.items.length > 0) {
+        const orderItems = order.items.map(item => ({
+          order_id: id,
+          menu_item_id: item.menuItemId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total_price: item.totalPrice,
+          special_instructions: item.specialInstructions
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+        
+        if (insertError) handleError(insertError, 'insert new order items');
+      }
+    }
+    
+    return this.getById(id);
+  },
+
   async updateStatus(id: string, status: Order['status'], employeeId?: string): Promise<Order> {
+    const businessId = getCurrentBusinessId();
     const updateData: any = { 
       status,
       updated_at: new Date().toISOString()
@@ -1933,7 +2820,8 @@ export const ordersService = {
     const { error } = await supabase
       .from('orders')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'update order status');
     
@@ -1941,10 +2829,12 @@ export const ordersService = {
   },
 
   async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
     const { error } = await supabase
       .from('orders')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('business_id', businessId);
     
     if (error) handleError(error, 'delete order');
   },
@@ -1991,9 +2881,11 @@ export const ordersService = {
 
 export const dailySalesService = {
   async getByDate(date: Date): Promise<any> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('daily_sales_summary')
       .select('*')
+      .eq('business_id', businessId)
       .eq('date', date.toISOString().split('T')[0])
       .single();
     
@@ -2005,9 +2897,11 @@ export const dailySalesService = {
   },
 
   async getDateRange(startDate: Date, endDate: Date): Promise<any[]> {
+    const businessId = getCurrentBusinessId();
     const { data, error } = await supabase
       .from('daily_sales_summary')
       .select('*')
+      .eq('business_id', businessId)
       .gte('date', startDate.toISOString().split('T')[0])
       .lte('date', endDate.toISOString().split('T')[0])
       .order('date', { ascending: true });

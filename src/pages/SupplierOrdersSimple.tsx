@@ -29,6 +29,7 @@ export default function SupplierOrdersSimple() {
   const suppliers: Supplier[] = [
     {
       id: 'supplier-1',
+      businessId: 'test-business-id',
       name: 'Pizza Supplier Co',
       contactPerson: 'John Doe',
       email: 'john@pizza.com',
@@ -40,6 +41,7 @@ export default function SupplierOrdersSimple() {
       leadTime: 2,
       autoOrderEnabled: true,
       paymentTerms: 'Net 30',
+      notes: '',
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -49,6 +51,7 @@ export default function SupplierOrdersSimple() {
   const ingredients: Ingredient[] = [
     {
       id: 'ingredient-1',
+      businessId: 'test-business-id',
       name: 'Pizza Dough',
       costPerUnit: 2.50,
       unit: 'lbs',
@@ -59,6 +62,7 @@ export default function SupplierOrdersSimple() {
     },
     {
       id: 'ingredient-2',
+      businessId: 'test-business-id',
       name: 'Mozzarella Cheese',
       costPerUnit: 4.00,
       unit: 'lbs',

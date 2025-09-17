@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,6 +23,8 @@ import {
   Tab,
   Tabs,
   Grid,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,6 +35,7 @@ import {
   ShoppingCart as OrderIcon,
 } from '@mui/icons-material';
 import { Customer } from '../types';
+import { customersService } from '../services/supabaseService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -53,45 +56,27 @@ export default function Customers() {
   const [tabValue, setTabValue] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: '1',
-      firstName: 'Alice',
-      lastName: 'Johnson',
-      email: 'alice@example.com',
-      phone: '555-0101',
-      loyaltyPoints: 125,
-      totalOrders: 15,
-      totalSpent: 347.50,
-      favoriteItems: ['Classic Burger', 'Fish Tacos'],
-      lastVisit: new Date('2024-01-03')
-    },
-    {
-      id: '2',
-      firstName: 'Bob',
-      lastName: 'Wilson',
-      email: 'bob@example.com',
-      phone: '555-0102',
-      loyaltyPoints: 89,
-      totalOrders: 8,
-      totalSpent: 156.75,
-      favoriteItems: ['Classic Burger'],
-      lastVisit: new Date('2024-01-02')
-    },
-    {
-      id: '3',
-      firstName: 'Carol',
-      lastName: 'Davis',
-      email: 'carol@example.com',
-      phone: '555-0103',
-      loyaltyPoints: 234,
-      totalOrders: 23,
-      totalSpent: 542.25,
-      favoriteItems: ['Fish Tacos', 'Veggie Wrap'],
-      lastVisit: new Date('2024-01-01')
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      const data = await customersService.getAll();
+      setCustomers(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load customers');
+      console.error('Error loading customers:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const [newCustomer, setNewCustomer] = useState<Partial<Customer>>({
     firstName: '',
@@ -109,32 +94,42 @@ export default function Customers() {
     setTabValue(newValue);
   };
 
-  const handleSaveCustomer = () => {
-    if (editingCustomer) {
-      setCustomers(customers.map(customer => 
-        customer.id === editingCustomer.id ? { ...newCustomer as Customer, id: editingCustomer.id } : customer
-      ));
-    } else {
-      const customer: Customer = {
-        ...newCustomer as Customer,
-        id: Date.now().toString()
-      };
-      setCustomers([...customers, customer]);
+  const handleSaveCustomer = async () => {
+    try {
+      if (editingCustomer) {
+        const updated = await customersService.update(editingCustomer.id, newCustomer);
+        setCustomers(customers.map(customer => 
+          customer.id === editingCustomer.id ? updated : customer
+        ));
+      } else {
+        const created = await customersService.create({
+          ...newCustomer,
+          loyaltyPoints: newCustomer.loyaltyPoints || 0,
+          totalOrders: newCustomer.totalOrders || 0,
+          totalSpent: newCustomer.totalSpent || 0,
+          favoriteItems: newCustomer.favoriteItems || [],
+          lastVisit: newCustomer.lastVisit || new Date()
+        } as Omit<Customer, 'id' | 'businessId'>);
+        setCustomers([...customers, created]);
+      }
+      
+      setNewCustomer({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        loyaltyPoints: 0,
+        totalOrders: 0,
+        totalSpent: 0,
+        favoriteItems: [],
+        lastVisit: new Date()
+      });
+      setEditingCustomer(null);
+      setOpenDialog(false);
+    } catch (err) {
+      console.error('Error saving customer:', err);
+      alert('Failed to save customer');
     }
-    
-    setNewCustomer({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      loyaltyPoints: 0,
-      totalOrders: 0,
-      totalSpent: 0,
-      favoriteItems: [],
-      lastVisit: new Date()
-    });
-    setEditingCustomer(null);
-    setOpenDialog(false);
   };
 
   const handleEditCustomer = (customer: Customer) => {
@@ -143,8 +138,16 @@ export default function Customers() {
     setOpenDialog(true);
   };
 
-  const handleDeleteCustomer = (id: string) => {
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const handleDeleteCustomer = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this customer?')) {
+      try {
+        await customersService.delete(id);
+        setCustomers(customers.filter(customer => customer.id !== id));
+      } catch (err) {
+        console.error('Error deleting customer:', err);
+        alert('Failed to delete customer');
+      }
+    }
   };
 
   const getLoyaltyTier = (points: number) => {
@@ -164,6 +167,25 @@ export default function Customers() {
     const items = value.split(',').map(item => item.trim()).filter(item => item);
     setNewCustomer({ ...newCustomer, favoriteItems: items });
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button onClick={loadCustomers}>Retry</Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>

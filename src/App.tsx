@@ -15,42 +15,49 @@ import SupplierOrders from './pages/SupplierOrders';
 import Analytics from './pages/Analytics';
 import { Auth } from './pages/Auth';
 import { UserManagement } from './pages/UserManagement';
+import TeamManagement from './pages/TeamManagement';
+import InviteAccept from './pages/InviteAccept';
 import { AuthProvider } from './contexts/AuthContext';
+import { BusinessProvider } from './contexts/BusinessContext';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/user-management" element={
-          <ProtectedRoute>
-            <AppLayout>
-              <UserManagement />
-            </AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/*" element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/finances" element={<FinancialManagement />} />
-                <Route path="/menu" element={<MenuManagement />} />
-                <Route path="/ingredients" element={<Ingredients />} />
-                <Route path="/employees" element={<Employees />} />
-                <Route path="/logistics" element={<Logistics />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/supplier-orders" element={<SupplierOrders />} />
-                <Route path="/analytics" element={<Analytics />} />
-              </Routes>
-            </AppLayout>
-          </ProtectedRoute>
-        } />
-      </Routes>
+      <BusinessProvider>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/invite/:token" element={<InviteAccept />} />
+          <Route path="/user-management" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <UserManagement />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/orders" element={<Orders />} />
+                  <Route path="/finances" element={<FinancialManagement />} />
+                  <Route path="/menu" element={<MenuManagement />} />
+                  <Route path="/ingredients" element={<Ingredients />} />
+                  <Route path="/employees" element={<Employees />} />
+                  <Route path="/logistics" element={<Logistics />} />
+                  <Route path="/inventory" element={<Inventory />} />
+                  <Route path="/customers" element={<Customers />} />
+                  <Route path="/suppliers" element={<Suppliers />} />
+                  <Route path="/supplier-orders" element={<SupplierOrders />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/team" element={<TeamManagement />} />
+                </Routes>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </BusinessProvider>
     </AuthProvider>
   );
 }

@@ -297,13 +297,13 @@ export default function Orders() {
       
       // Create new customer if needed
       if (showNewCustomerForm && newCustomer.firstName) {
-        const customer = await customersService.create(newCustomer);
+        const customer = await customersService.create(newCustomer as Omit<Customer, 'id' | 'businessId'>);
         customerId = customer.id;
       }
       
       const totals = calculateTotals();
       
-      const orderData: Omit<Order, 'id' | 'orderNumber'> = {
+      const orderData: Omit<Order, 'id' | 'orderNumber' | 'businessId'> = {
         customerId: customerId || undefined,
         items: orderItems,
         total: totals.total,

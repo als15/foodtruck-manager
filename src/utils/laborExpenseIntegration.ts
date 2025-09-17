@@ -14,7 +14,7 @@ export class LaborExpenseIntegration {
     shifts: Shift[],
     periodStart: Date,
     periodEnd: Date
-  ): Omit<Expense, 'id' | 'createdAt' | 'updatedAt'> {
+  ): Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'businessId'> {
     const laborCosts = LaborCalculator.calculateLaborCosts(
       employees, 
       shifts, 
@@ -42,7 +42,7 @@ export class LaborExpenseIntegration {
     shifts: Shift[],
     periodStart: Date,
     periodEnd: Date
-  ): Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>[] {
+  ): Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'businessId'>[] {
     const laborCosts = LaborCalculator.calculateLaborCosts(
       employees, 
       shifts, 

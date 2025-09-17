@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -25,9 +25,13 @@ import {
   Select,
   MenuItem,
   Grid,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import { Add as AddIcon, TrendingUp, TrendingDown } from '@mui/icons-material';
 import { Transaction } from '../types';
+import { transactionsService, subscriptions } from '../services/supabaseService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -47,27 +51,14 @@ function TabPanel(props: TabPanelProps) {
 export default function Finances() {
   const [tabValue, setTabValue] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      date: new Date(),
-      type: 'revenue',
-      category: 'Food Sales',
-      amount: 1247.50,
-      description: 'Daily food sales',
-      location: 'Downtown Park',
-      paymentMethod: 'Mixed'
-    },
-    {
-      id: '2',
-      date: new Date(),
-      type: 'expense',
-      category: 'Supplies',
-      amount: 245.80,
-      description: 'Ingredient restocking',
-      location: 'Warehouse',
-    }
-  ]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({ 
+    open: false, 
+    message: '', 
+    severity: 'success' as 'success' | 'error' | 'warning' 
+  });
 
   const [newTransaction, setNewTransaction] = useState({
     type: 'revenue' as 'revenue' | 'expense',
@@ -78,32 +69,72 @@ export default function Finances() {
     paymentMethod: ''
   });
 
+  // Load transactions on component mount
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const subscription = subscriptions.transactions(payload => {
+      console.log('Transactions changed:', payload);
+      // Reload transactions when changes occur
+      loadTransactions();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const loadTransactions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await transactionsService.getAll();
+      setTransactions(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load transactions');
+      setSnackbar({ open: true, message: 'Failed to load transactions', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  const handleAddTransaction = () => {
-    const transaction: Transaction = {
-      id: Date.now().toString(),
-      date: new Date(),
-      type: newTransaction.type,
-      category: newTransaction.category,
-      amount: parseFloat(newTransaction.amount),
-      description: newTransaction.description,
-      location: newTransaction.location,
-      paymentMethod: newTransaction.paymentMethod
-    };
-    
-    setTransactions([...transactions, transaction]);
-    setNewTransaction({
-      type: 'revenue',
-      category: '',
-      amount: '',
-      description: '',
-      location: '',
-      paymentMethod: ''
-    });
-    setOpenDialog(false);
+  const handleAddTransaction = async () => {
+    try {
+      const transactionData: Omit<Transaction, 'id' | 'businessId'> = {
+        date: new Date(),
+        type: newTransaction.type,
+        category: newTransaction.category,
+        amount: parseFloat(newTransaction.amount),
+        description: newTransaction.description,
+        location: newTransaction.location,
+        paymentMethod: newTransaction.paymentMethod
+      };
+      
+      await transactionsService.create(transactionData);
+      setSnackbar({ open: true, message: 'Transaction added successfully', severity: 'success' });
+      
+      // Reload transactions to get updated data
+      await loadTransactions();
+      
+      setNewTransaction({
+        type: 'revenue',
+        category: '',
+        amount: '',
+        description: '',
+        location: '',
+        paymentMethod: ''
+      });
+      setOpenDialog(false);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to add transaction', severity: 'error' });
+    }
   };
 
   const totalRevenue = transactions
@@ -115,6 +146,27 @@ export default function Finances() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const profit = totalRevenue - totalExpenses;
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={loadTransactions}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -304,6 +356,16 @@ export default function Finances() {
           <Button onClick={handleAddTransaction} variant="contained">Add Transaction</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

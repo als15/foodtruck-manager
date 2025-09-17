@@ -84,7 +84,7 @@ export default function Ingredients() {
         await ingredientsService.update(editingIngredient.id, newIngredient)
         setSnackbar({ open: true, message: t('ingredient_updated_success'), severity: 'success' })
       } else {
-        await ingredientsService.create(newIngredient as Omit<Ingredient, 'id' | 'lastUpdated'>)
+        await ingredientsService.create(newIngredient as Omit<Ingredient, 'id' | 'lastUpdated' | 'businessId'>)
         setSnackbar({ open: true, message: t('ingredient_created_success'), severity: 'success' })
       }
 
@@ -167,7 +167,7 @@ export default function Ingredients() {
       skipEmptyLines: true,
       complete: async results => {
         try {
-          const validIngredients: Omit<Ingredient, 'id' | 'lastUpdated'>[] = []
+          const validIngredients: Omit<Ingredient, 'id' | 'lastUpdated' | 'businessId'>[] = []
           const errors: string[] = []
 
           results.data.forEach((row: any, index: number) => {
@@ -412,6 +412,7 @@ export default function Ingredients() {
               <TableBody>
                 {ingredients
                   .filter(ing => ing.category === category)
+                  .sort((a, b) => a.name.localeCompare(b.name))
                   .map(ingredient => (
                     <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
                       <TableCell>

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Fab, Stack, useTheme, TableSortLabel, Collapse, CardActionArea } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as ScheduleIcon, AutoMode as AutoOrderIcon, Warning as WarningIcon, Check as CheckIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Search as SearchIcon } from '@mui/icons-material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as ScheduleIcon, AutoMode as AutoOrderIcon, Warning as WarningIcon, Check as CheckIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Search as SearchIcon, Upload as UploadIcon } from '@mui/icons-material'
 import { format } from 'date-fns'
 import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types'
 import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService'
 import { nomNomColors } from '../theme/nomnom-theme'
 import { useTranslation } from 'react-i18next'
+import Papa from 'papaparse'
 
 const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
 const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
@@ -56,7 +57,7 @@ export default function SupplierOrders() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' })
 
   const [newOrder, setNewOrder] = useState<Partial<SupplierOrder>>({
     supplierId: '',
@@ -79,6 +80,17 @@ export default function SupplierOrders() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Import state
+  const [openImportDialog, setOpenImportDialog] = useState(false)
+  const [importData, setImportData] = useState<any[]>([])
+  const [importMapping, setImportMapping] = useState<{
+    supplier?: Supplier
+    itemNameColumn?: string
+    quantityColumn?: string
+    unitPriceColumn?: string
+  }>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Use interface with stable ID for order items
   interface OrderItemWithId extends SupplierOrderItem {
@@ -169,6 +181,103 @@ export default function SupplierOrders() {
     setOpenDialog(false)
     setEditingOrder(null)
     setOrderItems([])
+  }
+
+  // Import functions
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        setImportData(results.data)
+        setOpenImportDialog(true)
+      },
+      error: (error) => {
+        setSnackbar({ 
+          open: true, 
+          message: t('failed_to_parse_file') + ': ' + error.message, 
+          severity: 'error' 
+        })
+      }
+    })
+    
+    // Reset file input
+    event.target.value = ''
+  }
+
+  const handleImportMapping = async () => {
+    if (!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn) {
+      setSnackbar({ open: true, message: t('please_map_all_required_fields'), severity: 'warning' })
+      return
+    }
+
+    try {
+      // Map imported data to order items
+      const mappedItems: OrderItemWithId[] = []
+      
+      for (const row of importData) {
+        const itemName = row[importMapping.itemNameColumn]?.toString().trim()
+        const quantity = parseFloat(row[importMapping.quantityColumn] || 0)
+        const unitPrice = parseFloat(row[importMapping.unitPriceColumn] || 0)
+        
+        if (!itemName || quantity <= 0) continue
+        
+        // Try to match with existing ingredients
+        const matchedIngredient = ingredients.find(ing => 
+          ing.name.toLowerCase() === itemName.toLowerCase() && 
+          ing.supplier === importMapping.supplier?.name
+        )
+        
+        if (matchedIngredient) {
+          mappedItems.push({
+            tempId: `temp-${Date.now()}-${Math.random()}`,
+            ingredientId: matchedIngredient.id,
+            quantity: quantity,
+            unitPrice: unitPrice || matchedIngredient.costPerUnit,
+            totalPrice: quantity * (unitPrice || matchedIngredient.costPerUnit)
+          })
+        }
+      }
+      
+      if (mappedItems.length === 0) {
+        setSnackbar({ open: true, message: t('no_matching_ingredients_found'), severity: 'warning' })
+        return
+      }
+      
+      // Create new order with imported items
+      setNewOrder({
+        supplierId: importMapping.supplier.id,
+        items: [],
+        totalAmount: 0,
+        status: 'draft',
+        priority: 'medium',
+        orderDate: new Date(),
+        autoGenerated: false,
+        notes: t('imported_from_file')
+      })
+      setOrderItems(mappedItems)
+      setOpenImportDialog(false)
+      setOpenDialog(true)
+      
+      setSnackbar({ 
+        open: true, 
+        message: t('successfully_imported_items', { count: mappedItems.length }), 
+        severity: 'success' 
+      })
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: t('import_failed'), 
+        severity: 'error' 
+      })
+    }
   }
 
   const handleAddOrderItem = useCallback(() => {
@@ -419,6 +528,9 @@ export default function SupplierOrders() {
           {t('supplier_orders')}
         </Typography>
         <Stack direction={isRtl ? 'row-reverse' : 'row'} spacing={2}>
+          <Button variant="outlined" startIcon={<UploadIcon />} onClick={handleImportClick}>
+            {t('import_from_file')}
+          </Button>
           <Button variant="outlined" startIcon={<AutoOrderIcon />} onClick={handleGenerateAutoOrders} disabled={loading}>
             {t('generate_auto_orders')}
           </Button>
@@ -937,6 +1049,138 @@ export default function SupplierOrders() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Import Dialog */}
+      <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle>{t('import_supplier_order')}</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t('import_instructions')}
+          </Alert>
+          
+          {importData.length > 0 && (
+            <>
+              <Typography variant="h6" sx={{ mb: 2 }}>{t('map_columns')}</Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={suppliers}
+                    getOptionLabel={(option) => option.name}
+                    value={importMapping.supplier || null}
+                    onChange={(_, supplier) => setImportMapping({ ...importMapping, supplier: supplier || undefined })}
+                    renderInput={(params) => <TextField {...params} label={t('select_supplier')} required />}
+                  />
+                </Grid>
+                
+                {importData.length > 0 && (
+                  <>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>{t('item_name_column')}</InputLabel>
+                        <Select
+                          value={importMapping.itemNameColumn || ''}
+                          onChange={(e) => setImportMapping({ ...importMapping, itemNameColumn: e.target.value })}
+                          label={t('item_name_column')}
+                        >
+                          {Object.keys(importData[0]).map(column => (
+                            <MuiMenuItem key={column} value={column}>
+                              {column}
+                            </MuiMenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>{t('quantity_column')}</InputLabel>
+                        <Select
+                          value={importMapping.quantityColumn || ''}
+                          onChange={(e) => setImportMapping({ ...importMapping, quantityColumn: e.target.value })}
+                          label={t('quantity_column')}
+                        >
+                          {Object.keys(importData[0]).map(column => (
+                            <MuiMenuItem key={column} value={column}>
+                              {column}
+                            </MuiMenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>{t('unit_price_column')}</InputLabel>
+                        <Select
+                          value={importMapping.unitPriceColumn || ''}
+                          onChange={(e) => setImportMapping({ ...importMapping, unitPriceColumn: e.target.value })}
+                          label={t('unit_price_column')}
+                        >
+                          {Object.keys(importData[0]).map(column => (
+                            <MuiMenuItem key={column} value={column}>
+                              {column}
+                            </MuiMenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+              
+              {/* Preview */}
+              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>{t('preview')}</Typography>
+              <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('item_name')}</TableCell>
+                      <TableCell>{t('quantity')}</TableCell>
+                      <TableCell>{t('unit_price')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {importData.slice(0, 5).map((row, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{importMapping.itemNameColumn ? row[importMapping.itemNameColumn] : '-'}</TableCell>
+                        <TableCell>{importMapping.quantityColumn ? row[importMapping.quantityColumn] : '-'}</TableCell>
+                        <TableCell>{importMapping.unitPriceColumn ? row[importMapping.unitPriceColumn] : '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {importData.length > 5 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                  {t('showing_first_5_rows')}
+                </Typography>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenImportDialog(false)
+            setImportData([])
+            setImportMapping({})
+          }}>
+            {t('cancel')}
+          </Button>
+          <Button onClick={handleImportMapping} variant="contained" disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}>
+            {t('import')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv,.xls,.xlsx"
+        style={{ display: 'none' }}
+        onChange={handleFileImport}
+      />
     </Box>
   )
 }

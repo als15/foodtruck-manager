@@ -155,8 +155,8 @@ export const nomNomTheme: Theme = createTheme({
         root: {
           backgroundColor: nomNomColors.white,
           color: nomNomColors.textPrimary,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
-          borderBottom: `3px solid ${nomNomColors.primary}`,
+          boxShadow: 'none',
+          borderBottom: 'none',
         },
       },
     },

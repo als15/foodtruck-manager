@@ -7,6 +7,7 @@ import LanguageSwitcher from '../LanguageSwitcher'
 import { useAuth } from '../../contexts/AuthContext'
 import NomNomLogo from '../NomNomLogo'
 import { nomNomColors } from '../../theme/nomnom-theme'
+import { BusinessSelector } from '../Business/BusinessSelector'
 
 const drawerWidth = 240
 
@@ -252,12 +253,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
           px: 2,
           display: 'flex',
           justifyContent: 'center',
-          borderBottom: '1px solid rgba(0,0,0,0.1)'
+          position: 'relative'
         }}
       >
         <NomNomLogo size="medium" showText={true} />
       </Toolbar>
-      <Divider />
+      <Box 
+        sx={{ 
+          height: 3,
+          background: 'linear-gradient(to right, #5a9fd4, #7fffd4)',
+        }} 
+      />
       <List sx={{ px: 1 }}>{navigationItems.map(item => renderNavigationItem(item))}</List>
     </div>
   )
@@ -322,6 +328,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               {getCurrentPageTitle()}
             </Typography>
+          </Box>
+          <Box sx={{ mr: 2 }}>
+            <BusinessSelector />
           </Box>
           <Box
             sx={{
@@ -417,6 +426,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </Box>
         </Toolbar>
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            background: 'linear-gradient(to right, #7fffd4, #5a9fd4)'
+          }}
+        />
       </AppBar>
 
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
@@ -469,6 +488,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         }}
       >
         <Toolbar />
+        <Box sx={{ height: 3 }} /> {/* Spacer for accent line */}
         {children}
       </Box>
     </Box>
