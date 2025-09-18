@@ -3,6 +3,7 @@ import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, Dialog
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Today as TodayIcon } from '@mui/icons-material'
 import { Employee, Shift } from '../types'
 import { employeesService, shiftsService, subscriptions } from '../services/supabaseService'
+import { useTranslation } from 'react-i18next'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -20,8 +21,9 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function Employees() {
-  const theme = useTheme();
-  const isRtl = theme.direction === 'rtl';
+  const theme = useTheme()
+  const isRtl = theme.direction === 'rtl'
+  const { t, i18n } = useTranslation()
   const [tabValue, setTabValue] = useState(0)
   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false)
   const [openShiftDialog, setOpenShiftDialog] = useState(false)
@@ -81,7 +83,7 @@ export default function Employees() {
     try {
       await Promise.all([loadEmployees(), loadShifts()])
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to load employee data', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_load_employee_data'), severity: 'error' })
     } finally {
       setLoading(false)
     }
@@ -113,10 +115,10 @@ export default function Employees() {
     try {
       if (editingEmployee) {
         await employeesService.update(editingEmployee.id, newEmployee)
-        setSnackbar({ open: true, message: 'Employee updated successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('employee_updated_success'), severity: 'success' })
       } else {
         await employeesService.create(newEmployee as Omit<Employee, 'id'>)
-        setSnackbar({ open: true, message: 'Employee added successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('employee_added_success'), severity: 'success' })
       }
 
       setNewEmployee({
@@ -135,7 +137,7 @@ export default function Employees() {
       // Reload employees to get the latest data
       await loadEmployees()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to save employee', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_save_employee'), severity: 'error' })
     }
   }
 
@@ -148,10 +150,10 @@ export default function Employees() {
   const handleDeleteEmployee = async (id: string) => {
     try {
       await employeesService.delete(id)
-      setSnackbar({ open: true, message: 'Employee deleted successfully', severity: 'success' })
+      setSnackbar({ open: true, message: t('employee_deleted_success'), severity: 'success' })
       await loadEmployees()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to delete employee', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_delete_employee'), severity: 'error' })
     }
   }
 
@@ -159,10 +161,10 @@ export default function Employees() {
     try {
       if (editingShift) {
         await shiftsService.update(editingShift.id, newShift)
-        setSnackbar({ open: true, message: 'Shift updated successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('shift_updated_success'), severity: 'success' })
       } else {
         await shiftsService.create(newShift as Omit<Shift, 'id'>)
-        setSnackbar({ open: true, message: 'Shift scheduled successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('shift_scheduled_success'), severity: 'success' })
       }
 
       setNewShift({
@@ -180,7 +182,7 @@ export default function Employees() {
       // Reload shifts to get the latest data
       await loadShifts()
     } catch (error) {
-      setSnackbar({ open: true, message: editingShift ? 'Failed to update shift' : 'Failed to schedule shift', severity: 'error' })
+      setSnackbar({ open: true, message: editingShift ? t('failed_to_update_shift') : t('failed_to_schedule_shift'), severity: 'error' })
     }
   }
 
@@ -210,7 +212,7 @@ export default function Employees() {
 
   const getEmployeeName = (employeeId: string) => {
     const employee = employees.find(emp => emp.id === employeeId)
-    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown'
+    return employee ? `${employee.firstName} ${employee.lastName}` : t('unknown')
   }
 
   // Helper function to calculate hours between two times
@@ -258,7 +260,7 @@ export default function Employees() {
     const weekStart = new Date(targetWeek)
     weekStart.setDate(targetWeek.getDate() - targetWeek.getDay()) // Start of target week (Sunday)
     weekStart.setHours(0, 0, 0, 0) // Set to start of day
-    
+
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of target week (Saturday)
     weekEnd.setHours(23, 59, 59, 999) // Set to end of day
@@ -268,9 +270,7 @@ export default function Employees() {
       const shiftDate = new Date(shift.date)
       const dayOfWeek = shiftDate.getDay() // 0 = Sunday, 4 = Thursday, 5 = Friday, 6 = Saturday
       // Only count shifts on operating days (Thursday=4, Friday=5, Saturday=6)
-      return shiftDate >= weekStart && 
-             shiftDate <= weekEnd && 
-             (dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6)
+      return shiftDate >= weekStart && shiftDate <= weekEnd && (dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6)
     })
 
     return weekShifts.reduce((total, shift) => total + shift.hoursWorked, 0)
@@ -280,23 +280,24 @@ export default function Employees() {
   const getWeekRange = (date: Date) => {
     const weekStart = new Date(date)
     weekStart.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
-    
+
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
-    
+
     return { weekStart, weekEnd }
   }
 
   const formatWeekRange = (date: Date) => {
     const { weekStart, weekEnd } = getWeekRange(date)
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-    
+    const locale = i18n.language === 'he' ? 'he-IL' : 'en-US'
+
     if (weekStart.getFullYear() !== weekEnd.getFullYear()) {
-      return `${weekStart.toLocaleDateString('en-US', { ...options, year: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { ...options, year: 'numeric' })}`
+      return `${weekStart.toLocaleDateString(locale, { ...options, year: 'numeric' })} - ${weekEnd.toLocaleDateString(locale, { ...options, year: 'numeric' })}`
     } else if (weekStart.getMonth() !== weekEnd.getMonth()) {
-      return `${weekStart.toLocaleDateString('en-US', options)} - ${weekEnd.toLocaleDateString('en-US', options)}, ${weekEnd.getFullYear()}`
+      return `${weekStart.toLocaleDateString(locale, options)} - ${weekEnd.toLocaleDateString(locale, options)}, ${weekEnd.getFullYear()}`
     } else {
-      return `${weekStart.toLocaleDateString('en-US', { day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', options)}, ${weekEnd.getFullYear()}`
+      return `${weekStart.toLocaleDateString(locale, { day: 'numeric' })} - ${weekEnd.toLocaleDateString(locale, options)}, ${weekEnd.getFullYear()}`
     }
   }
 
@@ -322,7 +323,7 @@ export default function Employees() {
     const weekStart = new Date(targetWeek)
     weekStart.setDate(targetWeek.getDate() - targetWeek.getDay()) // Start of target week (Sunday)
     weekStart.setHours(0, 0, 0, 0) // Set to start of day
-    
+
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of target week (Saturday)
     weekEnd.setHours(23, 59, 59, 999) // Set to end of day
@@ -339,22 +340,24 @@ export default function Employees() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>Employee Management</Typography>
+        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+          {t('employee_management')}
+        </Typography>
         <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <Button variant="outlined" startIcon={<ScheduleIcon />} onClick={() => setOpenShiftDialog(true)} sx={{ marginInlineEnd: 1 }}>
-            Add Shift
+            {t('add_shift')}
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenEmployeeDialog(true)}>
-            Add Employee
+            {t('add_employee')}
           </Button>
         </Box>
       </Box>
 
       <Paper>
         <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Employees" />
-          <Tab label="Shifts" />
-          <Tab label="Payroll" />
+          <Tab label={t('employees_tab')} />
+          <Tab label={t('shifts_tab')} />
+          <Tab label={t('payroll_tab')} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -386,19 +389,19 @@ export default function Employees() {
                     </Box>
 
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Email: {employee.email}
+                      {t('email')}: {employee.email}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Phone: {employee.phone}
+                      {t('phone')}: {employee.phone}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Hourly Rate: ${employee.hourlyRate.toFixed(2)}
+                      {t('hourly_rate')}: ${employee.hourlyRate.toFixed(2)}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      This Week: {calculateWeeklyHours(employee.id, new Date()).toFixed(2)} hours
+                      {t('hours_this_week')}: {calculateWeeklyHours(employee.id, new Date()).toFixed(2)} {t('hours')}
                     </Typography>
 
-                    <Chip label={employee.isActive ? 'Active' : 'Inactive'} color={employee.isActive ? 'success' : 'default'} size="small" />
+                    <Chip label={employee.isActive ? t('active') : t('inactive')} color={employee.isActive ? 'success' : 'default'} size="small" />
                   </CardContent>
                 </Card>
               </Grid>
@@ -411,14 +414,14 @@ export default function Employees() {
             <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Employee</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Start Time</TableCell>
-                  <TableCell>End Time</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hours</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Location</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Actions</TableCell>
+                  <TableCell>{t('employee')}</TableCell>
+                  <TableCell>{t('date')}</TableCell>
+                  <TableCell>{t('start_time')}</TableCell>
+                  <TableCell>{t('end_time')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('hours')}</TableCell>
+                  <TableCell>{t('role')}</TableCell>
+                  <TableCell>{t('location')}</TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -448,47 +451,44 @@ export default function Employees() {
 
         <TabPanel value={tabValue} index={2}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>Payroll Summary</Typography>
+            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+              {t('payroll_summary')}
+            </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
               <IconButton onClick={() => navigateWeek('prev')} size="small">
-                <ChevronLeftIcon />
+                {isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               </IconButton>
-              <Button
-                onClick={() => navigateWeek('current')}
-                startIcon={<TodayIcon />}
-                variant={isCurrentWeek(selectedWeek) ? 'contained' : 'outlined'}
-                size="small"
-              >
-                {isCurrentWeek(selectedWeek) ? 'Current Week' : 'Go to Current'}
+              <Button onClick={() => navigateWeek('current')} startIcon={<TodayIcon />} variant={isCurrentWeek(selectedWeek) ? 'contained' : 'outlined'} size="small">
+                {isCurrentWeek(selectedWeek) ? t('current_week') : t('go_to_current')}
               </Button>
               <IconButton onClick={() => navigateWeek('next')} size="small">
-                <ChevronRightIcon />
+                {isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />}
               </IconButton>
             </Box>
           </Box>
-          
+
           <Typography variant="subtitle1" sx={{ mb: 2, color: 'text.secondary' }}>
-            Week of {formatWeekRange(selectedWeek)}
+            {t('week_of')} {formatWeekRange(selectedWeek)}
           </Typography>
 
           {employees.length === 0 ? (
             <Alert severity="info" sx={{ mt: 2 }}>
-              No employees found. Add employees to see payroll information.
+              {t('no_employees_found')}
             </Alert>
           ) : shifts.length === 0 ? (
             <Alert severity="info" sx={{ mt: 2 }}>
-              No shifts scheduled yet. Add shifts to see payroll calculations.
+              {t('no_shifts_scheduled_yet')}
             </Alert>
           ) : (
             <TableContainer>
               <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Employee</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hours This Week</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>All Hours (This Week)</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Hourly Rate</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Weekly Pay</TableCell>
+                    <TableCell>{t('employee')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('hours_this_week')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('all_hours_this_week')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('hourly_rate')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('weekly_pay')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -500,9 +500,7 @@ export default function Employees() {
                       <TableRow key={employee.id} sx={{ opacity: weeklyHours === 0 ? 0.6 : 1 }}>
                         <TableCell>
                           {employee.firstName} {employee.lastName}
-                          {weeklyHours === 0 && (
-                            <Chip label="No shifts" size="small" variant="outlined" sx={{ marginInlineStart: 1 }} />
-                          )}
+                          {weeklyHours === 0 && <Chip label={t('no_shifts')} size="small" variant="outlined" sx={{ marginInlineStart: 1 }} />}
                         </TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: weeklyHours > 0 ? 'bold' : 'normal' }}>
@@ -520,19 +518,18 @@ export default function Employees() {
                     )
                   })}
                   <TableRow sx={{ borderTop: 2, borderColor: 'divider' }}>
-                    <TableCell sx={{ fontWeight: 'bold' }}>TOTALS</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
-                      {employees.reduce((total, emp) => total + calculateWeeklyHours(emp.id, selectedWeek), 0).toFixed(2)}
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
-                      {employees.reduce((total, emp) => total + calculateTotalHours(emp.id, selectedWeek), 0).toFixed(2)}
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>{t('totals')}</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>{employees.reduce((total, emp) => total + calculateWeeklyHours(emp.id, selectedWeek), 0).toFixed(2)}</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>{employees.reduce((total, emp) => total + calculateTotalHours(emp.id, selectedWeek), 0).toFixed(2)}</TableCell>
                     <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>-</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: isRtl ? 'start' : 'end' }}>
-                      ${employees.reduce((total, emp) => {
-                        const weeklyHours = calculateWeeklyHours(emp.id, selectedWeek)
-                        return total + (weeklyHours * emp.hourlyRate)
-                      }, 0).toFixed(2)}
+                      $
+                      {employees
+                        .reduce((total, emp) => {
+                          const weeklyHours = calculateWeeklyHours(emp.id, selectedWeek)
+                          return total + weeklyHours * emp.hourlyRate
+                        }, 0)
+                        .toFixed(2)}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -544,57 +541,62 @@ export default function Employees() {
 
       {/* Employee Dialog */}
       <Dialog open={openEmployeeDialog} onClose={() => setOpenEmployeeDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
+        <DialogTitle>{editingEmployee ? t('edit_employee') : t('add_new_employee')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="First Name" value={newEmployee.firstName} onChange={e => setNewEmployee({ ...newEmployee, firstName: e.target.value })} />
+              <TextField fullWidth label={t('first_name')} value={newEmployee.firstName} onChange={e => setNewEmployee({ ...newEmployee, firstName: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Last Name" value={newEmployee.lastName} onChange={e => setNewEmployee({ ...newEmployee, lastName: e.target.value })} />
+              <TextField fullWidth label={t('last_name')} value={newEmployee.lastName} onChange={e => setNewEmployee({ ...newEmployee, lastName: e.target.value })} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Email" type="email" value={newEmployee.email} onChange={e => setNewEmployee({ ...newEmployee, email: e.target.value })} />
+              <TextField fullWidth label={t('email')} type="email" value={newEmployee.email} onChange={e => setNewEmployee({ ...newEmployee, email: e.target.value })} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Phone" value={newEmployee.phone} onChange={e => setNewEmployee({ ...newEmployee, phone: e.target.value })} />
+              <TextField fullWidth label={t('phone')} value={newEmployee.phone} onChange={e => setNewEmployee({ ...newEmployee, phone: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Position" value={newEmployee.position} onChange={e => setNewEmployee({ ...newEmployee, position: e.target.value })} />
+              <TextField fullWidth label={t('position')} value={newEmployee.position} onChange={e => setNewEmployee({ ...newEmployee, position: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Hourly Rate" type="number" inputProps={{ step: '0.01' }} value={newEmployee.hourlyRate} onChange={e => setNewEmployee({ ...newEmployee, hourlyRate: parseFloat(e.target.value) })} />
+              <TextField fullWidth label={t('hourly_rate')} type="number" inputProps={{ step: '0.01' }} value={newEmployee.hourlyRate} onChange={e => setNewEmployee({ ...newEmployee, hourlyRate: parseFloat(e.target.value) })} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenEmployeeDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenEmployeeDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveEmployee} variant="contained">
-            {editingEmployee ? 'Update' : 'Add'} Employee
+            {editingEmployee ? t('update_employee') : t('add_employee')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Shift Dialog */}
-      <Dialog open={openShiftDialog} onClose={() => {
-        setOpenShiftDialog(false)
-        setEditingShift(null)
-        setNewShift({
-          employeeId: '',
-          date: new Date(),
-          startTime: '',
-          endTime: '',
-          hoursWorked: 0,
-          role: '',
-          location: 'Main Location'
-        })
-      }} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingShift ? 'Edit Shift' : 'Schedule New Shift'}</DialogTitle>
+      <Dialog
+        open={openShiftDialog}
+        onClose={() => {
+          setOpenShiftDialog(false)
+          setEditingShift(null)
+          setNewShift({
+            employeeId: '',
+            date: new Date(),
+            startTime: '',
+            endTime: '',
+            hoursWorked: 0,
+            role: '',
+            location: 'Main Location'
+          })
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{editingShift ? t('edit_shift') : t('schedule_new_shift')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
-              <TextField fullWidth select label="Employee" value={newShift.employeeId} onChange={e => handleEmployeeSelection(e.target.value)} SelectProps={{ native: true }}>
-                <option value="">Select Employee</option>
+              <TextField fullWidth select label={t('employee')} value={newShift.employeeId} onChange={e => handleEmployeeSelection(e.target.value)} SelectProps={{ native: true }}>
+                <option value="">{t('select_employee')}</option>
                 {employees.map(employee => (
                   <option key={employee.id} value={employee.id}>
                     {employee.firstName} {employee.lastName} - {employee.position}
@@ -603,33 +605,26 @@ export default function Employees() {
               </TextField>
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={newShift.date instanceof Date ? newShift.date.toISOString().split('T')[0] : newShift.date}
-                onChange={e => setNewShift({ ...newShift, date: new Date(e.target.value) })}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label={t('date')} type="date" value={newShift.date instanceof Date ? newShift.date.toISOString().split('T')[0] : newShift.date} onChange={e => setNewShift({ ...newShift, date: new Date(e.target.value) })} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Start Time" type="time" value={newShift.startTime} onChange={e => handleTimeChange('startTime', e.target.value)} InputLabelProps={{ shrink: true }} />
+              <TextField fullWidth label={t('start_time')} type="time" value={newShift.startTime} onChange={e => handleTimeChange('startTime', e.target.value)} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="End Time" type="time" value={newShift.endTime} onChange={e => handleTimeChange('endTime', e.target.value)} InputLabelProps={{ shrink: true }} />
+              <TextField fullWidth label={t('end_time')} type="time" value={newShift.endTime} onChange={e => handleTimeChange('endTime', e.target.value)} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Hours Worked" type="number" inputProps={{ step: '0.25', readOnly: true }} value={newShift.hoursWorked || 0} helperText="Automatically calculated from start and end times" disabled />
+              <TextField fullWidth label={t('hours_worked')} type="number" inputProps={{ step: '0.25', readOnly: true }} value={newShift.hoursWorked || 0} helperText={t('auto_calculated_from_times')} disabled />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Role" value={newShift.role} helperText="Auto-populated from employee position" InputProps={{ readOnly: true }} disabled />
+              <TextField fullWidth label={t('role')} value={newShift.role} helperText={t('auto_populated_from_position')} InputProps={{ readOnly: true }} disabled />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenShiftDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenShiftDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveShift} variant="contained">
-            {editingShift ? 'Update Shift' : 'Schedule Shift'}
+            {editingShift ? t('update_shift') : t('schedule_shift')}
           </Button>
         </DialogActions>
       </Dialog>

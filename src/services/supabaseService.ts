@@ -23,6 +23,16 @@ import {
 // Helper function to handle Supabase errors
 const handleError = (error: any, operation: string) => {
   console.error(`Error in ${operation}:`, error);
+  
+  // Handle schema-related errors with helpful messages
+  if (error.message && error.message.includes('delivery_methods')) {
+    throw new Error(`Database schema needs updating. Please run the database migration to add the delivery_methods column. See DATABASE_MIGRATION_INSTRUCTIONS.md for details.`);
+  }
+  
+  if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+    throw new Error(`Database schema is outdated. Please check DATABASE_MIGRATION_INSTRUCTIONS.md for required database updates.`);
+  }
+  
   throw new Error(`Failed to ${operation}: ${error.message}`);
 };
 
@@ -688,6 +698,7 @@ export const suppliersService = {
       leadTime: supplier.lead_time,
       autoOrderEnabled: supplier.auto_order_enabled,
       paymentTerms: supplier.payment_terms,
+      deliveryMethods: supplier.delivery_methods || [],
       notes: supplier.notes || '',
       isActive: supplier.is_active,
       createdAt: new Date(supplier.created_at),
@@ -720,6 +731,7 @@ export const suppliersService = {
       leadTime: data.lead_time,
       autoOrderEnabled: data.auto_order_enabled,
       paymentTerms: data.payment_terms,
+      deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
       createdAt: new Date(data.created_at),
@@ -744,6 +756,7 @@ export const suppliersService = {
         lead_time: supplier.leadTime,
         auto_order_enabled: supplier.autoOrderEnabled,
         payment_terms: supplier.paymentTerms,
+        delivery_methods: supplier.deliveryMethods,
         notes: supplier.notes,
         is_active: supplier.isActive
       })
@@ -766,6 +779,7 @@ export const suppliersService = {
       leadTime: data.lead_time,
       autoOrderEnabled: data.auto_order_enabled,
       paymentTerms: data.payment_terms,
+      deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
       createdAt: new Date(data.created_at),
@@ -787,6 +801,7 @@ export const suppliersService = {
     if (supplier.leadTime !== undefined) updateData.lead_time = supplier.leadTime;
     if (supplier.autoOrderEnabled !== undefined) updateData.auto_order_enabled = supplier.autoOrderEnabled;
     if (supplier.paymentTerms !== undefined) updateData.payment_terms = supplier.paymentTerms;
+    if (supplier.deliveryMethods !== undefined) updateData.delivery_methods = supplier.deliveryMethods;
     if (supplier.notes !== undefined) updateData.notes = supplier.notes;
     if (supplier.isActive !== undefined) updateData.is_active = supplier.isActive;
     
@@ -814,6 +829,7 @@ export const suppliersService = {
       leadTime: data.lead_time,
       autoOrderEnabled: data.auto_order_enabled,
       paymentTerms: data.payment_terms,
+      deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
       createdAt: new Date(data.created_at),
@@ -1045,6 +1061,8 @@ export const supplierOrdersService = {
         leadTime: order.suppliers.lead_time,
         autoOrderEnabled: false,
         paymentTerms: '',
+        deliveryMethods: order.suppliers.delivery_methods || [],
+        notes: '',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -1131,6 +1149,8 @@ export const supplierOrdersService = {
         leadTime: data.suppliers.lead_time,
         autoOrderEnabled: false,
         paymentTerms: '',
+        deliveryMethods: data.suppliers.delivery_methods || [],
+        notes: '',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()

@@ -4,6 +4,7 @@ import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, At
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
+import DarkModeToggle from '../DarkModeToggle'
 import { useAuth } from '../../contexts/AuthContext'
 import NomNomLogo from '../NomNomLogo'
 import { nomNomColors } from '../../theme/nomnom-theme'
@@ -340,6 +341,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               order: isRtl ? 0 : 1
             }}
           >
+            <DarkModeToggle />
             <LanguageSwitcher />
             {user && (
               <>

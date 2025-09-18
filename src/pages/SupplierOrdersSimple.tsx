@@ -41,6 +41,7 @@ export default function SupplierOrdersSimple() {
       leadTime: 2,
       autoOrderEnabled: true,
       paymentTerms: 'Net 30',
+      deliveryMethods: ['delivery', 'pickup'],
       notes: '',
       isActive: true,
       createdAt: new Date(),

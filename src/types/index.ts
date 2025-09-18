@@ -184,6 +184,7 @@ export interface Supplier {
   leadTime: number; // days
   autoOrderEnabled: boolean;
   paymentTerms: string; // e.g., 'Net 30', 'COD', etc.
+  deliveryMethods: ('pickup' | 'delivery')[]; // e.g., ['pickup'], ['delivery'], or ['pickup', 'delivery']
   notes?: string;
   isActive: boolean;
   createdAt: Date;

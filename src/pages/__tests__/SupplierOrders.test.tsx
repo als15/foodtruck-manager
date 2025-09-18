@@ -29,6 +29,7 @@ jest.mock('../../services/supabaseService', () => ({
 const mockSuppliers = [
   {
     id: 'supplier-1',
+    businessId: 'test-business-id',
     name: 'Pizza Supplier Co',
     contactPerson: 'John Doe',
     email: 'john@pizzasupplier.com',
@@ -40,6 +41,8 @@ const mockSuppliers = [
     leadTime: 2,
     autoOrderEnabled: true,
     paymentTerms: 'Net 30',
+    deliveryMethods: ['delivery', 'pickup'],
+    notes: '',
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),

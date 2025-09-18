@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Switch, FormControlLabel, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, OutlinedInput, SelectChangeEvent, useTheme } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Business as BusinessIcon, Phone as PhoneIcon, Email as EmailIcon, LocalShipping as DeliveryIcon, AutoMode as AutoOrderIcon } from '@mui/icons-material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Business as BusinessIcon, Phone as PhoneIcon, Email as EmailIcon, LocalShipping as DeliveryIcon, AutoMode as AutoOrderIcon, DriveEta as PickupIcon } from '@mui/icons-material'
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const PAYMENT_TERMS = ['Net 30', 'Net 15', 'COD', 'Prepaid', 'Net 60', 'Due on Receipt']
+const DELIVERY_METHODS = ['pickup', 'delivery'] as const
 
 export default function Suppliers() {
   const theme = useTheme()
   const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
   const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
+  
+  // Persist modal state and form data across tab switches
+  const [isModalPersisted, setIsModalPersisted] = useState(false)
+  const [lastSaved, setLastSaved] = useState<number | null>(null)
 
   const [newSupplier, setNewSupplier] = useState<Partial<Supplier>>({
     name: '',
@@ -32,6 +37,7 @@ export default function Suppliers() {
     leadTime: 1,
     autoOrderEnabled: false,
     paymentTerms: 'Net 30',
+    deliveryMethods: [],
     notes: '',
     isActive: true
   })
@@ -45,11 +51,54 @@ export default function Suppliers() {
   useEffect(() => {
     const subscription = subscriptions.suppliers(payload => {
       console.log('Suppliers changed:', payload)
-      loadSuppliers()
+      // Only reload if modal is not open to prevent disruption
+      if (!openDialog) {
+        loadSuppliers()
+      }
     })
 
     return () => {
       subscription.unsubscribe()
+    }
+  }, [openDialog])
+
+  // Persist form data to prevent loss when switching tabs
+  useEffect(() => {
+    if (openDialog) {
+      // Save form data to sessionStorage whenever form changes
+      const timestamp = Date.now()
+      const formData = {
+        newSupplier,
+        editingSupplier,
+        timestamp
+      }
+      sessionStorage.setItem('supplierFormData', JSON.stringify(formData))
+      setLastSaved(timestamp)
+      if (!isModalPersisted) {
+        setIsModalPersisted(true)
+      }
+    }
+  }, [openDialog, newSupplier, editingSupplier, isModalPersisted])
+
+  // Restore form data when component mounts
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('supplierFormData')
+    if (savedFormData) {
+      try {
+        const { newSupplier: savedSupplier, editingSupplier: savedEditing, timestamp } = JSON.parse(savedFormData)
+        // Only restore if less than 1 hour old
+        if (Date.now() - timestamp < 3600000) {
+          setNewSupplier(savedSupplier)
+          setEditingSupplier(savedEditing)
+          setOpenDialog(true)
+          setIsModalPersisted(true)
+        } else {
+          sessionStorage.removeItem('supplierFormData')
+        }
+      } catch (error) {
+        console.error('Error restoring form data:', error)
+        sessionStorage.removeItem('supplierFormData')
+      }
     }
   }, [])
 
@@ -60,8 +109,8 @@ export default function Suppliers() {
       const data = await suppliersService.getAll()
       setSuppliers(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load suppliers')
-      setSnackbar({ open: true, message: 'Failed to load suppliers', severity: 'error' })
+      setError(err instanceof Error ? err.message : t('failed_to_load_suppliers'))
+      setSnackbar({ open: true, message: t('failed_to_load_suppliers'), severity: 'error' })
     } finally {
       setLoading(false)
     }
@@ -71,34 +120,43 @@ export default function Suppliers() {
     try {
       if (editingSupplier) {
         await suppliersService.update(editingSupplier.id, newSupplier)
-        setSnackbar({ open: true, message: 'Supplier updated successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('supplier_updated_successfully'), severity: 'success' })
       } else {
         await suppliersService.create(newSupplier as Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>)
-        setSnackbar({ open: true, message: 'Supplier created successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('supplier_created_successfully'), severity: 'success' })
       }
 
       await loadSuppliers()
-
-      setNewSupplier({
-        name: '',
-        contactPerson: '',
-        email: '',
-        phone: '',
-        address: '',
-        deliveryDays: [],
-        orderSubmissionDays: [],
-        minimumOrderAmount: 0,
-        leadTime: 1,
-        autoOrderEnabled: false,
-        paymentTerms: 'Net 30',
-        notes: '',
-        isActive: true
-      })
-      setEditingSupplier(null)
-      setOpenDialog(false)
+      closeModalAndClearData()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to save supplier', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_save_supplier'), severity: 'error' })
     }
+  }
+
+  const closeModalAndClearData = () => {
+    // Clear persisted form data
+    sessionStorage.removeItem('supplierFormData')
+    
+    // Reset form state
+    setNewSupplier({
+      name: '',
+      contactPerson: '',
+      email: '',
+      phone: '',
+      address: '',
+      deliveryDays: [],
+      orderSubmissionDays: [],
+      minimumOrderAmount: 0,
+      leadTime: 1,
+      autoOrderEnabled: false,
+      paymentTerms: 'Net 30',
+      deliveryMethods: [],
+      notes: '',
+      isActive: true
+    })
+    setEditingSupplier(null)
+    setOpenDialog(false)
+    setIsModalPersisted(false)
   }
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -110,10 +168,10 @@ export default function Suppliers() {
   const handleDeleteSupplier = async (id: string) => {
     try {
       await suppliersService.delete(id)
-      setSnackbar({ open: true, message: 'Supplier deleted successfully', severity: 'success' })
+      setSnackbar({ open: true, message: t('supplier_deleted_successfully'), severity: 'success' })
       await loadSuppliers()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to delete supplier', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_delete_supplier'), severity: 'error' })
     }
   }
 
@@ -122,11 +180,11 @@ export default function Suppliers() {
       const supplier = suppliers.find(sup => sup.id === id)
       if (supplier) {
         await suppliersService.update(id, { isActive: !supplier.isActive })
-        setSnackbar({ open: true, message: 'Supplier status updated successfully', severity: 'success' })
+        setSnackbar({ open: true, message: t('supplier_status_updated_successfully'), severity: 'success' })
         await loadSuppliers()
       }
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to update supplier status', severity: 'error' })
+      setSnackbar({ open: true, message: t('failed_to_update_supplier_status'), severity: 'error' })
     }
   }
 
@@ -143,6 +201,14 @@ export default function Suppliers() {
     setNewSupplier({
       ...newSupplier,
       orderSubmissionDays: typeof value === 'string' ? value.split(',') : value
+    })
+  }
+
+  const handleDeliveryMethodsChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value
+    setNewSupplier({
+      ...newSupplier,
+      deliveryMethods: (typeof value === 'string' ? value.split(',') : value) as ('pickup' | 'delivery')[]
     })
   }
 
@@ -176,7 +242,12 @@ export default function Suppliers() {
         <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
           {t('supplier_management')}
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+          // Clear any existing form data when starting fresh
+          sessionStorage.removeItem('supplierFormData')
+          setIsModalPersisted(false)
+          setOpenDialog(true)
+        }}>
           {t('add_supplier')}
         </Button>
       </Box>
@@ -243,6 +314,7 @@ export default function Suppliers() {
                   <TableCell>{t('contact')}</TableCell>
                   <TableCell>{t('delivery_days')}</TableCell>
                   <TableCell>{t('order_days')}</TableCell>
+                  <TableCell>{t('delivery_methods')}</TableCell>
                   <TableCell>{t('lead_time')}</TableCell>
                   <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('min_order')}</TableCell>
                   <TableCell>{t('auto_order')}</TableCell>
@@ -290,6 +362,20 @@ export default function Suppliers() {
                       </Box>
                     </TableCell>
                     <TableCell>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {supplier.deliveryMethods?.map(method => (
+                          <Chip 
+                            key={method} 
+                            icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
+                            label={t(method === 'delivery' ? 'delivery_method' : method)} 
+                            size="small" 
+                            variant="outlined" 
+                            color={method === 'pickup' ? 'secondary' : 'primary'}
+                          />
+                        ))}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                         <DeliveryIcon sx={{ fontSize: 14 }} />
                         <Typography variant="body2">
@@ -321,33 +407,55 @@ export default function Suppliers() {
       </Card>
 
       {/* Add/Edit Supplier Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
+      <Dialog 
+        open={openDialog} 
+        onClose={(event, reason) => {
+          // Prevent closing on backdrop click or escape key to avoid accidental closure
+          if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
+            closeModalAndClearData()
+          }
+        }} 
+        maxWidth="md" 
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+            <Typography variant="h6">
+              {editingSupplier ? t('edit_supplier') : t('add_new_supplier')}
+            </Typography>
+            {lastSaved && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                ✓ {t('auto_saved')}
+              </Typography>
+            )}
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Supplier Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} required />
+              <TextField fullWidth label={t('supplier_name')} value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Contact Person" value={newSupplier.contactPerson} onChange={e => setNewSupplier({ ...newSupplier, contactPerson: e.target.value })} required />
+              <TextField fullWidth label={t('contact_person')} value={newSupplier.contactPerson} onChange={e => setNewSupplier({ ...newSupplier, contactPerson: e.target.value })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Email" type="email" value={newSupplier.email} onChange={e => setNewSupplier({ ...newSupplier, email: e.target.value })} required />
+              <TextField fullWidth label={t('email')} type="email" value={newSupplier.email} onChange={e => setNewSupplier({ ...newSupplier, email: e.target.value })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} required />
+              <TextField fullWidth label={t('phone')} value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} required />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Address" multiline rows={2} value={newSupplier.address} onChange={e => setNewSupplier({ ...newSupplier, address: e.target.value })} required />
+              <TextField fullWidth label={t('address')} multiline rows={2} value={newSupplier.address} onChange={e => setNewSupplier({ ...newSupplier, address: e.target.value })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Delivery Days</InputLabel>
+                <InputLabel>{t('delivery_days_label')}</InputLabel>
                 <Select
                   multiple
                   value={newSupplier.deliveryDays || []}
                   onChange={handleDeliveryDaysChange}
-                  input={<OutlinedInput label="Delivery Days" />}
+                  input={<OutlinedInput label={t('delivery_days_label')} />}
                   renderValue={selected => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map(value => (
@@ -358,7 +466,7 @@ export default function Suppliers() {
                 >
                   {WEEKDAYS.map(day => (
                     <MuiMenuItem key={day} value={day}>
-                      {day}
+                      {t(day.toLowerCase() as any)}
                     </MuiMenuItem>
                   ))}
                 </Select>
@@ -366,12 +474,12 @@ export default function Suppliers() {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Order Submission Days</InputLabel>
+                <InputLabel>{t('order_submission_days')}</InputLabel>
                 <Select
                   multiple
                   value={newSupplier.orderSubmissionDays || []}
                   onChange={handleOrderSubmissionDaysChange}
-                  input={<OutlinedInput label="Order Submission Days" />}
+                  input={<OutlinedInput label={t('order_submission_days')} />}
                   renderValue={selected => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map(value => (
@@ -382,36 +490,69 @@ export default function Suppliers() {
                 >
                   {WEEKDAYS.map(day => (
                     <MuiMenuItem key={day} value={day}>
-                      {day}
+                      {t(day.toLowerCase() as any)}
                     </MuiMenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Lead Time (days)" type="number" value={newSupplier.leadTime} onChange={e => setNewSupplier({ ...newSupplier, leadTime: parseInt(e.target.value) || 1 })} inputProps={{ min: 1 }} />
+              <TextField fullWidth label={t('lead_time_days')} type="number" value={newSupplier.leadTime} onChange={e => setNewSupplier({ ...newSupplier, leadTime: parseInt(e.target.value) || 1 })} inputProps={{ min: 1 }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Minimum Order Amount" type="number" inputProps={{ step: '0.01' }} value={newSupplier.minimumOrderAmount} onChange={e => setNewSupplier({ ...newSupplier, minimumOrderAmount: parseFloat(e.target.value) || 0 })} />
+              <TextField fullWidth label={t('minimum_order_amount')} type="number" inputProps={{ step: '0.01' }} value={newSupplier.minimumOrderAmount} onChange={e => setNewSupplier({ ...newSupplier, minimumOrderAmount: parseFloat(e.target.value) || 0 })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Autocomplete freeSolo options={PAYMENT_TERMS} value={newSupplier.paymentTerms} onChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} onInputChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} renderInput={params => <TextField {...params} fullWidth label="Payment Terms" />} />
+              <FormControl fullWidth>
+                <InputLabel>{t('delivery_methods')}</InputLabel>
+                <Select
+                  multiple
+                  value={newSupplier.deliveryMethods || []}
+                  onChange={handleDeliveryMethodsChange}
+                  input={<OutlinedInput label={t('delivery_methods')} />}
+                  renderValue={selected => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map(method => (
+                        <Chip 
+                          key={method} 
+                          icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
+                          label={t(method === 'delivery' ? 'delivery_method' : method)} 
+                          size="small" 
+                          color={method === 'pickup' ? 'secondary' : 'primary'}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                >
+                  {DELIVERY_METHODS.map(method => (
+                    <MuiMenuItem key={method} value={method}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
+                        {t(method === 'delivery' ? 'delivery_method' : method)}
+                      </Box>
+                    </MuiMenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Autocomplete freeSolo options={PAYMENT_TERMS} value={newSupplier.paymentTerms} onChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} onInputChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} renderInput={params => <TextField {...params} fullWidth label={t('payment_terms')} />} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Notes" multiline rows={3} value={newSupplier.notes} onChange={e => setNewSupplier({ ...newSupplier, notes: e.target.value })} placeholder="Additional notes about this supplier..." />
+              <TextField fullWidth label={t('notes')} multiline rows={3} value={newSupplier.notes} onChange={e => setNewSupplier({ ...newSupplier, notes: e.target.value })} placeholder={t('notes_placeholder')} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControlLabel control={<Switch checked={newSupplier.autoOrderEnabled} onChange={e => setNewSupplier({ ...newSupplier, autoOrderEnabled: e.target.checked })} />} label="Enable Auto-Order for Low Stock" />
+              <FormControlLabel control={<Switch checked={newSupplier.autoOrderEnabled} onChange={e => setNewSupplier({ ...newSupplier, autoOrderEnabled: e.target.checked })} />} label={t('enable_auto_order_for_low_stock')} sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0 }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControlLabel control={<Switch checked={newSupplier.isActive} onChange={e => setNewSupplier({ ...newSupplier, isActive: e.target.checked })} />} label="Active Supplier" />
+              <FormControlLabel control={<Switch checked={newSupplier.isActive} onChange={e => setNewSupplier({ ...newSupplier, isActive: e.target.checked })} />} label={t('active_supplier')} sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0 }} />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={closeModalAndClearData}>{t('cancel')}</Button>
           <Button onClick={handleSaveSupplier} variant="contained">
-            {editingSupplier ? 'Update' : 'Add'} Supplier
+            {editingSupplier ? t('update_supplier_button') : t('add_supplier_button')}
           </Button>
         </DialogActions>
       </Dialog>
