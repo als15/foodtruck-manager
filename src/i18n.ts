@@ -456,7 +456,7 @@ const resources = {
       // Dark mode
       switch_to_dark_mode: 'Switch to dark mode',
       switch_to_light_mode: 'Switch to light mode',
-      
+
       // Delivery methods
       delivery_methods: 'Delivery Methods',
       pickup: 'Pickup',
@@ -915,7 +915,7 @@ const resources = {
       // Dark mode
       switch_to_dark_mode: 'עבור למצב כהה',
       switch_to_light_mode: 'עבור למצב בהיר',
-      
+
       // Delivery methods
       delivery_methods: 'שיטות משלוח',
       pickup: 'איסוף עצמי',

@@ -4,8 +4,8 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Business as Bus
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { WEEKDAYS_ORDERED, sortDaysChronologically } from '../utils/weekdayUtils'
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const PAYMENT_TERMS = ['Net 30', 'Net 15', 'COD', 'Prepaid', 'Net 60', 'Due on Receipt']
 const DELIVERY_METHODS = ['pickup', 'delivery'] as const
 
@@ -20,7 +20,7 @@ export default function Suppliers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
-  
+
   // Persist modal state and form data across tab switches
   const [isModalPersisted, setIsModalPersisted] = useState(false)
   const [lastSaved, setLastSaved] = useState<number | null>(null)
@@ -136,7 +136,7 @@ export default function Suppliers() {
   const closeModalAndClearData = () => {
     // Clear persisted form data
     sessionStorage.removeItem('supplierFormData')
-    
+
     // Reset form state
     setNewSupplier({
       name: '',
@@ -242,12 +242,16 @@ export default function Suppliers() {
         <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
           {t('supplier_management')}
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-          // Clear any existing form data when starting fresh
-          sessionStorage.removeItem('supplierFormData')
-          setIsModalPersisted(false)
-          setOpenDialog(true)
-        }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            // Clear any existing form data when starting fresh
+            sessionStorage.removeItem('supplierFormData')
+            setIsModalPersisted(false)
+            setOpenDialog(true)
+          }}
+        >
           {t('add_supplier')}
         </Button>
       </Box>
@@ -349,14 +353,14 @@ export default function Suppliers() {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {supplier.deliveryDays.map(day => (
+                        {sortDaysChronologically(supplier.deliveryDays).map(day => (
                           <Chip key={day} label={day.slice(0, 3)} size="small" variant="outlined" />
                         ))}
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {supplier.orderSubmissionDays?.map(day => (
+                        {sortDaysChronologically(supplier.orderSubmissionDays || []).map(day => (
                           <Chip key={day} label={day.slice(0, 3)} size="small" variant="filled" color="primary" />
                         ))}
                       </Box>
@@ -364,14 +368,7 @@ export default function Suppliers() {
                     <TableCell>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {supplier.deliveryMethods?.map(method => (
-                          <Chip 
-                            key={method} 
-                            icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
-                            label={t(method === 'delivery' ? 'delivery_method' : method)} 
-                            size="small" 
-                            variant="outlined" 
-                            color={method === 'pickup' ? 'secondary' : 'primary'}
-                          />
+                          <Chip key={method} icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />} label={t(method === 'delivery' ? 'delivery_method' : method)} size="small" variant="outlined" color={method === 'pickup' ? 'secondary' : 'primary'} />
                         ))}
                       </Box>
                     </TableCell>
@@ -407,23 +404,21 @@ export default function Suppliers() {
       </Card>
 
       {/* Add/Edit Supplier Dialog */}
-      <Dialog 
-        open={openDialog} 
+      <Dialog
+        open={openDialog}
         onClose={(event, reason) => {
           // Prevent closing on backdrop click or escape key to avoid accidental closure
           if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
             closeModalAndClearData()
           }
-        }} 
-        maxWidth="md" 
+        }}
+        maxWidth="md"
         fullWidth
         disableEscapeKeyDown
       >
         <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-            <Typography variant="h6">
-              {editingSupplier ? t('edit_supplier') : t('add_new_supplier')}
-            </Typography>
+            <Typography variant="h6">{editingSupplier ? t('edit_supplier') : t('add_new_supplier')}</Typography>
             {lastSaved && (
               <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 ✓ {t('auto_saved')}
@@ -458,13 +453,13 @@ export default function Suppliers() {
                   input={<OutlinedInput label={t('delivery_days_label')} />}
                   renderValue={selected => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map(value => (
+                      {sortDaysChronologically(selected).map(value => (
                         <Chip key={value} label={value} size="small" />
                       ))}
                     </Box>
                   )}
                 >
-                  {WEEKDAYS.map(day => (
+                  {WEEKDAYS_ORDERED.map(day => (
                     <MuiMenuItem key={day} value={day}>
                       {t(day.toLowerCase() as any)}
                     </MuiMenuItem>
@@ -482,13 +477,13 @@ export default function Suppliers() {
                   input={<OutlinedInput label={t('order_submission_days')} />}
                   renderValue={selected => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map(value => (
+                      {sortDaysChronologically(selected).map(value => (
                         <Chip key={value} label={value} size="small" />
                       ))}
                     </Box>
                   )}
                 >
-                  {WEEKDAYS.map(day => (
+                  {WEEKDAYS_ORDERED.map(day => (
                     <MuiMenuItem key={day} value={day}>
                       {t(day.toLowerCase() as any)}
                     </MuiMenuItem>
@@ -513,13 +508,7 @@ export default function Suppliers() {
                   renderValue={selected => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map(method => (
-                        <Chip 
-                          key={method} 
-                          icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
-                          label={t(method === 'delivery' ? 'delivery_method' : method)} 
-                          size="small" 
-                          color={method === 'pickup' ? 'secondary' : 'primary'}
-                        />
+                        <Chip key={method} icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />} label={t(method === 'delivery' ? 'delivery_method' : method)} size="small" color={method === 'pickup' ? 'secondary' : 'primary'} />
                       ))}
                     </Box>
                   )}
