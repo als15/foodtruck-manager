@@ -62,6 +62,7 @@ import {
   subscriptions 
 } from '../services/supabaseService';
 import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '../utils/currency';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -526,7 +527,7 @@ export default function Orders() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
                   <Typography variant="h6" color="primary">{t('todays_performance')}</Typography>
-                  <Typography variant="h4" className="number-ltr">${stats.todayRevenue.toFixed(2)}</Typography>
+                  <Typography variant="h4" className="number-ltr">{formatCurrency(stats.todayRevenue)}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('orders_count', { count: stats.todayOrders })}
                   </Typography>
@@ -558,7 +559,7 @@ export default function Orders() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
                   <Typography variant="h6" color="info.main">{t('this_week')}</Typography>
-                  <Typography variant="h4">${stats.thisWeekRevenue.toFixed(2)}</Typography>
+                  <Typography variant="h4">{formatCurrency(stats.thisWeekRevenue)}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisWeekOrders} orders
                   </Typography>
@@ -590,7 +591,7 @@ export default function Orders() {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
                   <Typography variant="h6" color="secondary.main">{t('this_month')}</Typography>
-                  <Typography variant="h4">${stats.thisMonthRevenue.toFixed(2)}</Typography>
+                  <Typography variant="h4">{formatCurrency(stats.thisMonthRevenue)}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisMonthOrders} orders
                   </Typography>
@@ -634,7 +635,7 @@ export default function Orders() {
                           </Typography>
                         </Box>
                       }
-                      secondary={`$${data.revenue.toFixed(2)} revenue`}
+                      secondary={`${formatCurrency(data.revenue)} revenue`}
                     />
                   </ListItem>
                 ))}
@@ -657,7 +658,7 @@ export default function Orders() {
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <MoneyIcon color="success" />
-                    <Typography variant="h6">${stats.averageOrderValue.toFixed(2)}</Typography>
+                    <Typography variant="h6">{formatCurrency(stats.averageOrderValue)}</Typography>
                     <Typography variant="caption">{t('avg_order_value')}</Typography>
                   </Box>
                 </Grid>
@@ -682,7 +683,7 @@ export default function Orders() {
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <MoneyIcon color="info" />
-                    <Typography variant="h6">${stats.totalRevenue.toFixed(2)}</Typography>
+                    <Typography variant="h6">{formatCurrency(stats.totalRevenue)}</Typography>
                     <Typography variant="caption">{t('total_revenue')}</Typography>
                   </Box>
                 </Grid>
@@ -741,11 +742,11 @@ export default function Orders() {
                             {location}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            ${data.revenue.toFixed(2)}
+                            {formatCurrency(data.revenue)}
                           </Typography>
                         </Box>
                       }
-                      secondary={`${data.orders} orders • $${(data.revenue / data.orders).toFixed(2)} avg`}
+                      secondary={`${data.orders} orders • ${formatCurrency(data.revenue / data.orders)} avg`}
                     />
                   </ListItem>
                 ))}
@@ -824,12 +825,12 @@ export default function Orders() {
                     </TableCell>
                     <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
                       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        ${order.total.toFixed(2)}
+                        {formatCurrency(order.total)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Sub: ${order.subtotal.toFixed(2)}
-                        {order.taxAmount && order.taxAmount > 0 && ` | Tax: $${order.taxAmount.toFixed(2)}`}
-                        {order.tipAmount && order.tipAmount > 0 && ` | Tip: $${order.tipAmount.toFixed(2)}`}
+                        Sub: {formatCurrency(order.subtotal)}
+                        {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
+                        {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -1045,7 +1046,7 @@ export default function Orders() {
                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
                                   {item.description}
                                 </Typography>
-                                <Typography variant="h6" color="primary">${item.price.toFixed(2)}</Typography>
+                                <Typography variant="h6" color="primary">{formatCurrency(item.price)}</Typography>
                               </CardContent>
                             </Card>
                           </Grid>
@@ -1072,7 +1073,7 @@ export default function Orders() {
                     <ListItem key={item.menuItemId} divider>
                       <ListItemText
                         primary={item.menuItem?.name}
-                        secondary={`$${item.unitPrice.toFixed(2)} each`}
+                        secondary={`${formatCurrency(item.unitPrice)} each`}
                       />
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <IconButton 
@@ -1089,7 +1090,7 @@ export default function Orders() {
                           <AddIcon />
                         </IconButton>
                         <Typography sx={{ ml: 1, minWidth: 60, textAlign: 'right' }}>
-                          ${item.totalPrice.toFixed(2)}
+                          {formatCurrency(item.totalPrice)}
                         </Typography>
                       </Box>
                     </ListItem>
@@ -1106,11 +1107,11 @@ export default function Orders() {
                       <>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography>Subtotal:</Typography>
-                          <Typography>${totals.subtotal.toFixed(2)}</Typography>
+                          <Typography>{formatCurrency(totals.subtotal)}</Typography>
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography>Tax ({(taxRate * 100).toFixed(0)}%):</Typography>
-                          <Typography>${totals.taxAmount.toFixed(2)}</Typography>
+                          <Typography>{formatCurrency(totals.taxAmount)}</Typography>
                         </Box>
                         <TextField
                           fullWidth
@@ -1124,7 +1125,7 @@ export default function Orders() {
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                           <Typography variant="h6">Total:</Typography>
-                          <Typography variant="h6">${totals.total.toFixed(2)}</Typography>
+                          <Typography variant="h6">{formatCurrency(totals.total)}</Typography>
                         </Box>
                       </>
                     );
@@ -1185,7 +1186,7 @@ export default function Orders() {
             onClick={handleCreateOrder}
             disabled={orderItems.length === 0}
           >
-            Add Order Record (${calculateTotals().total.toFixed(2)})
+            Add Order Record ({formatCurrency(calculateTotals().total)})
           </Button>
         </DialogActions>
       </Dialog>

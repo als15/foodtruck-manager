@@ -480,7 +480,11 @@ const resources = {
       category_already_exists: 'Category already exists',
       cannot_delete_category_in_use: 'Cannot delete category "{{category}}". {{count}} menu items are using this category.',
       note_editing_category_will_update_items: 'Note: Editing this category will update all menu items that use it.',
-      select_or_type_new_category: 'Select or type new category'
+      select_or_type_new_category: 'Select or type new category',
+
+      // Currency
+      currency_symbol: '$',
+      currency_code: 'USD'
     }
   },
   he: {
@@ -959,7 +963,11 @@ const resources = {
       category_already_exists: 'הקטגוריה כבר קיימת',
       cannot_delete_category_in_use: 'לא ניתן למחוק קטגוריה "{{category}}". {{count}} פריטי תפריט משתמשים בקטגוריה זו.',
       note_editing_category_will_update_items: 'הערה: עריכת קטגוריה זו תעדכן את כל פריטי התפריט שמשתמשים בה.',
-      select_or_type_new_category: 'בחר או הקלד קטגוריה חדשה'
+      select_or_type_new_category: 'בחר או הקלד קטגוריה חדשה',
+
+      // Currency
+      currency_symbol: '₪',
+      currency_code: 'ILS'
     }
   }
 }

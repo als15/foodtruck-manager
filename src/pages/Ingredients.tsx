@@ -6,6 +6,7 @@ import { ingredientsService, suppliersService, subscriptions } from '../services
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
 import RecipeParser from '../components/RecipeParser'
+import { formatCurrency } from '../utils/currency'
 
 export default function Ingredients() {
   const theme = useTheme()
@@ -44,46 +45,8 @@ export default function Ingredients() {
   useEffect(() => {
     loadIngredients()
     loadSuppliers()
-    
-    // Restore modal state from sessionStorage
-    const savedModalState = sessionStorage.getItem('ingredientModalState')
-    if (savedModalState) {
-      try {
-        const { isOpen, ingredientData, isEditing, editingId } = JSON.parse(savedModalState)
-        if (isOpen) {
-          setNewIngredient(ingredientData)
-          setOpenDialog(true)
-          if (isEditing && editingId) {
-            setEditingIngredient({ ...ingredientData, id: editingId } as Ingredient)
-          }
-        }
-      } catch (err) {
-        console.error('Failed to restore modal state:', err)
-        sessionStorage.removeItem('ingredientModalState')
-      }
-    }
   }, [])
 
-  // Auto-save modal state when form data changes
-  useEffect(() => {
-    if (openDialog) {
-      const modalState = {
-        isOpen: true,
-        ingredientData: newIngredient,
-        isEditing: !!editingIngredient,
-        editingId: editingIngredient?.id || null
-      }
-      
-      sessionStorage.setItem('ingredientModalState', JSON.stringify(modalState))
-      
-      // Show auto-save indicator
-      const timer = setTimeout(() => {
-        setSnackbar({ open: true, message: t('auto_saved'), severity: 'info' })
-      }, 1000)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [newIngredient, openDialog, editingIngredient, t])
 
   // Set up real-time subscription
   useEffect(() => {
@@ -134,8 +97,6 @@ export default function Ingredients() {
       // Reload ingredients to get updated data
       await loadIngredients()
 
-      // Clear modal state from sessionStorage
-      sessionStorage.removeItem('ingredientModalState')
 
       setNewIngredient({
         name: '',
@@ -161,14 +122,6 @@ export default function Ingredients() {
     setNewIngredient(ingredient)
     setEditingIngredient(ingredient)
     setOpenDialog(true)
-    
-    // Save modal state to sessionStorage
-    sessionStorage.setItem('ingredientModalState', JSON.stringify({
-      isOpen: true,
-      ingredientData: ingredient,
-      isEditing: true,
-      editingId: ingredient.id
-    }))
   }
 
   const handleDeleteIngredient = async (id: string) => {
@@ -191,14 +144,6 @@ export default function Ingredients() {
     setNewIngredient(duplicatedIngredient)
     setEditingIngredient(null)
     setOpenDialog(true)
-    
-    // Save modal state to sessionStorage
-    sessionStorage.setItem('ingredientModalState', JSON.stringify({
-      isOpen: true,
-      ingredientData: duplicatedIngredient,
-      isEditing: false,
-      editingId: null
-    }))
   }
 
   const toggleAvailability = async (id: string) => {
@@ -440,16 +385,7 @@ export default function Ingredients() {
           <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={e => setMenuAnchor(e.currentTarget)}>
             {t('import_export')}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
-            setOpenDialog(true)
-            // Save modal state to sessionStorage for new ingredient
-            sessionStorage.setItem('ingredientModalState', JSON.stringify({
-              isOpen: true,
-              ingredientData: newIngredient,
-              isEditing: false,
-              editingId: null
-            }))
-          }}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
             {t('add_ingredient')}
           </Button>
         </Box>
@@ -492,7 +428,7 @@ export default function Ingredients() {
               <Typography variant="h6" color="warning.main">
                 {t('avg_cost')}
               </Typography>
-              <Typography variant="h4">${avgCostPerIngredient.toFixed(2)}</Typography>
+              <Typography variant="h4">{formatCurrency(avgCostPerIngredient)}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -543,7 +479,7 @@ export default function Ingredients() {
                             color: theme.palette.mode === 'dark' ? '#7fffd4' : '#1f5c3d'  // Better contrast colors
                           }}
                         >
-                          ${ingredient.costPerUnit.toFixed(2)}
+                          {formatCurrency(ingredient.costPerUnit)}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -639,8 +575,6 @@ export default function Ingredients() {
               orderByPackage: false,
               lastUpdated: new Date()
             })
-            // Clear modal state from sessionStorage
-            sessionStorage.removeItem('ingredientModalState')
           }}>{t('cancel')}</Button>
           <Button onClick={handleSaveIngredient} variant="contained">
             {editingIngredient ? t('update_ingredient') : t('add_ingredient')}

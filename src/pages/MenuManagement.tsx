@@ -5,6 +5,7 @@ import { MenuItem, Ingredient, MenuItemIngredient } from '../types'
 import { menuItemsService, ingredientsService, menuCategoriesService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
 
 export default function MenuManagement() {
   const theme = useTheme()
@@ -529,13 +530,13 @@ export default function MenuManagement() {
                         </Typography>
 
                         <Typography variant="h6" color="primary" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
-                          ${item.price.toFixed(2)}
+                          {formatCurrency(item.price)}
                         </Typography>
 
                         <Box sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                           <Typography variant="caption" display="flex" alignItems="center" sx={{ mb: 0.5, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                             <CalculateIcon sx={{ fontSize: 14, marginInlineEnd: 0.5 }} />
-                            {t('ingredient_cost')}: ${totalCost.toFixed(2)}
+                            {t('ingredient_cost')}: {formatCurrency(totalCost)}
                           </Typography>
                           <Typography variant="caption" display="flex" alignItems="center" color={profitMargin > 0 ? 'success.main' : 'error.main'} sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                             <ProfitIcon sx={{ fontSize: 14, marginInlineEnd: 0.5 }} />
@@ -656,7 +657,7 @@ export default function MenuManagement() {
                             </TableCell>
                             <TableCell>
                               <Typography variant="body2" color="primary">
-                                ${cost.toFixed(2)}
+                                {formatCurrency(cost)}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -673,7 +674,7 @@ export default function MenuManagement() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="subtitle2" color="primary">
-                            ${calculateTotalIngredientCost(newItem.ingredients).toFixed(2)}
+                            {formatCurrency(calculateTotalIngredientCost(newItem.ingredients))}
                           </Typography>
                         </TableCell>
                         <TableCell />
@@ -686,7 +687,7 @@ export default function MenuManagement() {
               {newItem.price && newItem.ingredients && (
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <Typography variant="body2">Profit Margin: {calculateProfitMargin(newItem.price, calculateTotalIngredientCost(newItem.ingredients)).toFixed(1)}%</Typography>
-                  <Typography variant="body2">Profit per Item: ${(newItem.price - calculateTotalIngredientCost(newItem.ingredients)).toFixed(2)}</Typography>
+                  <Typography variant="body2">Profit per Item: {formatCurrency(newItem.price - calculateTotalIngredientCost(newItem.ingredients))}</Typography>
                 </Alert>
               )}
             </Grid>
@@ -700,7 +701,20 @@ export default function MenuManagement() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>{t('cancel')}</Button>
+          <Button onClick={() => {
+            setOpenDialog(false)
+            setEditingItem(null)
+            setNewItem({
+              name: '',
+              description: '',
+              price: 0,
+              category: '',
+              ingredients: [],
+              allergens: [],
+              isAvailable: true,
+              prepTime: 5
+            })
+          }}>{t('cancel')}</Button>
           <Button onClick={handleSaveItem} variant="contained">
             {editingItem ? t('update_item') : t('add_item')}
           </Button>

@@ -4,6 +4,7 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Business as Bus
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
 import { WEEKDAYS_ORDERED, sortDaysChronologically } from '../utils/weekdayUtils'
 
 const PAYMENT_TERMS = ['Net 30', 'Net 15', 'COD', 'Prepaid', 'Net 60', 'Due on Receipt']

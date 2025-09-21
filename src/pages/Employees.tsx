@@ -4,6 +4,7 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as Sch
 import { Employee, Shift } from '../types'
 import { employeesService, shiftsService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -395,7 +396,7 @@ export default function Employees() {
                       {t('phone')}: {employee.phone}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      {t('hourly_rate')}: ${employee.hourlyRate.toFixed(2)}
+                      {t('hourly_rate')}: {formatCurrency(employee.hourlyRate)}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       {t('hours_this_week')}: {calculateWeeklyHours(employee.id, new Date()).toFixed(2)} {t('hours')}
@@ -508,10 +509,10 @@ export default function Employees() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{totalHours.toFixed(2)}</TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${employee.hourlyRate.toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(employee.hourlyRate)}</TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: weeklyPay > 0 ? 'bold' : 'normal' }}>
-                            ${weeklyPay.toFixed(2)}
+                            {formatCurrency(weeklyPay)}
                           </Typography>
                         </TableCell>
                       </TableRow>

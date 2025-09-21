@@ -5,6 +5,7 @@ import { inventoryService, suppliersService } from '../services/supabaseService'
 import { useTheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
 import { InventoryItem, Supplier } from '../types'
+import { formatCurrency } from '../utils/currency'
 
 const StatCard = ({ title, value, icon, color, subtitle, isRtl }: any) => (
   <Card>
@@ -89,7 +90,7 @@ export default function Dashboard() {
 
       <Grid container spacing={3} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard title={t('todays_revenue')} value="$1,247" icon={<AttachMoney />} color="success.main" subtitle={t('plus_percent_from_yesterday', { percent: 12 })} isRtl={isRtl} />
+          <StatCard title={t('todays_revenue')} value={formatCurrency(1247)} icon={<AttachMoney />} color="success.main" subtitle={t('plus_percent_from_yesterday', { percent: 12 })} isRtl={isRtl} />
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
@@ -132,7 +133,7 @@ export default function Dashboard() {
                   {t('estimated_order_value')}
                 </Typography>
                 <Typography variant="h5" color="primary" sx={{ textAlign: isRtl ? 'right' : 'left', width: '100%' }}>
-                  ${estimatedOrderValue.toFixed(2)}
+                  {formatCurrency(estimatedOrderValue)}
                 </Typography>
               </Box>
 
@@ -154,7 +155,7 @@ export default function Dashboard() {
               </Typography>
               <LinearProgress variant="determinate" value={75} sx={{ mb: 1 }} />
               <Typography variant="caption" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-                $1,247 {t('of_goal', { value: '$1,660' })}
+                {formatCurrency(1247)} {t('of_goal', { value: formatCurrency(1660) })}
               </Typography>
             </Box>
             <Box sx={{ mb: 2 }}>
