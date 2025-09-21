@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material';
 import { Customer } from '../types';
 import { customersService } from '../services/supabaseService';
+import { formatCurrency } from '../utils/currency';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -232,7 +233,7 @@ export default function Customers() {
                 Avg Order Value
               </Typography>
               <Typography variant="h4">
-                ${avgOrderValue.toFixed(2)}
+                {formatCurrency(avgOrderValue)}
               </Typography>
             </CardContent>
           </Card>
@@ -304,7 +305,7 @@ export default function Customers() {
                         Total Orders: {customer.totalOrders || 0}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Total Spent: ${(customer.totalSpent || 0).toFixed(2)}
+                        Total Spent: {formatCurrency(customer.totalSpent || 0)}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
                         Last Visit: {customer.lastVisit?.toLocaleDateString() || 'Never'}
@@ -374,8 +375,8 @@ export default function Customers() {
                         </TableCell>
                         <TableCell>{customer.loyaltyPoints || 0}</TableCell>
                         <TableCell>{customer.totalOrders || 0}</TableCell>
-                        <TableCell>${(customer.totalSpent || 0).toFixed(2)}</TableCell>
-                        <TableCell>{pointsPerDollar.toFixed(2)}</TableCell>
+                        <TableCell>{formatCurrency(customer.totalSpent || 0)}</TableCell>
+                        <TableCell>{formatCurrency(pointsPerDollar)}</TableCell>
                       </TableRow>
                     );
                   })}

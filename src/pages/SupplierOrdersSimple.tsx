@@ -18,6 +18,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { SupplierOrderItem, Supplier, Ingredient } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 // Simple test component to validate the add item functionality
 export default function SupplierOrdersSimple() {
@@ -217,7 +218,7 @@ export default function SupplierOrdersSimple() {
               <Grid item xs={6} sm={2}>
                 <TextField
                   label="Total"
-                  value={item.totalPrice.toFixed(2)}
+                  value={formatCurrency(item.totalPrice)}
                   size="small"
                   fullWidth
                   disabled

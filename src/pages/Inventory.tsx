@@ -4,6 +4,7 @@ import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Warning as Warn
 import { InventoryItem, Ingredient, Supplier } from '../types'
 import { inventoryService, ingredientsService, suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
 
 export default function Inventory() {
   const theme = useTheme()
@@ -291,7 +292,7 @@ export default function Inventory() {
               </Button>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
-              {t('total_estimated_cost')}: <strong>${totalAutoOrderValue.toFixed(2)}</strong>
+              {t('total_estimated_cost')}: <strong>{formatCurrency(totalAutoOrderValue)}</strong>
             </Typography>
 
             {showAutoOrders && (
@@ -334,11 +335,11 @@ export default function Inventory() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                          <Typography variant="body2">${suggestion?.item.costPerUnit.toFixed(2)}</Typography>
+                          <Typography variant="body2">{formatCurrency(suggestion?.item.costPerUnit || 0)}</Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                           <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                            ${suggestion?.totalCost.toFixed(2)}
+                            {formatCurrency(suggestion?.totalCost || 0)}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -388,7 +389,7 @@ export default function Inventory() {
               <Typography variant="h6" color="success.main">
                 {t('total_value')}
               </Typography>
-              <Typography variant="h4">${totalInventoryValue.toFixed(2)}</Typography>
+              <Typography variant="h4">{formatCurrency(totalInventoryValue)}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -457,8 +458,8 @@ export default function Inventory() {
                             <Chip label={stockStatus.status} color={stockStatus.color as any} size="small" />
                           </Box>
                         </TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${item.costPerUnit.toFixed(2)}</TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${(item.currentStock * item.costPerUnit).toFixed(2)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(item.costPerUnit)}</TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(item.currentStock * item.costPerUnit)}</TableCell>
                         <TableCell>{item.supplier}</TableCell>
                         <TableCell>{item.lastRestocked.toLocaleDateString()}</TableCell>
                         <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
@@ -502,7 +503,7 @@ export default function Inventory() {
                     <Box>
                       <Typography variant="body1">{option.name}</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {option.category} • {option.supplier} • ${option.costPerUnit}/{option.unit}
+                        {option.category} • {option.supplier} • {formatCurrency(option.costPerUnit)}/{option.unit}
                       </Typography>
                     </Box>
                   </li>

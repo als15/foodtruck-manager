@@ -32,6 +32,7 @@ import {
 import { Add as AddIcon, TrendingUp, TrendingDown } from '@mui/icons-material';
 import { Transaction } from '../types';
 import { transactionsService, subscriptions } from '../services/supabaseService';
+import { formatCurrency } from '../utils/currency';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -190,7 +191,7 @@ export default function Finances() {
                 <Typography variant="h6">Total Revenue</Typography>
               </Box>
               <Typography variant="h4" color="success.main">
-                ${totalRevenue.toFixed(2)}
+                {formatCurrency(totalRevenue)}
               </Typography>
             </CardContent>
           </Card>
@@ -204,7 +205,7 @@ export default function Finances() {
                 <Typography variant="h6">Total Expenses</Typography>
               </Box>
               <Typography variant="h4" color="error.main">
-                ${totalExpenses.toFixed(2)}
+                {formatCurrency(totalExpenses)}
               </Typography>
             </CardContent>
           </Card>
@@ -218,7 +219,7 @@ export default function Finances() {
                 variant="h4" 
                 color={profit >= 0 ? 'success.main' : 'error.main'}
               >
-                ${profit.toFixed(2)}
+                {formatCurrency(profit)}
               </Typography>
             </CardContent>
           </Card>
@@ -264,7 +265,7 @@ export default function Finances() {
                       <Typography 
                         color={transaction.type === 'revenue' ? 'success.main' : 'error.main'}
                       >
-                        {transaction.type === 'revenue' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                        {transaction.type === 'revenue' ? '+' : '-'}{formatCurrency(transaction.amount)}
                       </Typography>
                     </TableCell>
                   </TableRow>

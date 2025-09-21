@@ -7,6 +7,7 @@ import LaborCostManager from '../components/LaborCostManager'
 import { Employee, Shift } from '../types'
 import { useTheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -508,7 +509,7 @@ export default function FinancialManagement() {
                 </Typography>
               </Box>
               <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-                ${calculateMonthlyExpenses().toFixed(2)}
+                {formatCurrency(calculateMonthlyExpenses())}
               </Typography>
             </CardContent>
           </Card>
@@ -627,13 +628,13 @@ export default function FinancialManagement() {
                               {expense.name}
                               {category && <Chip label={category.name} size="small" variant="outlined" sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0, fontSize: '0.7rem' }} />}
                             </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>${expense.amount.toFixed(2)}</TableCell>
+                            <TableCell align={isRtl ? 'left' : 'right'}>{formatCurrency(expense.amount)}</TableCell>
                             <TableCell>{t(expense.frequency)}</TableCell>
                             <TableCell>{category?.name}</TableCell>
                             <TableCell>
                               <Chip label={t(expense.type)} size="small" color={expense.type === 'fixed' ? 'primary' : expense.type === 'variable' ? 'warning' : 'default'} />
                             </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>${monthlyImpact.toFixed(2)}</TableCell>
+                            <TableCell align={isRtl ? 'left' : 'right'}>{formatCurrency(monthlyImpact)}</TableCell>
                             <TableCell>
                               <IconButton size="small" onClick={() => handleEditExpense(expense)}>
                                 <EditIcon />
@@ -663,7 +664,7 @@ export default function FinancialManagement() {
               <Alert severity="info" sx={{ mb: 3 }}>
                 <Typography variant="body2">
                   <strong>Revenue Analytics:</strong> Based on break-even analysis and menu data
-                  <br />• Weekly Revenue: ${metrics.weeklyRevenue.toFixed(2)}• Weekly Orders: {metrics.weeklyOrders} orders • Avg Order Value: ${metrics.avgOrderValue.toFixed(2)}
+                  <br />• Weekly Revenue: {formatCurrency(metrics.weeklyRevenue)}• Weekly Orders: {metrics.weeklyOrders} orders • Avg Order Value: {formatCurrency(metrics.avgOrderValue)}
                   <br />
                   <em>These values will be replaced with actual sales data when transaction tracking is implemented.</em>
                 </Typography>
@@ -699,10 +700,10 @@ export default function FinancialManagement() {
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Monthly Expenses: <strong>${analysis.monthlyExpenses.toFixed(2)}</strong>
+                      Monthly Expenses: <strong>{formatCurrency(analysis.monthlyExpenses)}</strong>
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Average Order Value: <strong>${analysis.avgOrderValue.toFixed(2)}</strong>
+                      Average Order Value: <strong>{formatCurrency(analysis.avgOrderValue)}</strong>
                       {analysis.usingCalculatedValues.orderValue && <Chip label="Calculated" size="small" sx={{ ml: 1 }} />}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -710,7 +711,7 @@ export default function FinancialManagement() {
                       {analysis.usingCalculatedValues.profitMargin && <Chip label="Calculated" size="small" sx={{ ml: 1 }} />}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Profit Per Order: <strong>${analysis.profitPerOrder.toFixed(2)}</strong>
+                      Profit Per Order: <strong>{formatCurrency(analysis.profitPerOrder)}</strong>
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       Seasonal Multiplier: <strong>{analysis.seasonalMultiplier}x</strong>
@@ -787,7 +788,7 @@ export default function FinancialManagement() {
                         Revenue
                       </Typography>
                       <Typography variant="h6" color="success.main">
-                        ${projection.projectedRevenue.toFixed(2)}
+                        {formatCurrency(projection.projectedRevenue)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
@@ -795,7 +796,7 @@ export default function FinancialManagement() {
                         Expenses
                       </Typography>
                       <Typography variant="h6" color="error.main">
-                        ${projection.projectedExpenses.toFixed(2)}
+                        {formatCurrency(projection.projectedExpenses)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
@@ -803,7 +804,7 @@ export default function FinancialManagement() {
                         Profit
                       </Typography>
                       <Typography variant="h6" color={projection.projectedProfit >= 0 ? 'success.main' : 'error.main'}>
-                        ${projection.projectedProfit.toFixed(2)}
+                        {formatCurrency(projection.projectedProfit)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
@@ -846,7 +847,7 @@ export default function FinancialManagement() {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2">Progress</Typography>
                       <Typography variant="body2">
-                        ${goal.currentAmount.toFixed(2)} / ${goal.targetAmount.toFixed(2)}
+                        {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                       </Typography>
                     </Box>
                     <LinearProgress variant="determinate" value={Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)} />
@@ -998,7 +999,7 @@ export default function FinancialManagement() {
               <TextField fullWidth label="Working Days Per Month" type="number" value={newProjection.workingDaysPerMonth} onChange={e => setNewProjection({ ...newProjection, workingDaysPerMonth: parseInt(e.target.value) || 22 })} helperText="Number of operating days per month" />
             </Grid>
             <Grid item xs={12}>
-              <Alert severity="info">Based on your current monthly expenses of ${calculateMonthlyExpenses().toFixed(2)}, this projection will calculate your expected profit and break-even point.</Alert>
+              <Alert severity="info">Based on your current monthly expenses of {formatCurrency(calculateMonthlyExpenses())}, this projection will calculate your expected profit and break-even point.</Alert>
             </Grid>
           </Grid>
         </DialogContent>
@@ -1033,7 +1034,7 @@ export default function FinancialManagement() {
                     customAverageOrderValue: parseFloat(e.target.value) || 0
                   })
                 }
-                helperText={financialSettings.customAverageOrderValue === 0 ? `Using calculated: $${calculateAverageOrderValue().toFixed(2)}` : 'Leave 0 to use calculated value from menu items'}
+                helperText={financialSettings.customAverageOrderValue === 0 ? `Using calculated: ${formatCurrency(calculateAverageOrderValue())}` : 'Leave 0 to use calculated value from menu items'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

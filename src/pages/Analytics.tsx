@@ -22,6 +22,7 @@ import {
   Cell,
   ResponsiveContainer,
 } from 'recharts';
+import { formatCurrency } from '../utils/currency';
 
 const salesData = [
   { month: 'Jan', revenue: 12000, expenses: 8000, profit: 4000 },
@@ -76,7 +77,7 @@ export default function Analytics() {
                 Total Revenue (6M)
               </Typography>
               <Typography variant="h4">
-                ${totalRevenue.toLocaleString()}
+                {formatCurrency(totalRevenue)}
               </Typography>
               <Typography variant="body2" color="success.main">
                 +15% from last period
@@ -219,7 +220,7 @@ export default function Analytics() {
                     {location.location}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Revenue: ${location.revenue.toLocaleString()}
+                    Revenue: {formatCurrency(location.revenue)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Orders: {location.orders}

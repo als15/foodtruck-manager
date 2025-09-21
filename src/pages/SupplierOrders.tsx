@@ -7,6 +7,7 @@ import { supplierOrdersService, suppliersService, ingredientsService, subscripti
 import { nomNomColors } from '../theme/nomnom-theme'
 import { useTranslation } from 'react-i18next'
 import Papa from 'papaparse'
+import { formatCurrency } from '../utils/currency'
 
 const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
 const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
@@ -806,7 +807,7 @@ export default function SupplierOrders() {
                     <TableCell>
                       {order.items.length} {t('items')}
                     </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(order.totalAmount)}</TableCell>
                     <TableCell>
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <Select
@@ -1008,7 +1009,7 @@ export default function SupplierOrders() {
                   <Grid item xs={6} sm={2}>
                     <TextField 
                       label={t('total')} 
-                      value={(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice).toFixed(2)} 
+                      value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)} 
                       size="small" 
                       fullWidth 
                       disabled 
@@ -1031,7 +1032,7 @@ export default function SupplierOrders() {
 
           <Box mt={2} textAlign={isRtl ? 'left' : 'right'}>
             <Typography variant="h6">
-              {t('total_amount')}: ${newOrder.totalAmount?.toFixed(2) || '0.00'}
+              {t('total_amount')}: {formatCurrency(newOrder.totalAmount || 0)}
             </Typography>
           </Box>
         </DialogContent>

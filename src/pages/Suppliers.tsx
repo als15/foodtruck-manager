@@ -382,7 +382,7 @@ export default function Suppliers() {
                       </Box>
                     </TableCell>
                     <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <Typography variant="body2">${supplier.minimumOrderAmount.toFixed(2)}</Typography>
+                      <Typography variant="body2">{formatCurrency(supplier.minimumOrderAmount)}</Typography>
                     </TableCell>
                     <TableCell>{supplier.autoOrderEnabled && <Chip icon={<AutoOrderIcon />} label={t('enabled')} size="small" color="success" variant="outlined" />}</TableCell>
                     <TableCell>
