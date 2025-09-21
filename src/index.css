@@ -114,6 +114,42 @@ body {
   unicode-bidi: embed;
 }
 
+/* Enhanced text contrast for better readability */
+.MuiTableCell-root .MuiTypography-colorPrimary,
+.MuiTableCell-body .MuiTypography-colorPrimary {
+  color: #1f5c3d !important;
+  font-weight: 600 !important;
+}
+
+/* Dark mode text contrast improvements */
+[data-theme="dark"] .MuiTableCell-root .MuiTypography-colorPrimary,
+[data-theme="dark"] .MuiTableCell-body .MuiTypography-colorPrimary {
+  color: #7fffd4 !important;
+  font-weight: 600 !important;
+}
+
+/* General table text improvements */
+.MuiTableCell-root .MuiTypography-root {
+  font-weight: 500;
+}
+
+.MuiTableCell-root .MuiTypography-body1 {
+  font-weight: 600;
+}
+
+.MuiTableCell-root .MuiTypography-body2 {
+  font-weight: 500;
+}
+
+/* Ensure good contrast for primary colored text everywhere */
+.MuiTypography-colorPrimary {
+  color: #1f5c3d !important;
+}
+
+[data-theme="dark"] .MuiTypography-colorPrimary {
+  color: #7fffd4 !important;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }

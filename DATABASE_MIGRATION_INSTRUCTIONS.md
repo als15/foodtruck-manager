@@ -1,14 +1,20 @@
 # Database Migration Instructions
 
-## Issue
-The application expects a `delivery_methods` column in the `suppliers` table, but this column doesn't exist in your current database schema. This is causing the error:
+## Current Migrations Needed
 
+### 1. Suppliers Delivery Methods
+The application expects a `delivery_methods` column in the `suppliers` table. Run `add-delivery-methods-migration.sql` if you see:
 ```
 "Could not find the 'delivery_methods' column of 'suppliers' in the schema cache"
 ```
 
-## Solution
-You need to run a database migration to add the `delivery_methods` column to your suppliers table.
+### 2. Menu Categories Management
+The application now supports dynamic menu categories stored in the database. Run `create-menu-categories-table.sql` to enable category management features.
+
+### 3. Menu Items Tables
+If you see "new row violates row-level security policy for table 'menu_item_ingredients'" or "relation 'menu_item_ingredients' does not exist", run `create-menu-item-ingredients-table.sql` to create the missing tables with proper RLS policies.
+
+## Solutions
 
 ## Steps to Fix
 
@@ -23,8 +29,20 @@ You need to run a database migration to add the `delivery_methods` column to you
    - Click on "SQL Editor" in the left sidebar
    - Click "New query"
 
-3. **Run the Migration Script**
+3. **Run the Migration Scripts**
+   
+   **For Suppliers Delivery Methods:**
    - Copy the entire contents of `add-delivery-methods-migration.sql` 
+   - Paste it into the SQL editor
+   - Click "Run" to execute the migration
+   
+   **For Menu Categories Management:**
+   - Copy the entire contents of `create-menu-categories-table.sql`
+   - Paste it into the SQL editor
+   - Click "Run" to execute the migration
+   
+   **For Menu Items Tables:**
+   - Copy the entire contents of `create-menu-item-ingredients-table.sql`
    - Paste it into the SQL editor
    - Click "Run" to execute the migration
 
@@ -42,21 +60,36 @@ supabase db push --db-url "your-database-connection-string"
 
 ## Migration Script Contents
 
-The migration will:
-
+**Suppliers Delivery Methods Migration will:**
 1. ✅ Add `delivery_methods` column as TEXT array to suppliers table
 2. ✅ Set default values for existing suppliers (both pickup and delivery)
 3. ✅ Add validation constraints to ensure only valid delivery methods
 4. ✅ Create database index for performance
 5. ✅ Verify the migration completed successfully
 
+**Menu Categories Management Migration will:**
+1. ✅ Create `menu_categories` table with business_id relationship
+2. ✅ Set up proper RLS policies for multi-tenant security
+3. ✅ Create indexes for optimal performance
+4. ✅ Insert default categories for existing businesses
+5. ✅ Enable proper foreign key constraints and cascading
+
+**Menu Items Tables Migration will:**
+1. ✅ Create `menu_items` and `menu_item_ingredients` tables with proper structure
+2. ✅ Set up Row Level Security (RLS) policies for multi-tenant security
+3. ✅ Create performance indexes for foreign keys and queries
+4. ✅ Add update triggers for automatic timestamp management
+5. ✅ Verify tables and policies are created correctly
+
 ## After Running the Migration
 
-Once you've successfully run the migration:
+Once you've successfully run the migrations:
 
-1. **Refresh your application** - The supplier editing should now work properly
-2. **Test the functionality** - Try editing a supplier to confirm the delivery methods field works
-3. **Verify data integrity** - All existing suppliers should now have default delivery methods
+1. **Refresh your application** - Both supplier editing and menu category management should work properly
+2. **Test supplier functionality** - Try editing a supplier to confirm the delivery methods field works
+3. **Test category functionality** - Try adding/editing/deleting menu categories through the "Manage Categories" button
+4. **Test menu items functionality** - Try creating/editing menu items with ingredients
+5. **Verify data integrity** - All existing suppliers should have default delivery methods, and default categories should be available
 
 ## Rollback (if needed)
 

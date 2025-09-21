@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Autocomplete, Divider, Alert, Grid, CircularProgress, Snackbar, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Tooltip, Stack, useTheme } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, RestaurantMenu, Calculate as CalculateIcon, TrendingUp as ProfitIcon, Remove as RemoveIcon, Upload as UploadIcon, Download as DownloadIcon } from '@mui/icons-material'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Autocomplete, Divider, Alert, Grid, CircularProgress, Snackbar, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Tooltip, Stack, useTheme, Menu, ListItemIcon, ListItemText } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, RestaurantMenu, Calculate as CalculateIcon, TrendingUp as ProfitIcon, Remove as RemoveIcon, Upload as UploadIcon, Download as DownloadIcon, Settings as SettingsIcon, Category as CategoryIcon } from '@mui/icons-material'
 import { MenuItem, Ingredient, MenuItemIngredient } from '../types'
-import { menuItemsService, ingredientsService, subscriptions } from '../services/supabaseService'
+import { menuItemsService, ingredientsService, menuCategoriesService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
 
@@ -17,6 +17,11 @@ export default function MenuManagement() {
   const [error, setError] = useState<string | null>(null)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
   const [importingIngredients, setImportingIngredients] = useState(false)
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [categoryMenuAnchor, setCategoryMenuAnchor] = useState<null | HTMLElement>(null)
+  const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
@@ -37,6 +42,7 @@ export default function MenuManagement() {
   // Load data on component mount
   useEffect(() => {
     loadData()
+    loadCategories()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -85,6 +91,104 @@ export default function MenuManagement() {
     }
   }
 
+  const loadCategories = async () => {
+    try {
+      const data = await menuCategoriesService.getAll()
+      setCategories(data)
+    } catch (err) {
+      console.error('Failed to load categories:', err)
+      setSnackbar({ open: true, message: 'Failed to load categories', severity: 'error' })
+      // Fallback to default categories
+      setCategories(['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks'])
+    }
+  }
+
+  const handleAddCategory = () => {
+    setEditingCategory(null)
+    setNewCategoryName('')
+    setCategoryDialogOpen(true)
+  }
+
+  const handleEditCategory = (category: string) => {
+    setEditingCategory(category)
+    setNewCategoryName(category)
+    setCategoryDialogOpen(true)
+    setCategoryMenuAnchor(null)
+  }
+
+  const handleDeleteCategory = async (category: string) => {
+    // Check if any menu items use this category
+    const itemsWithCategory = menuItems.filter(item => item.category === category)
+    if (itemsWithCategory.length > 0) {
+      setSnackbar({ 
+        open: true, 
+        message: t('cannot_delete_category_in_use', { category, count: itemsWithCategory.length }), 
+        severity: 'error' 
+      })
+      return
+    }
+
+    try {
+      await menuCategoriesService.delete(category)
+      await loadCategories() // Reload categories from database
+      setSnackbar({ open: true, message: t('category_deleted_successfully'), severity: 'success' })
+    } catch (err) {
+      setSnackbar({ open: true, message: t('failed_to_delete_category'), severity: 'error' })
+    }
+    setCategoryMenuAnchor(null)
+  }
+
+  const handleSaveCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setSnackbar({ open: true, message: t('category_name_empty'), severity: 'error' })
+      return
+    }
+
+    const trimmedName = newCategoryName.trim().toLowerCase()
+    
+    try {
+      if (editingCategory) {
+        // Editing existing category
+        if (trimmedName === editingCategory) {
+          setCategoryDialogOpen(false)
+          return // No change
+        }
+        
+        if (categories.includes(trimmedName)) {
+          setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
+          return
+        }
+
+        // Update category in database
+        await menuCategoriesService.update(editingCategory, trimmedName)
+        
+        // Update all menu items that use the old category name
+        const itemsToUpdate = menuItems.filter(item => item.category === editingCategory)
+        await Promise.all(
+          itemsToUpdate.map(item => menuItemsService.update(item.id, { category: trimmedName }))
+        )
+        
+        await Promise.all([loadCategories(), loadMenuItems()])
+        setSnackbar({ open: true, message: t('category_updated_successfully'), severity: 'success' })
+        
+      } else {
+        // Adding new category
+        if (categories.includes(trimmedName)) {
+          setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
+          return
+        }
+        
+        await menuCategoriesService.create(trimmedName)
+        await loadCategories()
+        setSnackbar({ open: true, message: t('category_added_successfully'), severity: 'success' })
+      }
+      
+      setCategoryDialogOpen(false)
+    } catch (err) {
+      setSnackbar({ open: true, message: t('failed_to_save_category'), severity: 'error' })
+    }
+  }
+
   const calculateIngredientCost = (ingredientId: string, quantity: number): number => {
     const ingredient = availableIngredients.find(ing => ing.id === ingredientId)
     return ingredient ? ingredient.costPerUnit * quantity : 0
@@ -105,10 +209,10 @@ export default function MenuManagement() {
     return ingredient ? ingredient.name : 'Unknown Ingredient'
   }
 
-  const predefinedCategories = ['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks']
-
-  // Show all predefined categories, whether they have items or not
-  const categories = predefinedCategories
+  // Only show categories that have menu items
+  const visibleCategories = categories.filter(category => 
+    menuItems.some(item => item.category === category)
+  )
 
   if (loading) {
     return (
@@ -358,12 +462,17 @@ export default function MenuManagement() {
         <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
           {t('menu_management')}
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
-          {t('add_menu_item')}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button variant="outlined" startIcon={<SettingsIcon />} onClick={e => setCategoryMenuAnchor(e.currentTarget)}>
+            {t('manage_categories')}
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+            {t('add_menu_item')}
+          </Button>
+        </Box>
       </Box>
 
-      {categories.map(category => {
+      {visibleCategories.map(category => {
         const categoryItems = menuItems.filter(item => item.category === category)
 
         return (
@@ -474,16 +583,21 @@ export default function MenuManagement() {
               <TextField fullWidth label={t('item_name')} value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('category')}</InputLabel>
-                <Select value={newItem.category} label={t('category')} onChange={e => setNewItem({ ...newItem, category: e.target.value })}>
-                  {predefinedCategories.map(category => (
-                    <MuiMenuItem key={category} value={category}>
-                      {t(category)}
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                freeSolo
+                options={categories}
+                value={newItem.category}
+                onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
+                onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label={t('category')}
+                    placeholder={t('select_or_type_new_category')}
+                  />
+                )}
+              />
             </Grid>
             <Grid item xs={12}>
               <TextField fullWidth label={t('description')} multiline rows={2} value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })} />
@@ -594,6 +708,116 @@ export default function MenuManagement() {
       </Dialog>
 
       <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleIngredientsFileImport} />
+
+      {/* Category Management Menu */}
+      <Menu 
+        anchorEl={categoryMenuAnchor} 
+        open={Boolean(categoryMenuAnchor)} 
+        onClose={() => setCategoryMenuAnchor(null)}
+        sx={{ direction: isRtl ? 'rtl' : 'ltr' }}
+      >
+        <MuiMenuItem onClick={handleAddCategory}>
+          <ListItemIcon sx={{ minWidth: isRtl ? 'auto' : '56px', marginInlineEnd: isRtl ? 0 : 2, marginInlineStart: isRtl ? 2 : 0 }}>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+            {t('add_category')}
+          </ListItemText>
+        </MuiMenuItem>
+        <Divider />
+        {categories.map(category => (
+          <MuiMenuItem 
+            key={category} 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
+              textAlign: isRtl ? 'right' : 'left'
+            }}
+          >
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              flex: 1,
+              flexDirection: isRtl ? 'row-reverse' : 'row'
+            }}>
+              <CategoryIcon 
+                fontSize="small" 
+                sx={{ 
+                  marginInlineEnd: isRtl ? 0 : 2, 
+                  marginInlineStart: isRtl ? 2 : 0 
+                }} 
+              />
+              <Typography sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                {category}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+              <IconButton size="small" onClick={() => handleEditCategory(category)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" onClick={() => handleDeleteCategory(category)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </MuiMenuItem>
+        ))}
+      </Menu>
+
+      {/* Category Add/Edit Dialog */}
+      <Dialog 
+        open={categoryDialogOpen} 
+        onClose={() => setCategoryDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        sx={{ direction: isRtl ? 'rtl' : 'ltr' }}
+      >
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+          {editingCategory ? t('edit_category') : t('add_category')}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label={t('category_name')}
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            sx={{ 
+              mt: 2,
+              '& .MuiInputBase-input': {
+                textAlign: isRtl ? 'right' : 'left'
+              }
+            }}
+            placeholder={t('enter_category_name')}
+            inputProps={{
+              dir: isRtl ? 'rtl' : 'ltr'
+            }}
+          />
+          {editingCategory && (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                mt: 2, 
+                color: 'text.secondary',
+                textAlign: isRtl ? 'right' : 'left'
+              }}
+            >
+              {t('note_editing_category_will_update_items')}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ 
+          flexDirection: isRtl ? 'row-reverse' : 'row',
+          justifyContent: isRtl ? 'flex-end' : 'flex-start'
+        }}>
+          <Button onClick={() => setCategoryDialogOpen(false)}>
+            {t('cancel')}
+          </Button>
+          <Button onClick={handleSaveCategory} variant="contained" disabled={!newCategoryName.trim()}>
+            {editingCategory ? t('update') : t('add')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>

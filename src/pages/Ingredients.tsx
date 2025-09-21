@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Autocomplete, Switch, FormControlLabel, CircularProgress, Alert, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, useTheme } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, Kitchen as KitchenIcon, Upload as UploadIcon, Download as DownloadIcon, MoreVert as MoreVertIcon } from '@mui/icons-material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, Kitchen as KitchenIcon, Upload as UploadIcon, Download as DownloadIcon, MoreVert as MoreVertIcon, AutoAwesome as AIIcon } from '@mui/icons-material'
 import { Ingredient, Supplier } from '../types'
 import { ingredientsService, suppliersService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
+import RecipeParser from '../components/RecipeParser'
 
 export default function Ingredients() {
   const theme = useTheme()
@@ -17,9 +18,12 @@ export default function Ingredients() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' })
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' | 'info' })
   const [importing, setImporting] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const [recipeParserOpen, setRecipeParserOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [selectedSupplierForImport, setSelectedSupplierForImport] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
@@ -40,7 +44,46 @@ export default function Ingredients() {
   useEffect(() => {
     loadIngredients()
     loadSuppliers()
+    
+    // Restore modal state from sessionStorage
+    const savedModalState = sessionStorage.getItem('ingredientModalState')
+    if (savedModalState) {
+      try {
+        const { isOpen, ingredientData, isEditing, editingId } = JSON.parse(savedModalState)
+        if (isOpen) {
+          setNewIngredient(ingredientData)
+          setOpenDialog(true)
+          if (isEditing && editingId) {
+            setEditingIngredient({ ...ingredientData, id: editingId } as Ingredient)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to restore modal state:', err)
+        sessionStorage.removeItem('ingredientModalState')
+      }
+    }
   }, [])
+
+  // Auto-save modal state when form data changes
+  useEffect(() => {
+    if (openDialog) {
+      const modalState = {
+        isOpen: true,
+        ingredientData: newIngredient,
+        isEditing: !!editingIngredient,
+        editingId: editingIngredient?.id || null
+      }
+      
+      sessionStorage.setItem('ingredientModalState', JSON.stringify(modalState))
+      
+      // Show auto-save indicator
+      const timer = setTimeout(() => {
+        setSnackbar({ open: true, message: t('auto_saved'), severity: 'info' })
+      }, 1000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [newIngredient, openDialog, editingIngredient, t])
 
   // Set up real-time subscription
   useEffect(() => {
@@ -91,6 +134,9 @@ export default function Ingredients() {
       // Reload ingredients to get updated data
       await loadIngredients()
 
+      // Clear modal state from sessionStorage
+      sessionStorage.removeItem('ingredientModalState')
+
       setNewIngredient({
         name: '',
         costPerUnit: 0,
@@ -115,6 +161,14 @@ export default function Ingredients() {
     setNewIngredient(ingredient)
     setEditingIngredient(ingredient)
     setOpenDialog(true)
+    
+    // Save modal state to sessionStorage
+    sessionStorage.setItem('ingredientModalState', JSON.stringify({
+      isOpen: true,
+      ingredientData: ingredient,
+      isEditing: true,
+      editingId: ingredient.id
+    }))
   }
 
   const handleDeleteIngredient = async (id: string) => {
@@ -137,6 +191,14 @@ export default function Ingredients() {
     setNewIngredient(duplicatedIngredient)
     setEditingIngredient(null)
     setOpenDialog(true)
+    
+    // Save modal state to sessionStorage
+    sessionStorage.setItem('ingredientModalState', JSON.stringify({
+      isOpen: true,
+      ingredientData: duplicatedIngredient,
+      isEditing: false,
+      editingId: null
+    }))
   }
 
   const toggleAvailability = async (id: string) => {
@@ -153,8 +215,17 @@ export default function Ingredients() {
   }
 
   const handleImportClick = () => {
-    fileInputRef.current?.click()
+    setImportDialogOpen(true)
     setMenuAnchor(null)
+  }
+
+  const handleSupplierImportConfirm = () => {
+    if (!selectedSupplierForImport) {
+      setSnackbar({ open: true, message: 'Please select a supplier first', severity: 'warning' })
+      return
+    }
+    setImportDialogOpen(false)
+    fileInputRef.current?.click()
   }
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,8 +242,8 @@ export default function Ingredients() {
           const errors: string[] = []
 
           results.data.forEach((row: any, index: number) => {
-            if (!row.name || !row.costPerUnit || !row.unit || !row.supplier || !row.category) {
-              errors.push(`Row ${index + 1}: Missing required fields`)
+            if (!row.name || !row.costPerUnit || !row.unit || !row.category) {
+              errors.push(`Row ${index + 1}: Missing required fields (name, costPerUnit, unit, category)`)
               return
             }
 
@@ -186,7 +257,7 @@ export default function Ingredients() {
               name: row.name.trim(),
               costPerUnit: costPerUnit,
               unit: row.unit.trim(),
-              supplier: row.supplier.trim(),
+              supplier: selectedSupplierForImport, // Use the selected supplier
               category: row.category.trim(),
               isAvailable: row.isAvailable?.toLowerCase() !== 'false',
               unitsPerPackage: row.unitsPerPackage ? parseInt(row.unitsPerPackage) : undefined,
@@ -261,7 +332,6 @@ export default function Ingredients() {
         name: 'Ground Beef',
         costPerUnit: 8.99,
         unit: 'lbs',
-        supplier: 'Local Butcher',
         category: 'Meat',
         isAvailable: true,
         unitsPerPackage: 5,
@@ -273,7 +343,6 @@ export default function Ingredients() {
         name: 'Tomatoes',
         costPerUnit: 2.5,
         unit: 'lbs',
-        supplier: 'Fresh Farms',
         category: 'Vegetables',
         isAvailable: true,
         unitsPerPackage: 10,
@@ -291,6 +360,37 @@ export default function Ingredients() {
     link.click()
     setMenuAnchor(null)
     setSnackbar({ open: true, message: t('template_downloaded_success'), severity: 'success' })
+  }
+
+  const handleRecipeParserImport = async (parsedIngredients: any[]) => {
+    try {
+      const validIngredients: Omit<Ingredient, 'id' | 'lastUpdated' | 'businessId'>[] = parsedIngredients.map(ing => ({
+        name: ing.name,
+        costPerUnit: ing.estimatedCost,
+        unit: ing.unit,
+        supplier: 'AI Parsed - Please Update',
+        category: ing.category,
+        isAvailable: true,
+        unitsPerPackage: ing.quantity,
+        packageType: '',
+        minimumOrderQuantity: 1,
+        orderByPackage: false
+      }))
+
+      for (const ingredient of validIngredients) {
+        await ingredientsService.create(ingredient)
+      }
+
+      setSnackbar({
+        open: true,
+        message: t('ingredients_imported_success', { count: validIngredients.length }),
+        severity: 'success'
+      })
+      await loadIngredients()
+      setRecipeParserOpen(false)
+    } catch (err) {
+      setSnackbar({ open: true, message: t('failed_to_import_ingredients'), severity: 'error' })
+    }
   }
 
   // Common ingredient categories for autocomplete
@@ -340,7 +440,16 @@ export default function Ingredients() {
           <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={e => setMenuAnchor(e.currentTarget)}>
             {t('import_export')}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+            setOpenDialog(true)
+            // Save modal state to sessionStorage for new ingredient
+            sessionStorage.setItem('ingredientModalState', JSON.stringify({
+              isOpen: true,
+              ingredientData: newIngredient,
+              isEditing: false,
+              editingId: null
+            }))
+          }}>
             {t('add_ingredient')}
           </Button>
         </Box>
@@ -416,21 +525,45 @@ export default function Ingredients() {
                   .map(ingredient => (
                     <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
                       <TableCell>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 600,
+                            color: theme.palette.text.primary
+                          }}
+                        >
                           {ingredient.name}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                        <Typography variant="body1" color="primary">
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 600,
+                            color: theme.palette.mode === 'dark' ? '#7fffd4' : '#1f5c3d'  // Better contrast colors
+                          }}
+                        >
                           ${ingredient.costPerUnit.toFixed(2)}
                         </Typography>
                       </TableCell>
-                      <TableCell>{ingredient.unit}</TableCell>
-                      <TableCell>{ingredient.supplier}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                          {ingredient.unit}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                          {ingredient.supplier}
+                        </Typography>
+                      </TableCell>
                       <TableCell>
                         <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
                       </TableCell>
-                      <TableCell>{ingredient.lastUpdated.toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
+                          {ingredient.lastUpdated.toLocaleDateString()}
+                        </Typography>
+                      </TableCell>
                       <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
                         <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
                           <DuplicateIcon />
@@ -490,7 +623,25 @@ export default function Ingredients() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>{t('cancel')}</Button>
+          <Button onClick={() => {
+            setOpenDialog(false)
+            setEditingIngredient(null)
+            setNewIngredient({
+              name: '',
+              costPerUnit: 0,
+              unit: '',
+              supplier: '',
+              category: '',
+              isAvailable: true,
+              unitsPerPackage: undefined,
+              packageType: '',
+              minimumOrderQuantity: undefined,
+              orderByPackage: false,
+              lastUpdated: new Date()
+            })
+            // Clear modal state from sessionStorage
+            sessionStorage.removeItem('ingredientModalState')
+          }}>{t('cancel')}</Button>
           <Button onClick={handleSaveIngredient} variant="contained">
             {editingIngredient ? t('update_ingredient') : t('add_ingredient')}
           </Button>
@@ -504,6 +655,13 @@ export default function Ingredients() {
       </Snackbar>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
+        <MuiMenuItem onClick={() => { setRecipeParserOpen(true); setMenuAnchor(null); }}>
+          <ListItemIcon>
+            <AIIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Parse Recipe with AI</ListItemText>
+        </MuiMenuItem>
+        <Divider />
         <MuiMenuItem onClick={downloadTemplate}>
           <ListItemIcon>
             <DownloadIcon fontSize="small" />
@@ -524,6 +682,46 @@ export default function Ingredients() {
           <ListItemText>{t('export_csv')}</ListItemText>
         </MuiMenuItem>
       </Menu>
+
+      <RecipeParser
+        open={recipeParserOpen}
+        onClose={() => setRecipeParserOpen(false)}
+        onImport={handleRecipeParserImport}
+      />
+
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Select Supplier for Import</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+            Please select the supplier that these ingredients will be associated with. All imported ingredients will be assigned to this supplier.
+          </Typography>
+          <Autocomplete
+            options={supplierNames}
+            value={selectedSupplierForImport}
+            onChange={(_, value) => setSelectedSupplierForImport(value || '')}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                label="Select Supplier"
+                placeholder="Choose a supplier for these ingredients"
+                required
+              />
+            )}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setImportDialogOpen(false)
+            setSelectedSupplierForImport('')
+          }}>
+            {t('cancel')}
+          </Button>
+          <Button onClick={handleSupplierImportConfirm} variant="contained" disabled={!selectedSupplierForImport}>
+            Continue with Import
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleFileImport} />
     </Box>

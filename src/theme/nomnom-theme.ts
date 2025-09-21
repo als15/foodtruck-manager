@@ -21,10 +21,10 @@ export const nomNomColors = {
   error: '#ff6b6b',
   info: '#7fffd4',
   
-  // Text colors
-  textPrimary: '#1a1a1a',
-  textSecondary: '#666666',
-  textLight: '#999999',
+  // Text colors - Enhanced for better contrast
+  textPrimary: '#1a1a1a',        // Very dark for maximum readability
+  textSecondary: '#4a4a4a',      // Darker than before for better contrast
+  textLight: '#757575',          // Medium gray instead of light gray
   
   // Accessible versions for text
   primaryText: '#1f5c3d',     // Much darker for better contrast
@@ -410,11 +410,12 @@ export const nomNomTheme: Theme = createTheme({
         root: {
           backgroundColor: `${nomNomColors.primary}10`,
           '& .MuiTableCell-head': {
-            fontWeight: 600,
+            fontWeight: 700,              // Bolder font weight
             color: nomNomColors.textPrimary,
-            fontSize: '0.875rem',
+            fontSize: '0.9rem',           // Slightly larger font
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
+            padding: '16px',              // More padding for better spacing
           },
         },
       },
@@ -427,6 +428,35 @@ export const nomNomTheme: Theme = createTheme({
           },
           '&:hover': {
             backgroundColor: `${nomNomColors.primary}08`,
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          padding: '12px 16px',
+          color: nomNomColors.textPrimary,
+          borderColor: 'rgba(0, 0, 0, 0.08)',
+          '&.MuiTableCell-head': {
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            color: nomNomColors.textPrimary,
+          },
+        },
+        body: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: nomNomColors.textPrimary,
+          // Specific styling for better text contrast
+          '& .MuiTypography-root': {
+            color: 'inherit',
+          },
+          '& .MuiTypography-colorPrimary': {
+            color: nomNomColors.primaryText,  // Use the darker primary color for text
+            fontWeight: 600,
           },
         },
       },

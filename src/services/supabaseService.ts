@@ -45,6 +45,107 @@ const getCurrentBusinessId = (): string => {
   return businessId;
 };
 
+// ==================== MENU CATEGORIES ====================
+
+export const menuCategoriesService = {
+  async getAll(): Promise<string[]> {
+    try {
+      const businessId = getCurrentBusinessId();
+      const { data, error } = await supabase
+        .from('menu_categories')
+        .select('name')
+        .eq('business_id', businessId)
+        .order('name');
+
+      if (error) {
+        // If table doesn't exist, return default categories
+        if (error.message.includes('relation "menu_categories" does not exist')) {
+          return ['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks'];
+        }
+        throw error;
+      }
+
+      // If no categories exist, return default categories
+      if (!data || data.length === 0) {
+        const defaultCategories = ['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks'];
+        // Create default categories in database
+        await Promise.all(defaultCategories.map(name => this.create(name)));
+        return defaultCategories;
+      }
+
+      return data.map(item => item.name);
+    } catch (error) {
+      return ['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks'];
+    }
+  },
+
+  async create(name: string): Promise<void> {
+    try {
+      const businessId = getCurrentBusinessId();
+      const { error } = await supabase
+        .from('menu_categories')
+        .insert([
+          {
+            business_id: businessId,
+            name: name.toLowerCase().trim()
+          }
+        ]);
+
+      if (error) {
+        // If table doesn't exist, silently fail and continue with localStorage fallback
+        if (error.message.includes('relation "menu_categories" does not exist')) {
+          return;
+        }
+        handleError(error, 'create category');
+      }
+    } catch (error) {
+      handleError(error, 'create category');
+    }
+  },
+
+  async update(oldName: string, newName: string): Promise<void> {
+    try {
+      const businessId = getCurrentBusinessId();
+      const { error } = await supabase
+        .from('menu_categories')
+        .update({ name: newName.toLowerCase().trim() })
+        .eq('business_id', businessId)
+        .eq('name', oldName);
+
+      if (error) {
+        // If table doesn't exist, silently fail
+        if (error.message.includes('relation "menu_categories" does not exist')) {
+          return;
+        }
+        handleError(error, 'update category');
+      }
+    } catch (error) {
+      handleError(error, 'update category');
+    }
+  },
+
+  async delete(name: string): Promise<void> {
+    try {
+      const businessId = getCurrentBusinessId();
+      const { error } = await supabase
+        .from('menu_categories')
+        .delete()
+        .eq('business_id', businessId)
+        .eq('name', name);
+
+      if (error) {
+        // If table doesn't exist, silently fail
+        if (error.message.includes('relation "menu_categories" does not exist')) {
+          return;
+        }
+        handleError(error, 'delete category');
+      }
+    } catch (error) {
+      handleError(error, 'delete category');
+    }
+  }
+};
+
 // ==================== INGREDIENTS ====================
 
 export const ingredientsService = {
@@ -323,7 +424,13 @@ export const menuItemsService = {
         .from('menu_item_ingredients')
         .insert(ingredientInserts);
       
-      if (ingredientsError) handleError(ingredientsError, 'create menu item ingredients');
+      if (ingredientsError) {
+        // Provide helpful error message if table doesn't exist
+        if (ingredientsError.message.includes('relation "menu_item_ingredients" does not exist')) {
+          throw new Error('Database schema needs updating. Please run the database migration to create the menu_item_ingredients table. See DATABASE_MIGRATION_INSTRUCTIONS.md for details.');
+        }
+        handleError(ingredientsError, 'create menu item ingredients');
+      }
     }
     
     // Fetch the complete menu item with calculated costs

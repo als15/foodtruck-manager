@@ -44,7 +44,7 @@ const lightTheme = createTheme({
     },
     text: {
       primary: '#1a1a1a',
-      secondary: '#666666',
+      secondary: '#4a4a4a',  // Darker for better contrast
     },
   },
   components: {
@@ -62,6 +62,31 @@ const lightTheme = createTheme({
         paper: {
           backgroundColor: '#ffffff',
           borderRight: '1px solid rgba(0, 0, 0, 0.12)',
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          padding: '12px 16px',
+          borderColor: 'rgba(0, 0, 0, 0.08)',
+        },
+        head: {
+          fontSize: '0.9rem',
+          fontWeight: 700,
+          color: '#1a1a1a',
+          backgroundColor: 'rgba(127, 255, 212, 0.1)',
+        },
+        body: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: '#1a1a1a',
+          '& .MuiTypography-colorPrimary': {
+            color: '#1f5c3d !important',  // Darker primary color for better contrast
+            fontWeight: '600 !important',
+          },
         },
       },
     },
@@ -87,7 +112,7 @@ const darkTheme = createTheme({
     },
     text: {
       primary: '#ffffff',
-      secondary: '#b3b3b3',
+      secondary: '#e0e0e0',  // Brighter for better contrast in dark mode
     },
   },
   components: {
@@ -123,6 +148,31 @@ const darkTheme = createTheme({
             '& .MuiListItemIcon-root': {
               color: '#1a1a1a',
             },
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          padding: '12px 16px',
+          borderColor: 'rgba(255, 255, 255, 0.08)',
+        },
+        head: {
+          fontSize: '0.9rem',
+          fontWeight: 700,
+          color: '#ffffff',
+          backgroundColor: 'rgba(127, 255, 212, 0.15)',
+        },
+        body: {
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          color: '#ffffff',
+          '& .MuiTypography-colorPrimary': {
+            color: '#7fffd4 !important',  // Bright aquamarine for dark mode
+            fontWeight: '600 !important',
           },
         },
       },
