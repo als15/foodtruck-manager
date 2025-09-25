@@ -210,7 +210,14 @@ export default function MenuManagement() {
   }
 
   const calculateProfitMargin = (price: number, totalCost: number): number => {
-    return price > 0 ? ((price - totalCost) / price) * 100 : 0
+    if (price <= 0) return 0
+    
+    // If no ingredient cost is defined, show a warning indicator instead of 100%
+    if (totalCost === 0) {
+      return -1 // Special value to indicate "no cost data"
+    }
+    
+    return ((price - totalCost) / price) * 100
   }
 
   const getIngredientName = (ingredientId: string): string => {
@@ -240,11 +247,11 @@ export default function MenuManagement() {
       case 'profitable':
         const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
         const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost)
-        return profitMargin > 30
+        return profitMargin > 30 && profitMargin !== -1
       case 'low-margin':
         const totalCostLow = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
         const profitMarginLow = item.profitMargin || calculateProfitMargin(item.price, totalCostLow)
-        return profitMarginLow < 20
+        return (profitMarginLow < 20 && profitMarginLow !== -1) || profitMarginLow === -1
       default:
         return true
     }
@@ -325,8 +332,11 @@ export default function MenuManagement() {
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2" color={profitMargin > 30 ? 'success.main' : 'warning.main'}>
-                      {profitMargin.toFixed(1)}% margin
+                    <Typography 
+                      variant="subtitle2" 
+                      color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}
+                    >
+                      {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}% margin`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {item.prepTime}min prep
@@ -434,9 +444,9 @@ export default function MenuManagement() {
                 <TableCell align="right">
                   <Typography 
                     variant="subtitle2" 
-                    color={profitMargin > 30 ? 'success.main' : 'warning.main'}
+                    color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}
                   >
-                    {profitMargin.toFixed(1)}%
+                    {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}%`}
                   </Typography>
                 </TableCell>
                 <TableCell align="center">

@@ -65,6 +65,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/currency';
 import AIOrderImporter from '../components/Orders/AIOrderImporter';
+import { ingredientsService } from '../services/supabaseService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -89,6 +90,7 @@ export default function Orders() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ 
     open: false, 
@@ -155,7 +157,8 @@ export default function Orders() {
         loadOrders(),
         loadMenuItems(),
         loadEmployees(),
-        loadCustomers()
+        loadCustomers(),
+        loadIngredients()
       ]);
     } catch (error) {
       setSnackbar({ open: true, message: 'Failed to load data', severity: 'error' });
@@ -198,6 +201,36 @@ export default function Orders() {
     } catch (error) {
       console.error('Failed to load customers:', error);
     }
+  };
+
+  const loadIngredients = async () => {
+    try {
+      const data = await ingredientsService.getAll();
+      setIngredients(data);
+    } catch (error) {
+      console.error('Failed to load ingredients:', error);
+    }
+  };
+
+  // Calculate food cost for an order
+  const calculateOrderFoodCost = (order: Order): number => {
+    let totalFoodCost = 0;
+
+    order.items.forEach(orderItem => {
+      const menuItem = menuItems.find(mi => mi.id === orderItem.menuItemId);
+      if (menuItem && menuItem.ingredients) {
+        const itemFoodCost = menuItem.ingredients.reduce((cost, ingredient) => {
+          const ing = ingredients.find(i => i.id === ingredient.ingredientId);
+          if (ing) {
+            return cost + (ing.costPerUnit * ingredient.quantity);
+          }
+          return cost;
+        }, 0);
+        totalFoodCost += itemFoodCost * orderItem.quantity;
+      }
+    });
+
+    return totalFoodCost;
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -484,6 +517,28 @@ export default function Orders() {
       return acc;
     }, {} as Record<string, { orders: number; revenue: number }>);
 
+    // Calculate average profit margin
+    const ordersWithCost = orders.filter(order => {
+      const foodCost = calculateOrderFoodCost(order);
+      return foodCost > 0 && order.subtotal > 0;
+    });
+    
+    const averageProfitMargin = ordersWithCost.length > 0 
+      ? ordersWithCost.reduce((sum, order) => {
+          const foodCost = calculateOrderFoodCost(order);
+          const profit = order.subtotal - foodCost;
+          const margin = (profit / order.subtotal) * 100;
+          return sum + margin;
+        }, 0) / ordersWithCost.length
+      : 0;
+
+    // Calculate total food costs and profits
+    const totalFoodCost = orders.reduce((sum, order) => sum + calculateOrderFoodCost(order), 0);
+    const totalProfit = orders.reduce((sum, order) => {
+      const foodCost = calculateOrderFoodCost(order);
+      return sum + (order.subtotal - foodCost);
+    }, 0);
+
     return {
       todayOrders: todayOrders.length,
       todayRevenue,
@@ -495,6 +550,10 @@ export default function Orders() {
       thisMonthRevenue,
       monthlyGrowth,
       averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0,
+      averageProfitMargin,
+      totalFoodCost,
+      totalProfit,
+      ordersWithCostData: ordersWithCost.length,
       topItems,
       peakHour: peakHour ? { hour: parseInt(peakHour[0]), count: peakHour[1] } : null,
       paymentMethods,
@@ -636,6 +695,52 @@ export default function Orders() {
           </Card>
         </Grid>
 
+        {/* Average Order Value */}
+        <Grid item xs={12} sm={6} md={4} lg={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" color="success.main">Avg Order Value</Typography>
+                  <Typography variant="h4">{formatCurrency(stats.averageOrderValue)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.totalOrders} total orders
+                  </Typography>
+                </Box>
+                <MoneyIcon color="success" sx={{ fontSize: 32 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Average Profit Margin */}
+        <Grid item xs={12} sm={6} md={4} lg={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
+                    Avg Profit Margin
+                  </Typography>
+                  <Typography 
+                    variant="h4" 
+                    color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}
+                  >
+                    {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stats.ordersWithCostData}/{stats.totalOrders} with cost data
+                  </Typography>
+                </Box>
+                <TrendingUpIcon 
+                  color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} 
+                  sx={{ fontSize: 32 }} 
+                />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Top Selling Items */}
         <Grid item xs={12} md={6}>
           <Card>
@@ -684,9 +789,25 @@ export default function Orders() {
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <TrendingUpIcon color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} />
+                    <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
+                      {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
+                    </Typography>
+                    <Typography variant="caption">Avg Profit Margin</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <ReceiptIcon color="primary" />
                     <Typography variant="h6">{stats.totalOrders}</Typography>
                     <Typography variant="caption">{t('total_orders')}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <MoneyIcon color="info" />
+                    <Typography variant="h6">{formatCurrency(stats.totalProfit)}</Typography>
+                    <Typography variant="caption">Total Profit</Typography>
                   </Box>
                 </Grid>
                 {stats.peakHour && (
@@ -798,6 +919,8 @@ export default function Orders() {
                   <TableCell>{t('customer')}</TableCell>
                   <TableCell>{t('items')}</TableCell>
                   <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('total')}</TableCell>
+                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Food Cost</TableCell>
+                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Profit</TableCell>
                   <TableCell>{t('payment')}</TableCell>
                   <TableCell>{t('status')}</TableCell>
                   <TableCell>{t('source')}</TableCell>
@@ -852,6 +975,39 @@ export default function Orders() {
                         {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
                         {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
                       </Typography>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                      {(() => {
+                        const foodCost = calculateOrderFoodCost(order);
+                        return (
+                          <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
+                            {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
+                          </Typography>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                      {(() => {
+                        const foodCost = calculateOrderFoodCost(order);
+                        const profit = order.subtotal - foodCost;
+                        const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0;
+                        return (
+                          <Box>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ fontWeight: 'bold' }}
+                              color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}
+                            >
+                              {foodCost > 0 ? formatCurrency(profit) : 'No data'}
+                            </Typography>
+                            {foodCost > 0 && (
+                              <Typography variant="caption" color="text.secondary">
+                                {profitMargin.toFixed(1)}% margin
+                              </Typography>
+                            )}
+                          </Box>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

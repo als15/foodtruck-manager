@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider, Collapse } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon, Kitchen as PrepIcon } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon, Kitchen as PrepIcon, Calculate as BreakEvenIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
@@ -57,6 +57,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     icon: <InsightsIcon />,
     children: [
       { textKey: 'financial', text: t('financial'), icon: <FinanceIcon />, path: '/finances' },
+      { textKey: 'break_even_analysis', text: t('break_even_analysis'), icon: <BreakEvenIcon />, path: '/break-even-analysis' },
       { textKey: 'analytics', text: t('analytics'), icon: <AnalyticsIcon />, path: '/analytics' }
     ]
   },

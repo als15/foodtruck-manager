@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Switch, FormControlLabel, Tabs, Tab, Alert, CircularProgress, Snackbar, Divider, LinearProgress } from '@mui/material'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, AttachMoney as RevenueIcon, Receipt as ExpenseIcon, Assessment as AnalyticsIcon, Flag as GoalIcon, PieChart as ChartIcon, AccountBalance as CashFlowIcon } from '@mui/icons-material'
 import { Expense, ExpenseCategory, FinancialGoal, FinancialProjection, CashFlow, MenuItem } from '../types'
-import { expensesService, expenseCategoriesService, financialGoalsService, financialProjectionsService, menuItemsService, employeesService, shiftsService, subscriptions } from '../services/supabaseService'
+import { expensesService, expenseCategoriesService, financialGoalsService, financialProjectionsService, menuItemsService, employeesService, shiftsService, ordersService, subscriptions } from '../services/supabaseService'
 import LaborCostManager from '../components/LaborCostManager'
 import { Employee, Shift } from '../types'
 import { useTheme } from '@mui/material/styles'
@@ -46,6 +46,7 @@ export default function FinancialManagement() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
+  const [orders, setOrders] = useState<any[]>([])
   const [monthlyLaborCost, setMonthlyLaborCost] = useState(0)
 
   // Calculate real revenue and order data
@@ -109,18 +110,25 @@ export default function FinancialManagement() {
       loadShifts()
     })
 
+    const ordersSubscription = subscriptions.orders ? subscriptions.orders(() => {
+      loadOrders()
+    }) : null
+
     return () => {
       expensesSubscription.unsubscribe()
       goalsSubscription.unsubscribe()
       employeesSubscription.unsubscribe()
       shiftsSubscription.unsubscribe()
+      if (ordersSubscription) {
+        ordersSubscription.unsubscribe()
+      }
     }
   }, [])
 
   const loadAllData = async () => {
     setLoading(true)
     try {
-      await Promise.all([loadExpenses(), loadExpenseCategories(), loadGoals(), loadProjections(), loadMenuItems(), loadEmployees(), loadShifts()])
+      await Promise.all([loadExpenses(), loadExpenseCategories(), loadGoals(), loadProjections(), loadMenuItems(), loadEmployees(), loadShifts(), loadOrders()])
     } catch (error) {
       setSnackbar({ open: true, message: t('failed_to_load_financial_data'), severity: 'error' })
     } finally {
@@ -191,6 +199,15 @@ export default function FinancialManagement() {
     }
   }
 
+  const loadOrders = async () => {
+    try {
+      const data = await ordersService.getAll()
+      setOrders(data)
+    } catch (error) {
+      console.error('Failed to load orders:', error)
+    }
+  }
+
   // Form states
   const [newExpense, setNewExpense] = useState<Partial<Expense>>({
     name: '',
@@ -245,21 +262,17 @@ export default function FinancialManagement() {
     return expenseTotal + monthlyLaborCost
   }
 
-  // Calculate actual average order value from menu items
+  // Calculate actual average order value from orders
   const calculateAverageOrderValue = () => {
     if (financialSettings.customAverageOrderValue > 0) {
       return financialSettings.customAverageOrderValue
     }
 
-    if (menuItems.length === 0) return 15 // Fallback default
+    if (orders.length === 0) return 15 // Fallback default
 
-    // Calculate weighted average based on menu item prices
-    // Assuming equal popularity for simplicity, but this could be enhanced with sales data
-    const totalValue = menuItems.filter(item => item.isAvailable).reduce((sum, item) => sum + item.price, 0)
-
-    const availableItems = menuItems.filter(item => item.isAvailable).length
-
-    return availableItems > 0 ? totalValue / availableItems : 15
+    // Calculate actual average order value from order data
+    const totalValue = orders.reduce((sum, order) => sum + order.total, 0)
+    return totalValue / orders.length
   }
 
   // Calculate actual profit margin from menu items

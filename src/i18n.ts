@@ -189,6 +189,23 @@ const resources = {
       quick_action_update_inventory: 'Update inventory',
       quick_action_plan_route: 'Plan route',
 
+      // Prep Planner
+      prep_planner: 'Prep Planner',
+      menu_item_selection: 'Menu Item Selection',
+      free_text_input: 'Free Text Input',
+      add_menu_items: 'Add Menu Items',
+      add_to_prep_list: 'Add to Prep List',
+      prep_list: 'Prep List',
+      no_items_selected: 'No items selected',
+      compute_ingredients: 'Compute Ingredients',
+      aggregated_ingredients: 'Aggregated Ingredients',
+      no_ingredients_to_show: 'No ingredients to show',
+      prep_planner_instructions: 'Enter menu items for tomorrow\'s prep. You can use patterns like "2 bagels" or "bagels x 2".',
+      enter_items_for_tomorrow: 'Enter items for tomorrow',
+      prep_planner_placeholder: 'bagels x 5\n2 sandwiches\ncoffee x 10\nsalad',
+      some_items_not_found: 'Some items not found: {{items}}',
+      total_quantity: 'Total quantity',
+
       // Order Creation
       customer_information: 'Customer Information',
       select_customer: 'Select Customer',
@@ -201,7 +218,6 @@ const resources = {
       phone: 'Phone',
       select_menu_items: 'Select Menu Items',
       order_summary: 'Order Summary',
-      no_items_selected: 'No items selected',
       each: 'each',
       subtotal: 'Subtotal',
       tax: 'Tax',
@@ -522,6 +538,9 @@ const resources = {
       select_menu_item: 'Select menu item',
       start_over: 'Start Over',
 
+      // Break-Even Analysis
+      break_even_analysis: 'Break-Even Analysis',
+
       // Currency
       currency_symbol: '$',
       currency_code: 'USD'
@@ -712,6 +731,23 @@ const resources = {
       quick_action_update_inventory: 'עדכן מלאי',
       quick_action_plan_route: 'תכנן מסלול',
 
+      // Prep Planner
+      prep_planner: 'מתכנן הכנות',
+      menu_item_selection: 'בחירת פריטי תפריט',
+      free_text_input: 'הזנת טקסט חופשי',
+      add_menu_items: 'הוסף פריטי תפריט',
+      add_to_prep_list: 'הוסף לרשימת הכנות',
+      prep_list: 'רשימת הכנות',
+      no_items_selected: 'לא נבחרו פריטים',
+      compute_ingredients: 'חשב מרכיבים',
+      aggregated_ingredients: 'מרכיבים מצטברים',
+      no_ingredients_to_show: 'אין מרכיבים להצגה',
+      prep_planner_instructions: 'הזן פריטי תפריט להכנות של מחר. ניתן להשתמש בתבניות כמו "2 בגלים" או "בגלים x 2".',
+      enter_items_for_tomorrow: 'הזן פריטים למחר',
+      prep_planner_placeholder: 'בגלים x 5\n2 כריכים\nקפה x 10\nסלט',
+      some_items_not_found: 'פריטים מסוימים לא נמצאו: {{items}}',
+      total_quantity: 'כמות כוללת',
+
       // Order Creation
       customer_information: 'פרטי לקוח',
       select_customer: 'בחר לקוח',
@@ -724,7 +760,6 @@ const resources = {
       phone: 'טלפון',
       select_menu_items: 'בחר פריטי תפריט',
       order_summary: 'סיכום הזמנה',
-      no_items_selected: 'לא נבחרו פריטים',
       each: 'כל אחד',
       subtotal: 'סיכום ביניים',
       tax: 'מס',
@@ -1044,6 +1079,9 @@ const resources = {
       no_match: 'אין התאמה',
       select_menu_item: 'בחר פריט תפריט',
       start_over: 'התחל מחדש',
+
+      // Break-Even Analysis
+      break_even_analysis: 'ניתוח נקודת איזון',
 
       // Currency
       currency_symbol: '₪',

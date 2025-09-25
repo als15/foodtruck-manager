@@ -14,6 +14,7 @@ import Suppliers from './pages/Suppliers'
 import SupplierOrders from './pages/SupplierOrders'
 import Analytics from './pages/Analytics'
 import PrepPlanner from './pages/PrepPlanner'
+import BreakEvenAnalysis from './pages/BreakEvenAnalysis'
 import { Auth } from './pages/Auth'
 import { UserManagement } from './pages/UserManagement'
 import TeamManagement from './pages/TeamManagement'
@@ -60,6 +61,7 @@ function App() {
                       <Route path="/supplier-orders" element={<SupplierOrders />} />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route path="/prep-planner" element={<PrepPlanner />} />
+                      <Route path="/break-even-analysis" element={<BreakEvenAnalysis />} />
                       <Route path="/team" element={<TeamManagement />} />
                     </Routes>
                   </AppLayout>
