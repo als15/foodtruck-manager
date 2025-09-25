@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS menu_items (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     business_id UUID NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,adc
     description TEXT,
     price DECIMAL(10,2) NOT NULL CHECK (price >= 0),
     category VARCHAR(100) NOT NULL,

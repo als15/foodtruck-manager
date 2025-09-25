@@ -154,6 +154,74 @@ export interface InventoryItem {
   costPerUnit: number;
   supplier?: string;
   lastRestocked: Date;
+  reservedQuantity?: number; // quantity reserved for pending orders
+  ingredientId?: string; // link to ingredient table
+  lastMovementDate?: Date;
+}
+
+// New interface for tracking all inventory movements
+export interface InventoryTransaction {
+  id: string;
+  businessId: string;
+  inventoryItemId: string;
+  ingredientId?: string; // for easier querying
+  type: 'in' | 'out' | 'adjustment';
+  quantity: number; // positive for in, negative for out
+  reason: 'supplier_delivery' | 'order_sale' | 'manual_adjustment' | 'waste' | 'return' | 'initial_stock';
+  referenceId?: string; // Order ID, Supplier Order ID, etc.
+  referenceName?: string; // Order #, Supplier Order #, etc. for display
+  notes?: string;
+  unitCost?: number; // cost per unit at time of transaction
+  totalValue?: number; // quantity * unitCost
+  balanceAfter: number; // inventory balance after this transaction
+  createdAt: Date;
+  createdBy?: string;
+}
+
+// Interface for inventory availability validation
+export interface InventoryValidationResult {
+  isValid: boolean;
+  insufficientItems: {
+    ingredientId: string;
+    ingredientName: string;
+    required: number;
+    available: number;
+    shortfall: number;
+    unit: string;
+  }[];
+  warnings: {
+    ingredientId: string;
+    ingredientName: string;
+    currentStock: number;
+    minThreshold: number;
+    unit: string;
+  }[];
+}
+
+// Interface for low stock alerts
+export interface InventoryAlert {
+  id: string;
+  businessId: string;
+  inventoryItemId: string;
+  ingredientId?: string;
+  ingredientName: string;
+  currentStock: number;
+  minThreshold: number;
+  unit: string;
+  alertType: 'low_stock' | 'out_of_stock' | 'overstock';
+  severity: 'info' | 'warning' | 'critical';
+  isResolved: boolean;
+  createdAt: Date;
+  resolvedAt?: Date;
+}
+
+// Interface for batch stock movements
+export interface StockMovement {
+  ingredientId: string;
+  inventoryItemId?: string;
+  quantity: number;
+  unitCost?: number;
+  notes?: string;
 }
 
 export interface Customer {

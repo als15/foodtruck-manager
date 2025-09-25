@@ -559,8 +559,21 @@ export default function FinancialManagement() {
       </Grid>
 
       {/* Tabs for different sections */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, direction: isRtl ? 'rtl' : 'ltr' }}>
+        <Tabs
+          value={currentTab}
+          onChange={(_, newValue) => setCurrentTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTabs-flexContainer': {
+              flexDirection: isRtl ? 'row-reverse' : 'row'
+            },
+            '& .MuiTab-root': {
+              textAlign: isRtl ? 'right' : 'left'
+            }
+          }}
+        >
           <Tab label={t('expenses')} />
           <Tab label={t('labor_costs')} />
           <Tab label={t('projections')} />
@@ -677,20 +690,24 @@ export default function FinancialManagement() {
 
       {/* Projections Tab */}
       <TabPanel value={currentTab} index={2}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">Financial Projections</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+            {t('projections')}
+          </Typography>
           <Button variant="contained" startIcon={<AnalyticsIcon />} onClick={() => setOpenProjectionDialog(true)}>
-            Create Projection
+            {t('create_projection')}
           </Button>
         </Box>
 
         {/* Enhanced Break-even Analysis Card */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Break-Even Analysis</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+              <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                {t('break_even_analysis')}
+              </Typography>
               <Button variant="outlined" size="small" onClick={() => setOpenSettingsDialog(true)}>
-                Settings
+                {t('settings')}
               </Button>
             </Box>
 
@@ -828,10 +845,12 @@ export default function FinancialManagement() {
 
       {/* Goals Tab */}
       <TabPanel value={currentTab} index={3}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">Financial Goals</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+            {t('goals')}
+          </Typography>
           <Button variant="contained" startIcon={<GoalIcon />} onClick={() => setOpenGoalDialog(true)}>
-            Set Goal
+            {t('set_goal')}
           </Button>
         </Box>
 
@@ -862,11 +881,11 @@ export default function FinancialManagement() {
 
       {/* Reports Tab */}
       <TabPanel value={currentTab} index={4}>
-        <Typography variant="h5" sx={{ mb: 3 }}>
-          Financial Reports
+        <Typography variant="h5" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
+          {t('reports')}
         </Typography>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Reports and visualizations will be implemented in the next phase. This will include charts, trends, and detailed financial analytics.
+        <Alert severity="info" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
+          {t('reports_coming_soon')}
         </Alert>
       </TabPanel>
 
@@ -888,8 +907,9 @@ export default function FinancialManagement() {
         }}
         maxWidth="md"
         fullWidth
+        sx={{ direction: isRtl ? 'rtl' : 'ltr' }}
       >
-        <DialogTitle>{editingExpense ? t('edit_expense') : t('add_new_expense')}</DialogTitle>
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{editingExpense ? t('edit_expense') : t('add_new_expense')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
@@ -938,7 +958,7 @@ export default function FinancialManagement() {
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <Button onClick={() => setOpenExpenseDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveExpense} variant="contained">
             {editingExpense ? t('update_expense') : t('add_expense')}
@@ -947,73 +967,93 @@ export default function FinancialManagement() {
       </Dialog>
 
       {/* Add Goal Dialog */}
-      <Dialog open={openGoalDialog} onClose={() => setOpenGoalDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Set Financial Goal</DialogTitle>
+      <Dialog open={openGoalDialog} onClose={() => setOpenGoalDialog(false)} maxWidth="sm" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('set_goal')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
-              <TextField fullWidth label="Goal Name" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} required />
+              <TextField
+                fullWidth
+                label={t('goal_name')}
+                value={newGoal.name}
+                onChange={e => setNewGoal({ ...newGoal, name: e.target.value })}
+                required
+                InputProps={{
+                  sx: { textAlign: isRtl ? 'right' : 'left' }
+                }}
+              />
             </Grid>
             <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Goal Type</InputLabel>
+                <InputLabel>{t('goal_type')}</InputLabel>
                 <Select value={newGoal.type} onChange={e => setNewGoal({ ...newGoal, type: e.target.value as any })}>
-                  <MuiMenuItem value="monthly_revenue">Monthly Revenue</MuiMenuItem>
-                  <MuiMenuItem value="monthly_profit">Monthly Profit</MuiMenuItem>
-                  <MuiMenuItem value="break_even">Break Even</MuiMenuItem>
-                  <MuiMenuItem value="custom">Custom</MuiMenuItem>
+                  <MuiMenuItem value="monthly_revenue">{t('monthly_revenue')}</MuiMenuItem>
+                  <MuiMenuItem value="monthly_profit">{t('monthly_profit')}</MuiMenuItem>
+                  <MuiMenuItem value="break_even">{t('break_even')}</MuiMenuItem>
+                  <MuiMenuItem value="custom">{t('custom')}</MuiMenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Target Amount" type="number" inputProps={{ step: '0.01' }} value={newGoal.targetAmount} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) || 0 })} required />
+              <TextField fullWidth label={t('target_amount')} type="number" inputProps={{ step: '0.01' }} value={newGoal.targetAmount} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) || 0 })} required />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Current Amount" type="number" inputProps={{ step: '0.01' }} value={newGoal.currentAmount} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) || 0 })} />
+              <TextField fullWidth label={t('current_amount')} type="number" inputProps={{ step: '0.01' }} value={newGoal.currentAmount} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) || 0 })} />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenGoalDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button onClick={() => setOpenGoalDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveGoal} variant="contained">
-            Create Goal
+            {t('create_goal')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Create Projection Dialog */}
-      <Dialog open={openProjectionDialog} onClose={() => setOpenProjectionDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Create Financial Projection</DialogTitle>
+      <Dialog open={openProjectionDialog} onClose={() => setOpenProjectionDialog(false)} maxWidth="md" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('create_projection')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
-              <TextField fullWidth label="Projection Name" value={newProjection.name} onChange={e => setNewProjection({ ...newProjection, name: e.target.value })} placeholder="e.g., Q1 2024 Projection" />
+              <TextField
+                fullWidth
+                label={t('projection_name')}
+                value={newProjection.name}
+                onChange={e => setNewProjection({ ...newProjection, name: e.target.value })}
+                placeholder={t('projection_name_placeholder')}
+                InputProps={{
+                  sx: { textAlign: isRtl ? 'right' : 'left' }
+                }}
+              />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Average Order Value" type="number" inputProps={{ step: '0.01' }} value={newProjection.averageOrderValue} onChange={e => setNewProjection({ ...newProjection, averageOrderValue: parseFloat(e.target.value) || 0 })} helperText="Average amount per customer order" />
+              <TextField fullWidth label={t('average_order_value')} type="number" inputProps={{ step: '0.01' }} value={newProjection.averageOrderValue} onChange={e => setNewProjection({ ...newProjection, averageOrderValue: parseFloat(e.target.value) || 0 })} helperText={t('average_order_value_help')} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Orders Per Day" type="number" value={newProjection.ordersPerDay} onChange={e => setNewProjection({ ...newProjection, ordersPerDay: parseInt(e.target.value) || 0 })} helperText="Expected number of orders per day" />
+              <TextField fullWidth label={t('orders_per_day')} type="number" value={newProjection.ordersPerDay} onChange={e => setNewProjection({ ...newProjection, ordersPerDay: parseInt(e.target.value) || 0 })} helperText={t('orders_per_day_help')} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Working Days Per Month" type="number" value={newProjection.workingDaysPerMonth} onChange={e => setNewProjection({ ...newProjection, workingDaysPerMonth: parseInt(e.target.value) || 22 })} helperText="Number of operating days per month" />
+              <TextField fullWidth label={t('working_days_per_month')} type="number" value={newProjection.workingDaysPerMonth} onChange={e => setNewProjection({ ...newProjection, workingDaysPerMonth: parseInt(e.target.value) || 22 })} helperText={t('working_days_per_month_help')} />
             </Grid>
             <Grid item xs={12}>
-              <Alert severity="info">Based on your current monthly expenses of {formatCurrency(calculateMonthlyExpenses())}, this projection will calculate your expected profit and break-even point.</Alert>
+              <Alert severity="info" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                {t('projection_calculation_info', { amount: formatCurrency(calculateMonthlyExpenses()) })}
+              </Alert>
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenProjectionDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button onClick={() => setOpenProjectionDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleCalculateProjection} variant="contained">
-            Calculate Projection
+            {t('calculate_projection')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Financial Settings Dialog */}
-      <Dialog open={openSettingsDialog} onClose={() => setOpenSettingsDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Financial Calculation Settings</DialogTitle>
+      <Dialog open={openSettingsDialog} onClose={() => setOpenSettingsDialog(false)} maxWidth="md" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('financial_calculation_settings')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12}>
@@ -1251,16 +1291,16 @@ export default function FinancialManagement() {
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenSettingsDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button onClick={() => setOpenSettingsDialog(false)}>{t('cancel')}</Button>
           <Button
             onClick={() => {
               setOpenSettingsDialog(false)
-              setSnackbar({ open: true, message: 'Financial settings updated', severity: 'success' })
+              setSnackbar({ open: true, message: t('financial_settings_updated'), severity: 'success' })
             }}
             variant="contained"
           >
-            Save Settings
+            {t('save_settings')}
           </Button>
         </DialogActions>
       </Dialog>

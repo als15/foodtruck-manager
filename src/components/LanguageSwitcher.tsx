@@ -36,18 +36,6 @@ export default function LanguageSwitcher() {
     const isRtl = languageCode === 'he'
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr'
     document.documentElement.lang = languageCode
-
-    // Trigger custom event for theme direction change
-    const event = new StorageEvent('storage', {
-      key: 'i18nextLng',
-      newValue: languageCode
-    })
-    window.dispatchEvent(event)
-    
-    // Force reload to ensure theme direction is properly updated
-    setTimeout(() => {
-      window.location.reload()
-    }, 100)
   }
 
   const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0]

@@ -1,26 +1,27 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import AppLayout from './components/Layout/AppLayout';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import FinancialManagement from './pages/FinancialManagement';
-import MenuManagement from './pages/MenuManagement';
-import Ingredients from './pages/Ingredients';
-import Employees from './pages/Employees';
-import Logistics from './pages/Logistics';
-import Inventory from './pages/Inventory';
-import Customers from './pages/Customers';
-import Suppliers from './pages/Suppliers';
-import SupplierOrders from './pages/SupplierOrders';
-import Analytics from './pages/Analytics';
-import { Auth } from './pages/Auth';
-import { UserManagement } from './pages/UserManagement';
-import TeamManagement from './pages/TeamManagement';
-import InviteAccept from './pages/InviteAccept';
-import { AuthProvider } from './contexts/AuthContext';
-import { BusinessProvider } from './contexts/BusinessContext';
-import { CustomThemeProvider } from './contexts/ThemeContext';
-import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import React from 'react'
+import { Routes, Route } from 'react-router-dom'
+import AppLayout from './components/Layout/AppLayout'
+import Dashboard from './pages/Dashboard'
+import Orders from './pages/Orders'
+import FinancialManagement from './pages/FinancialManagement'
+import MenuManagement from './pages/MenuManagement'
+import Ingredients from './pages/Ingredients'
+import Employees from './pages/Employees'
+import Logistics from './pages/Logistics'
+import Inventory from './pages/Inventory'
+import Customers from './pages/Customers'
+import Suppliers from './pages/Suppliers'
+import SupplierOrders from './pages/SupplierOrders'
+import Analytics from './pages/Analytics'
+import PrepPlanner from './pages/PrepPlanner'
+import { Auth } from './pages/Auth'
+import { UserManagement } from './pages/UserManagement'
+import TeamManagement from './pages/TeamManagement'
+import InviteAccept from './pages/InviteAccept'
+import { AuthProvider } from './contexts/AuthContext'
+import { BusinessProvider } from './contexts/BusinessContext'
+import { CustomThemeProvider } from './contexts/ThemeContext'
+import { ProtectedRoute } from './components/Auth/ProtectedRoute'
 
 function App() {
   return (
@@ -30,39 +31,46 @@ function App() {
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:token" element={<InviteAccept />} />
-            <Route path="/user-management" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <UserManagement />
-                </AppLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/orders" element={<Orders />} />
-                    <Route path="/finances" element={<FinancialManagement />} />
-                    <Route path="/menu" element={<MenuManagement />} />
-                    <Route path="/ingredients" element={<Ingredients />} />
-                    <Route path="/employees" element={<Employees />} />
-                    <Route path="/logistics" element={<Logistics />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/customers" element={<Customers />} />
-                    <Route path="/suppliers" element={<Suppliers />} />
-                    <Route path="/supplier-orders" element={<SupplierOrders />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/team" element={<TeamManagement />} />
-                  </Routes>
-                </AppLayout>
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/user-management"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <UserManagement />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/orders" element={<Orders />} />
+                      <Route path="/finances" element={<FinancialManagement />} />
+                      <Route path="/menu" element={<MenuManagement />} />
+                      <Route path="/ingredients" element={<Ingredients />} />
+                      <Route path="/employees" element={<Employees />} />
+                      <Route path="/logistics" element={<Logistics />} />
+                      <Route path="/inventory" element={<Inventory />} />
+                      <Route path="/customers" element={<Customers />} />
+                      <Route path="/suppliers" element={<Suppliers />} />
+                      <Route path="/supplier-orders" element={<SupplierOrders />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/prep-planner" element={<PrepPlanner />} />
+                      <Route path="/team" element={<TeamManagement />} />
+                    </Routes>
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </BusinessProvider>
       </AuthProvider>
     </CustomThemeProvider>
-  );
+  )
 }
 
-export default App;
+export default App

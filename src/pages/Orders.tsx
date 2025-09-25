@@ -52,6 +52,7 @@ import {
   TrendingFlat as TrendingFlatIcon,
   LocationOn as LocationIcon,
   AccessTime as PeakIcon,
+  Psychology as AIIcon,
 } from '@mui/icons-material';
 import { Order, OrderItem, MenuItem, Employee, Customer } from '../types';
 import { 
@@ -63,6 +64,7 @@ import {
 } from '../services/supabaseService';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../utils/currency';
+import AIOrderImporter from '../components/Orders/AIOrderImporter';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -97,6 +99,7 @@ export default function Orders() {
   // Dialog states
   const [openOrderDialog, setOpenOrderDialog] = useState(false);
   const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [openAIImportDialog, setOpenAIImportDialog] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   // Form states
@@ -354,6 +357,15 @@ export default function Orders() {
     }
   };
 
+  const handleAIOrdersImported = async (orders: Order[]) => {
+    setSnackbar({ 
+      open: true, 
+      message: `Successfully imported ${orders.length} orders using AI`, 
+      severity: 'success' 
+    });
+    await loadOrders();
+  };
+
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'pending': return 'warning';
@@ -506,6 +518,14 @@ export default function Orders() {
             sx={{ marginInlineEnd: 1 }}
           >
             {t('import_orders')}
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<AIIcon />} 
+            onClick={() => setOpenAIImportDialog(true)}
+            sx={{ marginInlineEnd: 1 }}
+          >
+            AI Import
           </Button>
           <Button 
             variant="contained" 
@@ -1190,6 +1210,13 @@ export default function Orders() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* AI Order Importer Dialog */}
+      <AIOrderImporter
+        open={openAIImportDialog}
+        onClose={() => setOpenAIImportDialog(false)}
+        onOrdersImported={handleAIOrdersImported}
+      />
 
       <Snackbar
         open={snackbar.open}

@@ -122,9 +122,9 @@ body {
 }
 
 /* Dark mode text contrast improvements */
-[data-theme="dark"] .MuiTableCell-root .MuiTypography-colorPrimary,
-[data-theme="dark"] .MuiTableCell-body .MuiTypography-colorPrimary {
-  color: #7fffd4 !important;
+[data-theme='dark'] .MuiTableCell-root .MuiTypography-colorPrimary,
+[data-theme='dark'] .MuiTableCell-body .MuiTypography-colorPrimary {
+  color: #a8efe7 !important;
   font-weight: 600 !important;
 }
 
@@ -146,8 +146,8 @@ body {
   color: #1f5c3d !important;
 }
 
-[data-theme="dark"] .MuiTypography-colorPrimary {
-  color: #7fffd4 !important;
+[data-theme='dark'] .MuiTypography-colorPrimary {
+  color: #a8efe7 !important;
 }
 
 code {

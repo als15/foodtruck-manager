@@ -259,11 +259,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
       >
         <NomNomLogo size="medium" showText={true} />
       </Toolbar>
-      <Box 
-        sx={{ 
-          height: 3,
-          background: 'linear-gradient(to right, #5a9fd4, #7fffd4)',
-        }} 
+      <Box
+        sx={{
+          height: 4,
+          background: 'linear-gradient(90deg, #6dded0 0%, #7fffd4 50%, #fcf3ee 100%)'
+        }}
       />
       <List sx={{ px: 1 }}>{navigationItems.map(item => renderNavigationItem(item))}</List>
     </div>
@@ -434,8 +434,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             bottom: 0,
             left: 0,
             right: 0,
-            height: 3,
-            background: 'linear-gradient(to right, #7fffd4, #5a9fd4)'
+            height: 4,
+            background: 'linear-gradient(90deg, #7fffd4 0%, #6dded0 60%, #ffd4d4 100%)'
           }}
         />
       </AppBar>

@@ -8,6 +8,10 @@ import {
   Transaction, 
   Location, 
   InventoryItem, 
+  InventoryTransaction,
+  InventoryValidationResult,
+  InventoryAlert,
+  StockMovement,
   Customer, 
   Supplier,
   Expense,
@@ -778,6 +782,585 @@ export const inventoryService = {
   }
 };
 
+// ==================== INVENTORY TRANSACTIONS ====================
+
+export const inventoryTransactionService = {
+  async getAll(): Promise<InventoryTransaction[]> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+    
+    if (error) handleError(error, 'fetch inventory transactions');
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      businessId: item.business_id,
+      inventoryItemId: item.inventory_item_id,
+      ingredientId: item.ingredient_id,
+      type: item.type,
+      quantity: item.quantity,
+      reason: item.reason,
+      referenceId: item.reference_id,
+      referenceName: item.reference_name,
+      notes: item.notes,
+      unitCost: item.unit_cost,
+      totalValue: item.total_value,
+      balanceAfter: item.balance_after,
+      createdAt: new Date(item.created_at),
+      createdBy: item.created_by
+    }));
+  },
+
+  async getByInventoryItem(inventoryItemId: string): Promise<InventoryTransaction[]> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('inventory_item_id', inventoryItemId)
+      .order('created_at', { ascending: false });
+    
+    if (error) handleError(error, 'fetch inventory transactions for item');
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      businessId: item.business_id,
+      inventoryItemId: item.inventory_item_id,
+      ingredientId: item.ingredient_id,
+      type: item.type,
+      quantity: item.quantity,
+      reason: item.reason,
+      referenceId: item.reference_id,
+      referenceName: item.reference_name,
+      notes: item.notes,
+      unitCost: item.unit_cost,
+      totalValue: item.total_value,
+      balanceAfter: item.balance_after,
+      createdAt: new Date(item.created_at),
+      createdBy: item.created_by
+    }));
+  },
+
+  async create(transaction: Omit<InventoryTransaction, 'id' | 'businessId' | 'createdAt'>): Promise<InventoryTransaction> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .insert({
+        business_id: businessId,
+        inventory_item_id: transaction.inventoryItemId,
+        ingredient_id: transaction.ingredientId,
+        type: transaction.type,
+        quantity: transaction.quantity,
+        reason: transaction.reason,
+        reference_id: transaction.referenceId,
+        reference_name: transaction.referenceName,
+        notes: transaction.notes,
+        unit_cost: transaction.unitCost,
+        total_value: transaction.totalValue,
+        balance_after: transaction.balanceAfter,
+        created_by: transaction.createdBy
+      })
+      .select()
+      .single();
+    
+    if (error) handleError(error, 'create inventory transaction');
+    
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      inventoryItemId: data.inventory_item_id,
+      ingredientId: data.ingredient_id,
+      type: data.type,
+      quantity: data.quantity,
+      reason: data.reason,
+      referenceId: data.reference_id,
+      referenceName: data.reference_name,
+      notes: data.notes,
+      unitCost: data.unit_cost,
+      totalValue: data.total_value,
+      balanceAfter: data.balance_after,
+      createdAt: new Date(data.created_at),
+      createdBy: data.created_by
+    };
+  }
+};
+
+// ==================== INVENTORY MANAGEMENT ====================
+
+export const inventoryManagementService = {
+  // Process stock movement and create transaction record
+  async updateStock(
+    inventoryItemId: string,
+    quantity: number,
+    type: 'in' | 'out' | 'adjustment',
+    reason: InventoryTransaction['reason'],
+    referenceId?: string,
+    referenceName?: string,
+    notes?: string,
+    unitCost?: number
+  ): Promise<InventoryItem> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      // Start a transaction to ensure data consistency
+      const { data: currentItem, error: fetchError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('id', inventoryItemId)
+        .eq('business_id', businessId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Calculate new balance
+      const currentStock = currentItem.current_stock;
+      let newBalance = currentStock;
+      
+      if (type === 'in') {
+        newBalance = currentStock + Math.abs(quantity);
+      } else if (type === 'out') {
+        newBalance = currentStock - Math.abs(quantity);
+        if (newBalance < 0) {
+          throw new Error(`Insufficient stock. Current: ${currentStock}, Requested: ${Math.abs(quantity)}`);
+        }
+      } else if (type === 'adjustment') {
+        newBalance = quantity; // For adjustments, quantity is the new total
+      }
+      
+      // Update inventory item
+      const { data: updatedItem, error: updateError } = await supabase
+        .from('inventory_items')
+        .update({
+          current_stock: newBalance,
+          last_restocked: type === 'in' ? new Date().toISOString() : currentItem.last_restocked
+        })
+        .eq('id', inventoryItemId)
+        .eq('business_id', businessId)
+        .select()
+        .single();
+      
+      if (updateError) throw updateError;
+      
+      // Create transaction record
+      const transactionQuantity = type === 'adjustment' ? (newBalance - currentStock) : 
+                                  type === 'out' ? -Math.abs(quantity) : Math.abs(quantity);
+      
+      await inventoryTransactionService.create({
+        inventoryItemId,
+        ingredientId: currentItem.ingredient_id,
+        type,
+        quantity: transactionQuantity,
+        reason,
+        referenceId,
+        referenceName,
+        notes,
+        unitCost: unitCost || currentItem.cost_per_unit,
+        totalValue: (unitCost || currentItem.cost_per_unit) * Math.abs(transactionQuantity),
+        balanceAfter: newBalance
+      });
+      
+      return {
+        id: updatedItem.id,
+        businessId: updatedItem.business_id,
+        name: updatedItem.name,
+        category: updatedItem.category,
+        currentStock: updatedItem.current_stock,
+        unit: updatedItem.unit,
+        minThreshold: updatedItem.min_threshold,
+        costPerUnit: updatedItem.cost_per_unit,
+        supplier: updatedItem.supplier || '',
+        lastRestocked: new Date(updatedItem.last_restocked),
+        reservedQuantity: updatedItem.reserved_quantity || 0,
+        ingredientId: updatedItem.ingredient_id,
+        lastMovementDate: new Date()
+      };
+      
+    } catch (error) {
+      handleError(error, 'update inventory stock');
+      throw error;
+    }
+  },
+
+  // Validate if there's enough inventory for an order
+  async validateOrderInventory(orderItems: { menuItemId: string; quantity: number }[]): Promise<InventoryValidationResult> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      // Get all menu items with their ingredients
+      const menuItemIds = orderItems.map(item => item.menuItemId);
+      const { data: menuItems, error: menuError } = await supabase
+        .from('menu_items')
+        .select(`
+          id,
+          name,
+          menu_item_ingredients (
+            ingredient_id,
+            quantity,
+            unit,
+            ingredients!inner (
+              name,
+              unit
+            )
+          )
+        `)
+        .in('id', menuItemIds)
+        .eq('business_id', businessId);
+      
+      if (menuError) throw menuError;
+      
+      // Calculate total required ingredients
+      const requiredIngredients: Record<string, { quantity: number; name: string; unit: string }> = {};
+      
+      for (const orderItem of orderItems) {
+        const menuItem = menuItems?.find(m => m.id === orderItem.menuItemId);
+        if (!menuItem || !menuItem.menu_item_ingredients) continue;
+        
+        for (const ingredient of menuItem.menu_item_ingredients) {
+          const key = ingredient.ingredient_id;
+          if (!requiredIngredients[key]) {
+            requiredIngredients[key] = {
+              quantity: 0,
+              name: (ingredient.ingredients as any)?.name || 'Unknown',
+              unit: (ingredient.ingredients as any)?.unit || ingredient.unit || ''
+            };
+          }
+          requiredIngredients[key].quantity += ingredient.quantity * orderItem.quantity;
+        }
+      }
+      
+      // Get current inventory for required ingredients
+      const ingredientIds = Object.keys(requiredIngredients);
+      
+      // Get all inventory items and match by name (fallback for missing ingredient_id column)
+      const { data: inventoryItems, error: inventoryError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('business_id', businessId);
+      
+      // Also get ingredient names for matching
+      const { data: ingredients, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('id, name')
+        .in('id', ingredientIds)
+        .eq('business_id', businessId);
+      
+      if (inventoryError) throw inventoryError;
+      if (ingredientsError) throw ingredientsError;
+      
+      const insufficientItems: InventoryValidationResult['insufficientItems'] = [];
+      const warnings: InventoryValidationResult['warnings'] = [];
+      
+      for (const ingredientId of ingredientIds) {
+        const required = requiredIngredients[ingredientId];
+        const ingredient = ingredients?.find(ing => ing.id === ingredientId);
+        
+        // Try to find inventory item by ingredient_id first, then fallback to name matching
+        let inventoryItem = inventoryItems?.find(item => 
+          item.ingredient_id === ingredientId || 
+          (ingredient && item.name.toLowerCase().trim() === ingredient.name.toLowerCase().trim())
+        );
+        
+        if (!inventoryItem) {
+          insufficientItems.push({
+            ingredientId,
+            ingredientName: required.name,
+            required: required.quantity,
+            available: 0,
+            shortfall: required.quantity,
+            unit: required.unit
+          });
+          continue;
+        }
+        
+        const available = inventoryItem.current_stock - (inventoryItem.reserved_quantity || 0);
+        
+        if (available < required.quantity) {
+          insufficientItems.push({
+            ingredientId,
+            ingredientName: inventoryItem.name,
+            required: required.quantity,
+            available,
+            shortfall: required.quantity - available,
+            unit: inventoryItem.unit
+          });
+        } else if (available - required.quantity <= inventoryItem.min_threshold) {
+          warnings.push({
+            ingredientId,
+            ingredientName: inventoryItem.name,
+            currentStock: inventoryItem.current_stock,
+            minThreshold: inventoryItem.min_threshold,
+            unit: inventoryItem.unit
+          });
+        }
+      }
+      
+      return {
+        isValid: insufficientItems.length === 0,
+        insufficientItems,
+        warnings
+      };
+      
+    } catch (error) {
+      handleError(error, 'validate order inventory');
+      return {
+        isValid: false,
+        insufficientItems: [],
+        warnings: []
+      };
+    }
+  },
+
+  // Process supplier order delivery
+  async processSupplierDelivery(supplierOrderId: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      // Get supplier order with items
+      const { data: supplierOrder, error: orderError } = await supabase
+        .from('supplier_orders')
+        .select(`
+          *,
+          items:supplier_order_items(*)
+        `)
+        .eq('id', supplierOrderId)
+        .eq('business_id', businessId)
+        .single();
+      
+      if (orderError) throw orderError;
+      if (supplierOrder.status === 'delivered') {
+        throw new Error('Supplier order is already marked as delivered');
+      }
+      
+      // Process each item in the order
+      for (const item of supplierOrder.items || []) {
+        // Find or create inventory item for this ingredient
+        // First try to find by ingredient_id, then fallback to name matching
+        let { data: inventoryItems, error: findError } = await supabase
+          .from('inventory_items')
+          .select('*')
+          .eq('business_id', businessId);
+        
+        if (findError) throw findError;
+        
+        // Get ingredient info for name matching
+        const { data: ingredient, error: ingredientError } = await supabase
+          .from('ingredients')
+          .select('*')
+          .eq('id', item.ingredient_id)
+          .eq('business_id', businessId)
+          .single();
+        
+        if (ingredientError) throw ingredientError;
+        
+        // Find inventory item by ingredient_id or name matching
+        let inventoryItem = inventoryItems?.find(invItem => 
+          invItem.ingredient_id === item.ingredient_id || 
+          invItem.name.toLowerCase().trim() === ingredient.name.toLowerCase().trim()
+        );
+        
+        // If inventory item doesn't exist, create it
+        if (!inventoryItem) {
+          const { data: ingredient, error: ingredientError } = await supabase
+            .from('ingredients')
+            .select('*')
+            .eq('id', item.ingredient_id)
+            .eq('business_id', businessId)
+            .single();
+          
+          if (ingredientError) throw ingredientError;
+          
+          const { data: newInventoryItem, error: createError } = await supabase
+            .from('inventory_items')
+            .insert({
+              business_id: businessId,
+              name: ingredient.name,
+              category: ingredient.category,
+              current_stock: 0,
+              unit: ingredient.unit,
+              min_threshold: 5,
+              cost_per_unit: ingredient.cost_per_unit,
+              supplier: ingredient.supplier,
+              ingredient_id: ingredient.id,
+              last_restocked: new Date().toISOString()
+            })
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          inventoryItem = newInventoryItem;
+        }
+        
+        // Update inventory stock
+        await this.updateStock(
+          inventoryItem.id,
+          item.quantity,
+          'in',
+          'supplier_delivery',
+          supplierOrderId,
+          `Supplier Order #${supplierOrder.order_number}`,
+          `Delivery from ${supplierOrder.supplier?.name || 'supplier'}`,
+          item.unit_price
+        );
+      }
+      
+      // Mark supplier order as delivered
+      await supabase
+        .from('supplier_orders')
+        .update({
+          status: 'delivered',
+          actual_delivery_date: new Date().toISOString()
+        })
+        .eq('id', supplierOrderId)
+        .eq('business_id', businessId);
+      
+    } catch (error) {
+      handleError(error, 'process supplier delivery');
+      throw error;
+    }
+  },
+
+  // Process order sale (deduct from inventory)
+  async processOrderSale(orderId: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      // Get order with items and their menu items
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(
+            *,
+            menu_item:menu_items(
+              id,
+              name,
+              menu_item_ingredients (
+                ingredient_id,
+                quantity,
+                unit
+              )
+            )
+          )
+        `)
+        .eq('id', orderId)
+        .eq('business_id', businessId)
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      // Validate inventory availability first
+      const orderItems = order.items?.map((item: any) => ({
+        menuItemId: item.menu_item_id,
+        quantity: item.quantity
+      })) || [];
+      
+      const validation = await this.validateOrderInventory(orderItems);
+      if (!validation.isValid) {
+        throw new Error(`Insufficient inventory: ${validation.insufficientItems.map(item => 
+          `${item.ingredientName} (need ${item.required} ${item.unit}, have ${item.available} ${item.unit})`
+        ).join(', ')}`);
+      }
+      
+      // Process each order item
+      for (const orderItem of order.items || []) {
+        const menuItem = orderItem.menu_item;
+        if (!menuItem || !menuItem.menu_item_ingredients) continue;
+        
+        // Deduct ingredients for this menu item
+        for (const ingredient of menuItem.menu_item_ingredients) {
+          // Get all inventory items and match by name (fallback for missing ingredient_id column)
+          let { data: inventoryItems, error: findError } = await supabase
+            .from('inventory_items')
+            .select('*')
+            .eq('business_id', businessId);
+          
+          if (findError) {
+            console.warn(`Failed to fetch inventory items for ingredient ${ingredient.ingredient_id}:`, findError);
+            continue;
+          }
+          
+          // Get ingredient info for name matching
+          const { data: ingredientInfo, error: ingredientError } = await supabase
+            .from('ingredients')
+            .select('*')
+            .eq('id', ingredient.ingredient_id)
+            .eq('business_id', businessId)
+            .single();
+          
+          if (ingredientError) {
+            console.warn(`Failed to fetch ingredient info for ${ingredient.ingredient_id}:`, ingredientError);
+            continue;
+          }
+          
+          // Find inventory item by ingredient_id or name matching
+          let inventoryItem = inventoryItems?.find(item => 
+            item.ingredient_id === ingredient.ingredient_id || 
+            (ingredientInfo && item.name.toLowerCase().trim() === ingredientInfo.name.toLowerCase().trim())
+          );
+          
+          if (!inventoryItem) {
+            console.warn(`Inventory item not found for ingredient ${ingredient.ingredient_id} (${ingredientInfo?.name || 'unknown'})`);
+            continue;
+          }
+          
+          const totalQuantityNeeded = ingredient.quantity * orderItem.quantity;
+          
+          await this.updateStock(
+            inventoryItem.id,
+            totalQuantityNeeded,
+            'out',
+            'order_sale',
+            orderId,
+            `Order #${order.order_number || orderId}`,
+            `Sale: ${orderItem.quantity}x ${menuItem.name}`
+          );
+        }
+      }
+      
+    } catch (error) {
+      handleError(error, 'process order sale');
+      throw error;
+    }
+  },
+
+  // Get low stock alerts
+  async getLowStockAlerts(): Promise<InventoryAlert[]> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('business_id', businessId)
+        .or('current_stock.lte.min_threshold,current_stock.eq.0');
+      
+      if (error) throw error;
+      
+      return (data || []).map(item => ({
+        id: `alert-${item.id}`,
+        businessId: item.business_id,
+        inventoryItemId: item.id,
+        ingredientId: item.ingredient_id,
+        ingredientName: item.name,
+        currentStock: item.current_stock,
+        minThreshold: item.min_threshold,
+        unit: item.unit,
+        alertType: item.current_stock === 0 ? 'out_of_stock' : 'low_stock',
+        severity: item.current_stock === 0 ? 'critical' : 'warning',
+        isResolved: false,
+        createdAt: new Date()
+      }));
+      
+    } catch (error) {
+      handleError(error, 'get low stock alerts');
+      return [];
+    }
+  }
+};
+
 // ==================== SUPPLIERS ====================
 
 export const suppliersService = {
@@ -978,8 +1561,119 @@ export const suppliersService = {
       minThreshold: item.min_threshold,
       costPerUnit: item.cost_per_unit,
       supplier: item.supplier || '',
-      lastRestocked: new Date(item.last_restocked)
+      lastRestocked: new Date(item.last_restocked),
+      reservedQuantity: item.reserved_quantity || 0,
+      ingredientId: item.ingredient_id,
+      lastMovementDate: item.last_movement_date ? new Date(item.last_movement_date) : undefined
     }));
+  },
+
+  // Enhanced auto-order suggestions based on consumption patterns
+  async getSmartAutoOrderSuggestions(): Promise<{
+    item: InventoryItem;
+    avgDailyConsumption: number;
+    daysUntilStockOut: number;
+    suggestedOrderQuantity: number;
+    urgency: 'low' | 'medium' | 'high' | 'critical';
+  }[]> {
+    const businessId = getCurrentBusinessId();
+    
+    try {
+      // Get all inventory items
+      const { data: inventoryItems, error: inventoryError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('business_id', businessId);
+      
+      if (inventoryError) throw inventoryError;
+      
+      // Get consumption data from the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: transactions, error: transactionError } = await supabase
+        .from('inventory_transactions')
+        .select('*')
+        .eq('business_id', businessId)
+        .eq('reason', 'order_sale')
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      if (transactionError) throw transactionError;
+      
+      const suggestions = [];
+      
+      for (const item of inventoryItems || []) {
+        // Calculate consumption for this item
+        const itemTransactions = (transactions || []).filter(t => t.inventory_item_id === item.id);
+        const totalConsumed = itemTransactions.reduce((sum, t) => sum + Math.abs(t.quantity), 0);
+        const avgDailyConsumption = totalConsumed / 30; // Average per day over 30 days
+        
+        // Calculate days until stock out
+        const availableStock = item.current_stock - (item.reserved_quantity || 0);
+        const daysUntilStockOut = avgDailyConsumption > 0 ? availableStock / avgDailyConsumption : 999;
+        
+        // Determine if we need to reorder
+        const shouldReorder = availableStock <= item.min_threshold || daysUntilStockOut <= 7;
+        
+        if (shouldReorder) {
+          // Calculate suggested order quantity
+          // Order enough for 14 days + safety stock
+          const targetDaysStock = 14;
+          const safetyStock = Math.max(item.min_threshold, avgDailyConsumption * 3);
+          const suggestedOrderQuantity = Math.max(
+            avgDailyConsumption * targetDaysStock + safetyStock - availableStock,
+            item.min_threshold
+          );
+          
+          // Determine urgency
+          let urgency: 'low' | 'medium' | 'high' | 'critical' = 'low';
+          if (availableStock <= 0) {
+            urgency = 'critical';
+          } else if (daysUntilStockOut <= 2) {
+            urgency = 'high';
+          } else if (daysUntilStockOut <= 5) {
+            urgency = 'medium';
+          }
+          
+          suggestions.push({
+            item: {
+              id: item.id,
+              businessId: item.business_id,
+              name: item.name,
+              category: item.category,
+              currentStock: item.current_stock,
+              unit: item.unit,
+              minThreshold: item.min_threshold,
+              costPerUnit: item.cost_per_unit,
+              supplier: item.supplier || '',
+              lastRestocked: new Date(item.last_restocked),
+              reservedQuantity: item.reserved_quantity || 0,
+              ingredientId: item.ingredient_id,
+              lastMovementDate: item.last_movement_date ? new Date(item.last_movement_date) : undefined
+            },
+            avgDailyConsumption,
+            daysUntilStockOut: Math.round(daysUntilStockOut),
+            suggestedOrderQuantity: Math.ceil(suggestedOrderQuantity),
+            urgency
+          });
+        }
+      }
+      
+      // Sort by urgency (critical first, then by days until stock out)
+      suggestions.sort((a, b) => {
+        const urgencyOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+        if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
+          return urgencyOrder[b.urgency] - urgencyOrder[a.urgency];
+        }
+        return a.daysUntilStockOut - b.daysUntilStockOut;
+      });
+      
+      return suggestions;
+      
+    } catch (error) {
+      handleError(error, 'get smart auto order suggestions');
+      return [];
+    }
   }
 };
 
@@ -1401,6 +2095,15 @@ export const supplierOrdersService = {
       updateData.submitted_date = new Date().toISOString();
     } else if (status === 'delivered') {
       updateData.actual_delivery_date = new Date().toISOString();
+      
+      // Process delivery and update inventory
+      try {
+        await inventoryManagementService.processSupplierDelivery(id);
+      } catch (inventoryError) {
+        console.error('Failed to update inventory for supplier delivery:', inventoryError);
+        // Still allow the status update but log the inventory error
+        // In a production environment, you might want to handle this differently
+      }
     }
 
     const { error } = await supabase
@@ -1412,6 +2115,11 @@ export const supplierOrdersService = {
     if (error) handleError(error, 'update supplier order status');
     
     return this.getById(id);
+  },
+
+  // Mark order as delivered and update inventory
+  async markAsDelivered(id: string): Promise<SupplierOrder> {
+    return this.updateStatus(id, 'delivered');
   },
 
   async delete(id: string): Promise<void> {
@@ -2813,8 +3521,35 @@ export const ordersService = {
     };
   },
 
+  // Validate inventory before creating order
+  async validateInventoryForOrder(orderItems: { menuItemId: string; quantity: number }[]): Promise<InventoryValidationResult> {
+    return inventoryManagementService.validateOrderInventory(orderItems);
+  },
+
   async create(order: Omit<Order, 'id' | 'orderNumber' | 'businessId'>): Promise<Order> {
     const businessId = getCurrentBusinessId();
+    
+    // Skip inventory validation for imported historical orders
+    const isImportedOrder = order.externalSource && 
+      (order.externalSource.includes('import') || 
+       order.externalSource.includes('payment_provider') ||
+       order.externalSource.includes('external'));
+    
+    // Validate inventory availability before creating the order (except for imported orders)
+    if (order.items && order.items.length > 0 && !isImportedOrder) {
+      const orderItems = order.items.map(item => ({
+        menuItemId: item.menuItemId,
+        quantity: item.quantity
+      }));
+      
+      const validation = await this.validateInventoryForOrder(orderItems);
+      if (!validation.isValid) {
+        throw new Error(`Insufficient inventory: ${validation.insufficientItems.map(item => 
+          `${item.ingredientName} (need ${item.required} ${item.unit}, have ${item.available} ${item.unit})`
+        ).join(', ')}`);
+      }
+    }
+    
     // Generate order number
     const { data: orderNumberData, error: orderNumberError } = await supabase
       .rpc('generate_order_number');
@@ -2865,6 +3600,18 @@ export const ordersService = {
         .insert(orderItems);
       
       if (itemsError) handleError(itemsError, 'create order items');
+    }
+
+    // If payment is completed or order is completed, deduct from inventory (except for imported orders)
+    if (!isImportedOrder && 
+        ((order.paymentStatus === 'completed' && order.status === 'completed') || 
+         (order.status === 'completed'))) {
+      try {
+        await inventoryManagementService.processOrderSale(data.id);
+      } catch (inventoryError) {
+        console.error('Failed to update inventory for order sale:', inventoryError);
+        // Log the error but don't fail the order creation
+      }
     }
 
     return this.getById(data.id);
@@ -2938,6 +3685,30 @@ export const ordersService = {
     
     if (status === 'completed') {
       updateData.completed_time = new Date().toISOString();
+      
+      // Check if this is an imported order before processing inventory
+      const { data: orderData, error: fetchError } = await supabase
+        .from('orders')
+        .select('external_source')
+        .eq('id', id)
+        .eq('business_id', businessId)
+        .single();
+      
+      const isImportedOrder = orderData?.external_source && 
+        (orderData.external_source.includes('import') || 
+         orderData.external_source.includes('payment_provider') ||
+         orderData.external_source.includes('external'));
+      
+      // Process order sale and deduct from inventory (except for imported orders)
+      if (!fetchError && !isImportedOrder) {
+        try {
+          await inventoryManagementService.processOrderSale(id);
+        } catch (inventoryError) {
+          console.error('Failed to update inventory for order completion:', inventoryError);
+          // Log the error but don't fail the status update
+          // In production, you might want to handle this differently
+        }
+      }
     }
     
     if (employeeId) {
@@ -2953,6 +3724,16 @@ export const ordersService = {
     if (error) handleError(error, 'update order status');
     
     return this.getById(id);
+  },
+
+  // Mark order as completed and process inventory deduction
+  async completeOrder(id: string, employeeId?: string): Promise<Order> {
+    return this.updateStatus(id, 'completed', employeeId);
+  },
+
+  // Get low stock alerts for orders dashboard
+  async getLowStockAlerts(): Promise<InventoryAlert[]> {
+    return inventoryManagementService.getLowStockAlerts();
   },
 
   async delete(id: string): Promise<void> {

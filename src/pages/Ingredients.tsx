@@ -47,7 +47,6 @@ export default function Ingredients() {
     loadSuppliers()
   }, [])
 
-
   // Set up real-time subscription
   useEffect(() => {
     const subscription = subscriptions.ingredients(payload => {
@@ -96,7 +95,6 @@ export default function Ingredients() {
 
       // Reload ingredients to get updated data
       await loadIngredients()
-
 
       setNewIngredient({
         name: '',
@@ -461,9 +459,9 @@ export default function Ingredients() {
                   .map(ingredient => (
                     <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
                       <TableCell>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
+                        <Typography
+                          variant="body1"
+                          sx={{
                             fontWeight: 600,
                             color: theme.palette.text.primary
                           }}
@@ -472,11 +470,11 @@ export default function Ingredients() {
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
+                        <Typography
+                          variant="body1"
+                          sx={{
                             fontWeight: 600,
-                            color: theme.palette.mode === 'dark' ? '#7fffd4' : '#1f5c3d'  // Better contrast colors
+                            color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' // Better contrast colors
                           }}
                         >
                           {formatCurrency(ingredient.costPerUnit)}
@@ -539,7 +537,9 @@ export default function Ingredients() {
               <Autocomplete freeSolo options={categoriesForAutocomplete} value={newIngredient.category} onChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })} onInputChange={(_, value) => setNewIngredient({ ...newIngredient, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label={t('category')} placeholder="e.g., Meat, Vegetables, Dairy" />} />
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>{t('packaging_information')}</Typography>
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                {t('packaging_information')}
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField fullWidth label={t('units_per_package')} type="number" inputProps={{ step: '1' }} value={newIngredient.unitsPerPackage || ''} onChange={e => setNewIngredient({ ...newIngredient, unitsPerPackage: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="e.g., 12" />
@@ -559,23 +559,27 @@ export default function Ingredients() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setOpenDialog(false)
-            setEditingIngredient(null)
-            setNewIngredient({
-              name: '',
-              costPerUnit: 0,
-              unit: '',
-              supplier: '',
-              category: '',
-              isAvailable: true,
-              unitsPerPackage: undefined,
-              packageType: '',
-              minimumOrderQuantity: undefined,
-              orderByPackage: false,
-              lastUpdated: new Date()
-            })
-          }}>{t('cancel')}</Button>
+          <Button
+            onClick={() => {
+              setOpenDialog(false)
+              setEditingIngredient(null)
+              setNewIngredient({
+                name: '',
+                costPerUnit: 0,
+                unit: '',
+                supplier: '',
+                category: '',
+                isAvailable: true,
+                unitsPerPackage: undefined,
+                packageType: '',
+                minimumOrderQuantity: undefined,
+                orderByPackage: false,
+                lastUpdated: new Date()
+              })
+            }}
+          >
+            {t('cancel')}
+          </Button>
           <Button onClick={handleSaveIngredient} variant="contained">
             {editingIngredient ? t('update_ingredient') : t('add_ingredient')}
           </Button>
@@ -589,7 +593,12 @@ export default function Ingredients() {
       </Snackbar>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-        <MuiMenuItem onClick={() => { setRecipeParserOpen(true); setMenuAnchor(null); }}>
+        <MuiMenuItem
+          onClick={() => {
+            setRecipeParserOpen(true)
+            setMenuAnchor(null)
+          }}
+        >
           <ListItemIcon>
             <AIIcon fontSize="small" />
           </ListItemIcon>
@@ -617,11 +626,7 @@ export default function Ingredients() {
         </MuiMenuItem>
       </Menu>
 
-      <RecipeParser
-        open={recipeParserOpen}
-        onClose={() => setRecipeParserOpen(false)}
-        onImport={handleRecipeParserImport}
-      />
+      <RecipeParser open={recipeParserOpen} onClose={() => setRecipeParserOpen(false)} onImport={handleRecipeParserImport} />
 
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Select Supplier for Import</DialogTitle>
@@ -629,26 +634,15 @@ export default function Ingredients() {
           <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
             Please select the supplier that these ingredients will be associated with. All imported ingredients will be assigned to this supplier.
           </Typography>
-          <Autocomplete
-            options={supplierNames}
-            value={selectedSupplierForImport}
-            onChange={(_, value) => setSelectedSupplierForImport(value || '')}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                fullWidth
-                label="Select Supplier"
-                placeholder="Choose a supplier for these ingredients"
-                required
-              />
-            )}
-          />
+          <Autocomplete options={supplierNames} value={selectedSupplierForImport} onChange={(_, value) => setSelectedSupplierForImport(value || '')} renderInput={params => <TextField {...params} fullWidth label="Select Supplier" placeholder="Choose a supplier for these ingredients" required />} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setImportDialogOpen(false)
-            setSelectedSupplierForImport('')
-          }}>
+          <Button
+            onClick={() => {
+              setImportDialogOpen(false)
+              setSelectedSupplierForImport('')
+            }}
+          >
             {t('cancel')}
           </Button>
           <Button onClick={handleSupplierImportConfirm} variant="contained" disabled={!selectedSupplierForImport}>
