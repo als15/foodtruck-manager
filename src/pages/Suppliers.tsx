@@ -265,7 +265,9 @@ export default function Suppliers() {
               <Typography variant="h6" color="primary">
                 {t('total_suppliers')}
               </Typography>
-              <Typography variant="h4">{suppliers.length}</Typography>
+              <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                {suppliers.length}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>

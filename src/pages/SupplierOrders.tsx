@@ -196,19 +196,19 @@ export default function SupplierOrders() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: results => {
         setImportData(results.data)
         setOpenImportDialog(true)
       },
-      error: (error) => {
-        setSnackbar({ 
-          open: true, 
-          message: t('failed_to_parse_file') + ': ' + error.message, 
-          severity: 'error' 
+      error: error => {
+        setSnackbar({
+          open: true,
+          message: t('failed_to_parse_file') + ': ' + error.message,
+          severity: 'error'
         })
       }
     })
-    
+
     // Reset file input
     event.target.value = ''
   }
@@ -222,20 +222,17 @@ export default function SupplierOrders() {
     try {
       // Map imported data to order items
       const mappedItems: OrderItemWithId[] = []
-      
+
       for (const row of importData) {
         const itemName = row[importMapping.itemNameColumn]?.toString().trim()
         const quantity = parseFloat(row[importMapping.quantityColumn] || 0)
         const unitPrice = parseFloat(row[importMapping.unitPriceColumn] || 0)
-        
+
         if (!itemName || quantity <= 0) continue
-        
+
         // Try to match with existing ingredients
-        const matchedIngredient = ingredients.find(ing => 
-          ing.name.toLowerCase() === itemName.toLowerCase() && 
-          ing.supplier === importMapping.supplier?.name
-        )
-        
+        const matchedIngredient = ingredients.find(ing => ing.name.toLowerCase() === itemName.toLowerCase() && ing.supplier === importMapping.supplier?.name)
+
         if (matchedIngredient) {
           mappedItems.push({
             tempId: `temp-${Date.now()}-${Math.random()}`,
@@ -246,12 +243,12 @@ export default function SupplierOrders() {
           })
         }
       }
-      
+
       if (mappedItems.length === 0) {
         setSnackbar({ open: true, message: t('no_matching_ingredients_found'), severity: 'warning' })
         return
       }
-      
+
       // Create new order with imported items
       setNewOrder({
         supplierId: importMapping.supplier.id,
@@ -266,17 +263,17 @@ export default function SupplierOrders() {
       setOrderItems(mappedItems)
       setOpenImportDialog(false)
       setOpenDialog(true)
-      
-      setSnackbar({ 
-        open: true, 
-        message: t('successfully_imported_items', { count: mappedItems.length }), 
-        severity: 'success' 
+
+      setSnackbar({
+        open: true,
+        message: t('successfully_imported_items', { count: mappedItems.length }),
+        severity: 'success'
       })
     } catch (error) {
-      setSnackbar({ 
-        open: true, 
-        message: t('import_failed'), 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: t('import_failed'),
+        severity: 'error'
       })
     }
   }
@@ -489,27 +486,14 @@ export default function SupplierOrders() {
 
     const query = searchQuery.toLowerCase()
     return sortedOrders.filter(order => {
-      return (
-        order.orderNumber.toLowerCase().includes(query) ||
-        order.supplier?.name.toLowerCase().includes(query) ||
-        order.status.toLowerCase().includes(query) ||
-        order.priority.toLowerCase().includes(query) ||
-        order.notes?.toLowerCase().includes(query) ||
-        order.items.some(item => 
-          item.ingredient?.name.toLowerCase().includes(query)
-        )
-      )
+      return order.orderNumber.toLowerCase().includes(query) || order.supplier?.name.toLowerCase().includes(query) || order.status.toLowerCase().includes(query) || order.priority.toLowerCase().includes(query) || order.notes?.toLowerCase().includes(query) || order.items.some(item => item.ingredient?.name.toLowerCase().includes(query))
     })
   }, [sortedOrders, searchQuery])
 
   // Calculate suppliers without open orders
   const suppliersWithoutOpenOrders = useMemo(() => {
-    const suppliersWithOpenOrders = new Set(
-      orders
-        .filter(order => ['draft', 'submitted'].includes(order.status))
-        .map(order => order.supplierId)
-    )
-    
+    const suppliersWithOpenOrders = new Set(orders.filter(order => ['draft', 'submitted'].includes(order.status)).map(order => order.supplierId))
+
     return suppliers.filter(supplier => !suppliersWithOpenOrders.has(supplier.id))
   }, [suppliers, orders])
 
@@ -549,7 +533,9 @@ export default function SupplierOrders() {
               <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
                 <OrderIcon color="primary" sx={{ marginInlineEnd: 1 }} />
                 <Box>
-                  <Typography variant="h6">{orders.length}</Typography>
+                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {orders.length}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('total_orders')}
                   </Typography>
@@ -565,7 +551,9 @@ export default function SupplierOrders() {
               <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
                 <ScheduleIcon color="warning" sx={{ marginInlineEnd: 1 }} />
                 <Box>
-                  <Typography variant="h6">{orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}</Typography>
+                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('pending_orders')}
                   </Typography>
@@ -581,7 +569,9 @@ export default function SupplierOrders() {
               <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
                 <WarningIcon color="error" sx={{ marginInlineEnd: 1 }} />
                 <Box>
-                  <Typography variant="h6">{ordersNeedingAttention.length}</Typography>
+                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {ordersNeedingAttention.length}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('need_attention')}
                   </Typography>
@@ -597,7 +587,9 @@ export default function SupplierOrders() {
               <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
                 <CheckIcon color="success" sx={{ marginInlineEnd: 1 }} />
                 <Box>
-                  <Typography variant="h6">{orders.filter(o => o.status === 'delivered').length}</Typography>
+                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {orders.filter(o => o.status === 'delivered').length}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('delivered_text')}
                   </Typography>
@@ -635,14 +627,7 @@ export default function SupplierOrders() {
       {suppliersWithoutOpenOrders.length > 0 && (
         <Box sx={{ mb: 2 }}>
           {!expandedSuppliersSection ? (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<OrderIcon />}
-              endIcon={<ExpandMoreIcon />}
-              onClick={() => setExpandedSuppliersSection(true)}
-              sx={{ textTransform: 'none' }}
-            >
+            <Button variant="outlined" size="small" startIcon={<OrderIcon />} endIcon={<ExpandMoreIcon />} onClick={() => setExpandedSuppliersSection(true)} sx={{ textTransform: 'none' }}>
               {t('suppliers_without_open_orders')} ({suppliersWithoutOpenOrders.length})
             </Button>
           ) : (
@@ -707,78 +692,50 @@ export default function SupplierOrders() {
               size="small"
               placeholder={t('search_orders')}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               InputProps={{
                 startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
             />
           </Box>
-          
+
           <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
             <Table dir={isRtl ? 'rtl' : 'ltr'}>
               <TableHead>
                 <TableRow>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'orderNumber'}
-                      direction={orderBy === 'orderNumber' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('orderNumber')}
-                    >
+                    <TableSortLabel active={orderBy === 'orderNumber'} direction={orderBy === 'orderNumber' ? orderDirection : 'asc'} onClick={() => handleRequestSort('orderNumber')}>
                       {t('order_number')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'supplier'}
-                      direction={orderBy === 'supplier' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('supplier')}
-                    >
+                    <TableSortLabel active={orderBy === 'supplier'} direction={orderBy === 'supplier' ? orderDirection : 'asc'} onClick={() => handleRequestSort('supplier')}>
                       {t('supplier_label')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>{t('items')}</TableCell>
                   <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                    <TableSortLabel
-                      active={orderBy === 'totalAmount'}
-                      direction={orderBy === 'totalAmount' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('totalAmount')}
-                    >
+                    <TableSortLabel active={orderBy === 'totalAmount'} direction={orderBy === 'totalAmount' ? orderDirection : 'asc'} onClick={() => handleRequestSort('totalAmount')}>
                       {t('total_amount')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'status'}
-                      direction={orderBy === 'status' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('status')}
-                    >
+                    <TableSortLabel active={orderBy === 'status'} direction={orderBy === 'status' ? orderDirection : 'asc'} onClick={() => handleRequestSort('status')}>
                       {t('status')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'priority'}
-                      direction={orderBy === 'priority' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('priority')}
-                    >
+                    <TableSortLabel active={orderBy === 'priority'} direction={orderBy === 'priority' ? orderDirection : 'asc'} onClick={() => handleRequestSort('priority')}>
                       {t('priority')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'orderDate'}
-                      direction={orderBy === 'orderDate' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('orderDate')}
-                    >
+                    <TableSortLabel active={orderBy === 'orderDate'} direction={orderBy === 'orderDate' ? orderDirection : 'asc'} onClick={() => handleRequestSort('orderDate')}>
                       {t('order_date')}
                     </TableSortLabel>
                   </TableCell>
                   <TableCell>
-                    <TableSortLabel
-                      active={orderBy === 'expectedDeliveryDate'}
-                      direction={orderBy === 'expectedDeliveryDate' ? orderDirection : 'asc'}
-                      onClick={() => handleRequestSort('expectedDeliveryDate')}
-                    >
+                    <TableSortLabel active={orderBy === 'expectedDeliveryDate'} direction={orderBy === 'expectedDeliveryDate' ? orderDirection : 'asc'} onClick={() => handleRequestSort('expectedDeliveryDate')}>
                       {t('expected_delivery')}
                     </TableSortLabel>
                   </TableCell>
@@ -796,55 +753,55 @@ export default function SupplierOrders() {
                   </TableRow>
                 ) : (
                   filteredOrders.map(order => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                        {order.autoGenerated && <AutoOrderIcon color="info" sx={{ marginInlineEnd: 1, fontSize: 16 }} />}
-                        {order.orderNumber}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{order.supplier?.name || t('unknown')}</TableCell>
-                    <TableCell>
-                      {order.items.length} {t('items')}
-                    </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(order.totalAmount)}</TableCell>
-                    <TableCell>
-                      <FormControl size="small" sx={{ minWidth: 120 }}>
-                        <Select
-                          value={order.status}
-                          onChange={e => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
-                          variant="outlined"
-                          sx={{
-                            '& .MuiSelect-select': {
-                              padding: '4px 8px',
-                              backgroundColor: order.status === 'draft' ? '#f5f5f5' : order.status === 'submitted' ? '#e3f2fd' : order.status === 'confirmed' ? '#e8f5e8' : order.status === 'shipped' ? '#fff3e0' : order.status === 'delivered' ? '#e8f5e8' : order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
-                              fontSize: '0.75rem',
-                              fontWeight: 500
-                            }
-                          }}
-                        >
-                          {ORDER_STATUSES.map(status => (
-                            <MuiMenuItem key={status} value={status}>
-                              <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
-                            </MuiMenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={order.priority} color={getPriorityColor(order.priority)} size="small" />
-                    </TableCell>
-                    <TableCell>{format(order.orderDate, 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>{order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title={t('edit_order')} sx={{ marginInlineEnd: 1 }}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title={t('delete_order')}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
+                          {order.autoGenerated && <AutoOrderIcon color="info" sx={{ marginInlineEnd: 1, fontSize: 16 }} />}
+                          {order.orderNumber}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{order.supplier?.name || t('unknown')}</TableCell>
+                      <TableCell>
+                        {order.items.length} {t('items')}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(order.totalAmount)}</TableCell>
+                      <TableCell>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                          <Select
+                            value={order.status}
+                            onChange={e => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
+                            variant="outlined"
+                            sx={{
+                              '& .MuiSelect-select': {
+                                padding: '4px 8px',
+                                backgroundColor: order.status === 'draft' ? '#f5f5f5' : order.status === 'submitted' ? '#e3f2fd' : order.status === 'confirmed' ? '#e8f5e8' : order.status === 'shipped' ? '#fff3e0' : order.status === 'delivered' ? '#e8f5e8' : order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
+                                fontSize: '0.75rem',
+                                fontWeight: 500
+                              }
+                            }}
+                          >
+                            {ORDER_STATUSES.map(status => (
+                              <MuiMenuItem key={status} value={status}>
+                                <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
+                              </MuiMenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={order.priority} color={getPriorityColor(order.priority)} size="small" />
+                      </TableCell>
+                      <TableCell>{format(order.orderDate, 'MMM dd, yyyy')}</TableCell>
+                      <TableCell>{order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}</TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                        <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title={t('edit_order')} sx={{ marginInlineEnd: 1 }}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title={t('delete_order')}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>
@@ -965,55 +922,34 @@ export default function SupplierOrders() {
                 <Grid container spacing={2} alignItems="flex-start">
                   <Grid item xs={12} sm={4}>
                     <Autocomplete
-                    options={filteredIngredients}
-                    getOptionLabel={option => {
-                      if (option.orderByPackage && option.unitsPerPackage && option.unitsPerPackage > 1) {
-                        return `${option.name} (${option.unitsPerPackage} ${option.unit}/${option.packageType || 'package'})`
-                      }
-                      return option.name
-                    }}
-                    value={filteredIngredients.find(i => i.id === item.ingredientId) || null}
-                    onChange={(_, ingredient) => {
-                      handleUpdateOrderItem(item.tempId, 'ingredientId', ingredient?.id || '')
-                      if (ingredient) {
-                        handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit)
-                      }
-                    }}
-                    renderInput={params => <TextField {...params} label={t('ingredient')} size="small" />}
-                    disabled={!newOrder.supplierId}
-                    noOptionsText={!newOrder.supplierId ? t('select_supplier_first') : t('no_ingredients_for_supplier')}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                  />
-                  </Grid>
-                  <Grid item xs={6} sm={2}>
-                    <TextField 
-                      label={hasPackaging ? `${t('quantity')} (${selectedIngredient?.packageType || 'packages'})` : t('quantity')} 
-                      type="number" 
-                      value={item.quantity} 
-                      onChange={e => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))} 
-                      size="small" 
-                      fullWidth 
-                      helperText={hasPackaging ? `${totalUnits} ${selectedIngredient?.unit} total` : ''} 
+                      options={filteredIngredients}
+                      getOptionLabel={option => {
+                        if (option.orderByPackage && option.unitsPerPackage && option.unitsPerPackage > 1) {
+                          return `${option.name} (${option.unitsPerPackage} ${option.unit}/${option.packageType || 'package'})`
+                        }
+                        return option.name
+                      }}
+                      value={filteredIngredients.find(i => i.id === item.ingredientId) || null}
+                      onChange={(_, ingredient) => {
+                        handleUpdateOrderItem(item.tempId, 'ingredientId', ingredient?.id || '')
+                        if (ingredient) {
+                          handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit)
+                        }
+                      }}
+                      renderInput={params => <TextField {...params} label={t('ingredient')} size="small" />}
+                      disabled={!newOrder.supplierId}
+                      noOptionsText={!newOrder.supplierId ? t('select_supplier_first') : t('no_ingredients_for_supplier')}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
                     />
                   </Grid>
                   <Grid item xs={6} sm={2}>
-                    <TextField 
-                      label={hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.unit}` : t('unit_cost')} 
-                      type="number" 
-                      value={item.unitPrice} 
-                      onChange={e => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))} 
-                      size="small" 
-                      fullWidth 
-                    />
+                    <TextField label={hasPackaging ? `${t('quantity')} (${selectedIngredient?.packageType || 'packages'})` : t('quantity')} type="number" value={item.quantity} onChange={e => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))} size="small" fullWidth helperText={hasPackaging ? `${totalUnits} ${selectedIngredient?.unit} total` : ''} />
                   </Grid>
                   <Grid item xs={6} sm={2}>
-                    <TextField 
-                      label={t('total')} 
-                      value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)} 
-                      size="small" 
-                      fullWidth 
-                      disabled 
-                    />
+                    <TextField label={hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.unit}` : t('unit_cost')} type="number" value={item.unitPrice} onChange={e => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))} size="small" fullWidth />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
+                    <TextField label={t('total')} value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)} size="small" fullWidth disabled />
                   </Grid>
                   <Grid item xs={6} sm={2} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '56px' }}>
                     <IconButton onClick={() => handleRemoveOrderItem(item.tempId)} color="error">
@@ -1058,32 +994,24 @@ export default function SupplierOrders() {
           <Alert severity="info" sx={{ mb: 2 }}>
             {t('import_instructions')}
           </Alert>
-          
+
           {importData.length > 0 && (
             <>
-              <Typography variant="h6" sx={{ mb: 2 }}>{t('map_columns')}</Typography>
-              
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                {t('map_columns')}
+              </Typography>
+
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Autocomplete
-                    options={suppliers}
-                    getOptionLabel={(option) => option.name}
-                    value={importMapping.supplier || null}
-                    onChange={(_, supplier) => setImportMapping({ ...importMapping, supplier: supplier || undefined })}
-                    renderInput={(params) => <TextField {...params} label={t('select_supplier')} required />}
-                  />
+                  <Autocomplete options={suppliers} getOptionLabel={option => option.name} value={importMapping.supplier || null} onChange={(_, supplier) => setImportMapping({ ...importMapping, supplier: supplier || undefined })} renderInput={params => <TextField {...params} label={t('select_supplier')} required />} />
                 </Grid>
-                
+
                 {importData.length > 0 && (
                   <>
                     <Grid item xs={12} sm={4}>
                       <FormControl fullWidth>
                         <InputLabel>{t('item_name_column')}</InputLabel>
-                        <Select
-                          value={importMapping.itemNameColumn || ''}
-                          onChange={(e) => setImportMapping({ ...importMapping, itemNameColumn: e.target.value })}
-                          label={t('item_name_column')}
-                        >
+                        <Select value={importMapping.itemNameColumn || ''} onChange={e => setImportMapping({ ...importMapping, itemNameColumn: e.target.value })} label={t('item_name_column')}>
                           {Object.keys(importData[0]).map(column => (
                             <MuiMenuItem key={column} value={column}>
                               {column}
@@ -1092,15 +1020,11 @@ export default function SupplierOrders() {
                         </Select>
                       </FormControl>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={4}>
                       <FormControl fullWidth>
                         <InputLabel>{t('quantity_column')}</InputLabel>
-                        <Select
-                          value={importMapping.quantityColumn || ''}
-                          onChange={(e) => setImportMapping({ ...importMapping, quantityColumn: e.target.value })}
-                          label={t('quantity_column')}
-                        >
+                        <Select value={importMapping.quantityColumn || ''} onChange={e => setImportMapping({ ...importMapping, quantityColumn: e.target.value })} label={t('quantity_column')}>
                           {Object.keys(importData[0]).map(column => (
                             <MuiMenuItem key={column} value={column}>
                               {column}
@@ -1109,15 +1033,11 @@ export default function SupplierOrders() {
                         </Select>
                       </FormControl>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={4}>
                       <FormControl fullWidth>
                         <InputLabel>{t('unit_price_column')}</InputLabel>
-                        <Select
-                          value={importMapping.unitPriceColumn || ''}
-                          onChange={(e) => setImportMapping({ ...importMapping, unitPriceColumn: e.target.value })}
-                          label={t('unit_price_column')}
-                        >
+                        <Select value={importMapping.unitPriceColumn || ''} onChange={e => setImportMapping({ ...importMapping, unitPriceColumn: e.target.value })} label={t('unit_price_column')}>
                           {Object.keys(importData[0]).map(column => (
                             <MuiMenuItem key={column} value={column}>
                               {column}
@@ -1129,9 +1049,11 @@ export default function SupplierOrders() {
                   </>
                 )}
               </Grid>
-              
+
               {/* Preview */}
-              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>{t('preview')}</Typography>
+              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+                {t('preview')}
+              </Typography>
               <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
                 <Table size="small">
                   <TableHead>
@@ -1161,11 +1083,13 @@ export default function SupplierOrders() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setOpenImportDialog(false)
-            setImportData([])
-            setImportMapping({})
-          }}>
+          <Button
+            onClick={() => {
+              setOpenImportDialog(false)
+              setImportData([])
+              setImportMapping({})
+            }}
+          >
             {t('cancel')}
           </Button>
           <Button onClick={handleImportMapping} variant="contained" disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}>
@@ -1175,13 +1099,7 @@ export default function SupplierOrders() {
       </Dialog>
 
       {/* File Input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept=".csv,.xls,.xlsx"
-        style={{ display: 'none' }}
-        onChange={handleFileImport}
-      />
+      <input type="file" ref={fileInputRef} accept=".csv,.xls,.xlsx" style={{ display: 'none' }} onChange={handleFileImport} />
     </Box>
   )
 }

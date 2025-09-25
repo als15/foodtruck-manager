@@ -1,69 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Chip,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Autocomplete,
-  Divider,
-  Alert,
-  Grid,
-  CircularProgress,
-  Snackbar,
-  Select,
-  MenuItem as MuiMenuItem,
-  FormControl,
-  InputLabel,
-  Tooltip,
-  Stack,
-  useTheme,
-  Menu,
-  ListItemIcon,
-  ListItemText,
-  InputAdornment,
-  Tabs,
-  Tab,
-  AppBar,
-  Toolbar,
-  Fab,
-  Badge,
-  ToggleButtonGroup,
-  ToggleButton
-} from '@mui/material'
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ContentCopy as DuplicateIcon,
-  RestaurantMenu,
-  Calculate as CalculateIcon,
-  TrendingUp as ProfitIcon,
-  Remove as RemoveIcon,
-  Upload as UploadIcon,
-  Download as DownloadIcon,
-  Settings as SettingsIcon,
-  Category as CategoryIcon,
-  Search as SearchIcon,
-  ViewList as ListViewIcon,
-  ViewModule as GridViewIcon
-} from '@mui/icons-material'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Autocomplete, Divider, Alert, Grid, CircularProgress, Snackbar, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Tooltip, Stack, useTheme, Menu, ListItemIcon, ListItemText, InputAdornment, Tabs, Tab, AppBar, Toolbar, Fab, Badge, ToggleButtonGroup, ToggleButton } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, RestaurantMenu, Calculate as CalculateIcon, TrendingUp as ProfitIcon, Remove as RemoveIcon, Upload as UploadIcon, Download as DownloadIcon, Settings as SettingsIcon, Category as CategoryIcon, Search as SearchIcon, ViewList as ListViewIcon, ViewModule as GridViewIcon } from '@mui/icons-material'
 import { MenuItem, Ingredient, MenuItemIngredient } from '../../types'
 import { menuItemsService, ingredientsService, menuCategoriesService, subscriptions } from '../../services/supabaseService'
 import Papa from 'papaparse'
@@ -177,8 +114,8 @@ export default function ImprovedMenuManagement() {
     <Grid container spacing={3}>
       {filteredItems.map(item => (
         <Grid item xs={12} sm={6} lg={4} key={item.id}>
-          <Card 
-            sx={{ 
+          <Card
+            sx={{
               height: '100%',
               position: 'relative',
               opacity: item.isAvailable ? 1 : 0.7,
@@ -191,11 +128,7 @@ export default function ImprovedMenuManagement() {
           >
             {/* Availability Badge */}
             <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
-              <Badge
-                badgeContent={item.isAvailable ? '●' : '○'}
-                color={item.isAvailable ? 'success' : 'error'}
-                sx={{ '& .MuiBadge-badge': { fontSize: '16px', minWidth: '20px', height: '20px' } }}
-              />
+              <Badge badgeContent={item.isAvailable ? '●' : '○'} color={item.isAvailable ? 'success' : 'error'} sx={{ '& .MuiBadge-badge': { fontSize: '16px', minWidth: '20px', height: '20px' } }} />
             </Box>
 
             <CardContent sx={{ pb: 1 }}>
@@ -210,17 +143,27 @@ export default function ImprovedMenuManagement() {
               </Box>
 
               {/* Price & Metrics Row */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                mb: 2,
-                p: 1,
-                bgcolor: 'grey.50',
-                borderRadius: 1
-              }}>
+              <Box
+                sx={theme => ({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                  p: 1,
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                })}
+              >
                 <Box>
-                  <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                  <Typography
+                    variant="h5"
+                    sx={theme => ({
+                      fontWeight: 'bold',
+                      color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+                    })}
+                  >
                     {formatCurrency(item.price)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -244,28 +187,17 @@ export default function ImprovedMenuManagement() {
                     {item.allergens.slice(0, 3).map(allergen => (
                       <Chip key={allergen} label={allergen} size="small" color="warning" variant="outlined" />
                     ))}
-                    {item.allergens.length > 3 && (
-                      <Chip label={`+${item.allergens.length - 3}`} size="small" variant="outlined" />
-                    )}
+                    {item.allergens.length > 3 && <Chip label={`+${item.allergens.length - 3}`} size="small" variant="outlined" />}
                   </Box>
                 </Box>
               )}
 
               {/* Quick Actions */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <FormControlLabel
-                  control={
-                    <Switch 
-                      checked={item.isAvailable} 
-                      onChange={() => handleQuickToggleAvailability(item)}
-                      size="small"
-                    />
-                  }
-                  label={<Typography variant="caption">{item.isAvailable ? 'Available' : 'Hidden'}</Typography>}
-                />
-                
+                <FormControlLabel control={<Switch checked={item.isAvailable} onChange={() => handleQuickToggleAvailability(item)} size="small" />} label={<Typography variant="caption">{item.isAvailable ? 'Available' : 'Hidden'}</Typography>} />
+
                 <Box>
-                  <IconButton size="small" onClick={(e) => handleQuickEdit(item, e)}>
+                  <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
                   <IconButton size="small">
@@ -323,17 +255,10 @@ export default function ImprovedMenuManagement() {
                 </Typography>
               </TableCell>
               <TableCell align="center">
-                <Switch 
-                  checked={item.isAvailable} 
-                  onChange={() => handleQuickToggleAvailability(item)}
-                  size="small"
-                />
+                <Switch checked={item.isAvailable} onChange={() => handleQuickToggleAvailability(item)} size="small" />
               </TableCell>
               <TableCell align="right">
-                <Typography 
-                  variant="subtitle2" 
-                  color={item.profitMargin && item.profitMargin > 30 ? 'success.main' : 'warning.main'}
-                >
+                <Typography variant="subtitle2" color={item.profitMargin && item.profitMargin > 30 ? 'success.main' : 'warning.main'}>
                   {(item.profitMargin || 0).toFixed(1)}%
                 </Typography>
               </TableCell>
@@ -341,7 +266,7 @@ export default function ImprovedMenuManagement() {
                 <Chip label={`${item.prepTime}min`} size="small" variant="outlined" />
               </TableCell>
               <TableCell align="center">
-                <IconButton size="small" onClick={(e) => handleQuickEdit(item, e)}>
+                <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton size="small">
@@ -374,30 +299,25 @@ export default function ImprovedMenuManagement() {
           <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
             Menu Management
           </Typography>
-          
+
           {/* Search */}
           <TextField
             size="small"
             placeholder="Search menu items..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
                   <SearchIcon fontSize="small" />
                 </InputAdornment>
-              ),
+              )
             }}
             sx={{ minWidth: 250 }}
           />
 
           {/* View Toggle */}
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
+          <ToggleButtonGroup value={viewMode} exclusive onChange={(_, newMode) => newMode && setViewMode(newMode)} size="small">
             <ToggleButton value="grid">
               <GridViewIcon fontSize="small" />
             </ToggleButton>
@@ -413,36 +333,26 @@ export default function ImprovedMenuManagement() {
       </AppBar>
 
       {/* Filter Bar */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2, 
-        p: 2, 
-        bgcolor: 'grey.50',
-        borderBottom: 1,
-        borderColor: 'divider'
-      }}>
+      <Box
+        sx={theme => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          p: 2,
+          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
+          borderBottom: 1,
+          borderColor: 'divider'
+        })}
+      >
         {/* Category Tabs */}
-        <Tabs
-          value={activeCategory}
-          onChange={(_, newValue) => setActiveCategory(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ flexGrow: 1 }}
-        >
+        <Tabs value={activeCategory} onChange={(_, newValue) => setActiveCategory(newValue)} variant="scrollable" scrollButtons="auto" sx={{ flexGrow: 1 }}>
           {categories.map(category => (
             <Tab
               key={category}
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2">
-                    {category === 'all' ? 'All Items' : category}
-                  </Typography>
-                  <Chip 
-                    label={getCategoryCount(category)} 
-                    size="small" 
-                    sx={{ height: 20, fontSize: '0.7rem' }}
-                  />
+                  <Typography variant="body2">{category === 'all' ? 'All Items' : category}</Typography>
+                  <Chip label={getCategoryCount(category)} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
                 </Box>
               }
               value={category}
@@ -453,11 +363,7 @@ export default function ImprovedMenuManagement() {
         {/* Status Filter */}
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Filter</InputLabel>
-          <Select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as FilterType)}
-            label="Filter"
-          >
+          <Select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)} label="Filter">
             <MuiMenuItem value="all">All Items</MuiMenuItem>
             <MuiMenuItem value="available">Available</MuiMenuItem>
             <MuiMenuItem value="unavailable">Hidden</MuiMenuItem>
@@ -499,11 +405,7 @@ export default function ImprovedMenuManagement() {
       </Box>
 
       {/* Floating Add Button */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 24, right: 24 }}
-        onClick={() => setOpenDialog(true)}
-      >
+      <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={() => setOpenDialog(true)}>
         <AddIcon />
       </Fab>
 

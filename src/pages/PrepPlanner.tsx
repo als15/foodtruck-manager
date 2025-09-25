@@ -1,10 +1,5 @@
 import React from 'react'
-import { 
-  Box, Button, Card, CardContent, Grid, TextField, Typography, Alert, Chip, Divider, 
-  List, ListItem, ListItemText, Stack, FormControl, InputLabel, Select, MenuItem as MuiMenuItem,
-  IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Tabs, Tab, Autocomplete
-} from '@mui/material'
+import { Box, Button, Card, CardContent, Grid, TextField, Typography, Alert, Chip, Divider, List, ListItem, ListItemText, Stack, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Tabs, Tab, Autocomplete } from '@mui/material'
 import { Add as AddIcon, Delete as DeleteIcon, Kitchen as KitchenIcon } from '@mui/icons-material'
 import { useTranslation } from 'react-i18next'
 import { ingredientsService, menuItemsService } from '../services/supabaseService'
@@ -100,7 +95,7 @@ export default function PrepPlanner() {
 
   const handleAddMenuItem = () => {
     if (!selectedMenuItem) return
-    
+
     // Check if item already exists
     const existingIndex = selectedMenuItems.findIndex(item => item.menuItem.id === selectedMenuItem.id)
     if (existingIndex >= 0) {
@@ -112,7 +107,7 @@ export default function PrepPlanner() {
       // Add new item
       setSelectedMenuItems(prev => [...prev, { menuItem: selectedMenuItem, quantity }])
     }
-    
+
     setSelectedMenuItem(null)
     setQuantity(1)
   }
@@ -226,7 +221,17 @@ export default function PrepPlanner() {
       </Box>
 
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+        <Tabs
+          value={tabValue}
+          onChange={(e, newValue) => setTabValue(newValue)}
+          sx={theme => ({
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: 3,
+              backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+            }
+          })}
+        >
           <Tab label={t('menu_item_selection')} />
           <Tab label={t('free_text_input')} />
         </Tabs>
@@ -244,12 +249,10 @@ export default function PrepPlanner() {
                   <Stack spacing={2}>
                     <Autocomplete
                       options={menuItems}
-                      getOptionLabel={(option) => option.name}
+                      getOptionLabel={option => option.name}
                       value={selectedMenuItem}
                       onChange={(event, newValue) => setSelectedMenuItem(newValue)}
-                      renderInput={(params) => (
-                        <TextField {...params} label={t('select_menu_item')} />
-                      )}
+                      renderInput={params => <TextField {...params} label={t('select_menu_item')} />}
                       renderOption={(props, option) => (
                         <li {...props}>
                           <Box>
@@ -261,21 +264,10 @@ export default function PrepPlanner() {
                         </li>
                       )}
                     />
-                    
-                    <TextField
-                      type="number"
-                      label={t('quantity')}
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      inputProps={{ min: 1 }}
-                    />
-                    
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddMenuItem}
-                      disabled={!selectedMenuItem}
-                    >
+
+                    <TextField type="number" label={t('quantity')} value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} inputProps={{ min: 1 }} />
+
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddMenuItem} disabled={!selectedMenuItem}>
                       {t('add_to_prep_list')}
                     </Button>
                   </Stack>
@@ -316,21 +308,10 @@ export default function PrepPlanner() {
                                 </Box>
                               </TableCell>
                               <TableCell align="center">
-                                <TextField
-                                  type="number"
-                                  size="small"
-                                  value={item.quantity}
-                                  onChange={(e) => handleUpdateQuantity(index, parseInt(e.target.value) || 0)}
-                                  inputProps={{ min: 1, style: { textAlign: 'center' } }}
-                                  sx={{ width: 80 }}
-                                />
+                                <TextField type="number" size="small" value={item.quantity} onChange={e => handleUpdateQuantity(index, parseInt(e.target.value) || 0)} inputProps={{ min: 1, style: { textAlign: 'center' } }} sx={{ width: 80 }} />
                               </TableCell>
                               <TableCell align="center">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleRemoveMenuItem(index)}
-                                >
+                                <IconButton size="small" color="error" onClick={() => handleRemoveMenuItem(index)}>
                                   <DeleteIcon />
                                 </IconButton>
                               </TableCell>
@@ -340,16 +321,10 @@ export default function PrepPlanner() {
                       </Table>
                     </TableContainer>
                   )}
-                  
+
                   {selectedMenuItems.length > 0 && (
                     <Box sx={{ mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={computeFromMenuItems}
-                        disabled={loading}
-                        fullWidth
-                      >
+                      <Button variant="contained" color="primary" onClick={computeFromMenuItems} disabled={loading} fullWidth>
                         {t('compute_ingredients')}
                       </Button>
                     </Box>
@@ -366,15 +341,7 @@ export default function PrepPlanner() {
             <CardContent>
               <Stack spacing={2}>
                 <Typography variant="body1">{t('prep_planner_instructions')}</Typography>
-                <TextField 
-                  label={t('enter_items_for_tomorrow')} 
-                  placeholder={t('prep_planner_placeholder')} 
-                  multiline 
-                  minRows={3} 
-                  value={inputText} 
-                  onChange={e => setInputText(e.target.value)} 
-                  fullWidth 
-                />
+                <TextField label={t('enter_items_for_tomorrow')} placeholder={t('prep_planner_placeholder')} multiline minRows={3} value={inputText} onChange={e => setInputText(e.target.value)} fullWidth />
                 <Box>
                   <Button variant="contained" onClick={handleCompute} disabled={loading || menuItems.length === 0}>
                     {t('compute_ingredients')}

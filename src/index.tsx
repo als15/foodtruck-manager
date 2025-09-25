@@ -38,8 +38,8 @@ const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
         styleOverrides: {
           body: {
             direction: direction,
-            backgroundColor: nomNomColors.white
-            // Clean white background
+            // Do not force background color here; let inner theme (with dark mode) control it
+            backgroundColor: 'inherit'
           }
         }
       },

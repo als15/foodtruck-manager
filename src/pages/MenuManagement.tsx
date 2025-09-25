@@ -129,10 +129,10 @@ export default function MenuManagement() {
     // Check if any menu items use this category
     const itemsWithCategory = menuItems.filter(item => item.category === category)
     if (itemsWithCategory.length > 0) {
-      setSnackbar({ 
-        open: true, 
-        message: t('cannot_delete_category_in_use', { category, count: itemsWithCategory.length }), 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: t('cannot_delete_category_in_use', { category, count: itemsWithCategory.length }),
+        severity: 'error'
       })
       return
     }
@@ -154,7 +154,7 @@ export default function MenuManagement() {
     }
 
     const trimmedName = newCategoryName.trim().toLowerCase()
-    
+
     try {
       if (editingCategory) {
         // Editing existing category
@@ -162,7 +162,7 @@ export default function MenuManagement() {
           setCategoryDialogOpen(false)
           return // No change
         }
-        
+
         if (categories.includes(trimmedName)) {
           setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
           return
@@ -170,28 +170,25 @@ export default function MenuManagement() {
 
         // Update category in database
         await menuCategoriesService.update(editingCategory, trimmedName)
-        
+
         // Update all menu items that use the old category name
         const itemsToUpdate = menuItems.filter(item => item.category === editingCategory)
-        await Promise.all(
-          itemsToUpdate.map(item => menuItemsService.update(item.id, { category: trimmedName }))
-        )
-        
+        await Promise.all(itemsToUpdate.map(item => menuItemsService.update(item.id, { category: trimmedName })))
+
         await Promise.all([loadCategories(), loadMenuItems()])
         setSnackbar({ open: true, message: t('category_updated_successfully'), severity: 'success' })
-        
       } else {
         // Adding new category
         if (categories.includes(trimmedName)) {
           setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
           return
         }
-        
+
         await menuCategoriesService.create(trimmedName)
         await loadCategories()
         setSnackbar({ open: true, message: t('category_added_successfully'), severity: 'success' })
       }
-      
+
       setCategoryDialogOpen(false)
     } catch (err) {
       setSnackbar({ open: true, message: t('failed_to_save_category'), severity: 'error' })
@@ -211,12 +208,12 @@ export default function MenuManagement() {
 
   const calculateProfitMargin = (price: number, totalCost: number): number => {
     if (price <= 0) return 0
-    
+
     // If no ingredient cost is defined, show a warning indicator instead of 100%
     if (totalCost === 0) {
       return -1 // Special value to indicate "no cost data"
     }
-    
+
     return ((price - totalCost) / price) * 100
   }
 
@@ -228,8 +225,7 @@ export default function MenuManagement() {
   // Filter and search logic
   const filteredItems = menuItems.filter(item => {
     // Search filter
-    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !item.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) && !item.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false
     }
 
@@ -269,20 +265,18 @@ export default function MenuManagement() {
   }
 
   // Only show categories that have menu items
-  const visibleCategories = ['all', ...categories.filter(category => 
-    menuItems.some(item => item.category === category)
-  )]
+  const visibleCategories = ['all', ...categories.filter(category => menuItems.some(item => item.category === category))]
 
   const renderGridView = () => (
     <Grid container spacing={3}>
       {filteredItems.map(item => {
         const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
         const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost)
-        
+
         return (
           <Grid item xs={12} sm={6} lg={4} key={item.id}>
-            <Card 
-              sx={{ 
+            <Card
+              sx={{
                 height: '100%',
                 position: 'relative',
                 opacity: item.isAvailable ? 1 : 0.7,
@@ -295,11 +289,7 @@ export default function MenuManagement() {
             >
               {/* Availability Badge */}
               <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
-                <Badge
-                  badgeContent={item.isAvailable ? '●' : '○'}
-                  color={item.isAvailable ? 'success' : 'error'}
-                  sx={{ '& .MuiBadge-badge': { fontSize: '16px', minWidth: '20px', height: '20px' } }}
-                />
+                <Badge badgeContent={item.isAvailable ? '●' : '○'} color={item.isAvailable ? 'success' : 'error'} sx={{ '& .MuiBadge-badge': { fontSize: '16px', minWidth: '20px', height: '20px' } }} />
               </Box>
 
               <CardContent sx={{ pb: 1 }}>
@@ -314,17 +304,27 @@ export default function MenuManagement() {
                 </Box>
 
                 {/* Price & Metrics Row */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  mb: 2,
-                  p: 1,
-                  bgcolor: 'grey.50',
-                  borderRadius: 1
-                }}>
+                <Box
+                  sx={theme => ({
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2,
+                    p: 1,
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                  })}
+                >
                   <Box>
-                    <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                    <Typography
+                      variant="h5"
+                      sx={theme => ({
+                        fontWeight: 'bold',
+                        color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+                      })}
+                    >
                       {formatCurrency(item.price)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -332,10 +332,7 @@ export default function MenuManagement() {
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
-                    <Typography 
-                      variant="subtitle2" 
-                      color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}
-                    >
+                    <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
                       {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}% margin`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -351,28 +348,17 @@ export default function MenuManagement() {
                       {item.allergens.slice(0, 3).map(allergen => (
                         <Chip key={allergen} label={allergen} size="small" color="warning" variant="outlined" />
                       ))}
-                      {item.allergens.length > 3 && (
-                        <Chip label={`+${item.allergens.length - 3}`} size="small" variant="outlined" />
-                      )}
+                      {item.allergens.length > 3 && <Chip label={`+${item.allergens.length - 3}`} size="small" variant="outlined" />}
                     </Box>
                   </Box>
                 )}
 
                 {/* Quick Actions */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={
-                      <Switch 
-                        checked={item.isAvailable} 
-                        onChange={() => toggleAvailability(item.id)}
-                        size="small"
-                      />
-                    }
-                    label={<Typography variant="caption">{item.isAvailable ? 'Available' : 'Hidden'}</Typography>}
-                  />
-                  
+                  <FormControlLabel control={<Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />} label={<Typography variant="caption">{item.isAvailable ? 'Available' : 'Hidden'}</Typography>} />
+
                   <Box>
-                    <IconButton size="small" onClick={(e) => handleQuickEdit(item, e)}>
+                    <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small" onClick={() => handleDuplicateItem(item)}>
@@ -435,17 +421,10 @@ export default function MenuManagement() {
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
-                  <Switch 
-                    checked={item.isAvailable} 
-                    onChange={() => toggleAvailability(item.id)}
-                    size="small"
-                  />
+                  <Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />
                 </TableCell>
                 <TableCell align="right">
-                  <Typography 
-                    variant="subtitle2" 
-                    color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}
-                  >
+                  <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
                     {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}%`}
                   </Typography>
                 </TableCell>
@@ -453,7 +432,7 @@ export default function MenuManagement() {
                   <Chip label={`${item.prepTime}min`} size="small" variant="outlined" />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={(e) => handleQuickEdit(item, e)}>
+                  <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
                   <IconButton size="small" onClick={() => handleDuplicateItem(item)}>
@@ -713,30 +692,25 @@ export default function MenuManagement() {
           <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
             {t('menu_management')}
           </Typography>
-          
+
           {/* Search */}
           <TextField
             size="small"
             placeholder={t('search_menu_items') || 'Search menu items...'}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
                   <SearchIcon fontSize="small" />
                 </InputAdornment>
-              ),
+              )
             }}
             sx={{ minWidth: 250 }}
           />
 
           {/* View Toggle */}
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
+          <ToggleButtonGroup value={viewMode} exclusive onChange={(_, newMode) => newMode && setViewMode(newMode)} size="small">
             <ToggleButton value="grid">
               <GridViewIcon fontSize="small" />
             </ToggleButton>
@@ -752,39 +726,56 @@ export default function MenuManagement() {
       </AppBar>
 
       {/* Filter Bar */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2, 
-        p: 2, 
-        bgcolor: 'grey.50',
-        borderBottom: 1,
-        borderColor: 'divider'
-      }}>
+      <Box
+        sx={theme => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          p: 2,
+          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
+          borderBottom: 1,
+          borderColor: 'divider'
+        })}
+      >
         {/* Category Tabs */}
         <Tabs
           value={activeCategory}
           onChange={(_, newValue) => setActiveCategory(newValue)}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ flexGrow: 1 }}
+          sx={theme => ({
+            flexGrow: 1,
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: 3,
+              backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+            }
+          })}
         >
           {visibleCategories.map(category => (
             <Tab
               key={category}
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2">
-                    {category === 'all' ? t('all_items') : t(category)}
-                  </Typography>
-                  <Chip 
-                    label={getCategoryCount(category)} 
-                    size="small" 
-                    sx={{ height: 20, fontSize: '0.7rem' }}
-                  />
+                  <Typography variant="body2">{category === 'all' ? t('all_items') : t(category)}</Typography>
+                  <Chip label={getCategoryCount(category)} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
                 </Box>
               }
               value={category}
+              sx={theme => ({
+                minHeight: 36,
+                px: 1,
+                '&.Mui-selected': {
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.12)' : 'grey.100',
+                  border: '1px solid',
+                  borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.35)' : 'divider',
+                  borderRadius: 1
+                },
+                '&.Mui-selected .MuiTypography-root': {
+                  fontWeight: 700,
+                  color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+                }
+              })}
             />
           ))}
         </Tabs>
@@ -792,11 +783,7 @@ export default function MenuManagement() {
         {/* Status Filter */}
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>{t('filter')}</InputLabel>
-          <Select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as FilterType)}
-            label={t('filter')}
-          >
+          <Select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)} label={t('filter')}>
             <MuiMenuItem value="all">{t('all_items')}</MuiMenuItem>
             <MuiMenuItem value="available">{t('available')}</MuiMenuItem>
             <MuiMenuItem value="unavailable">{t('unavailable')}</MuiMenuItem>
@@ -838,11 +825,7 @@ export default function MenuManagement() {
       </Box>
 
       {/* Floating Add Button */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 24, right: 24 }}
-        onClick={() => setOpenDialog(true)}
-      >
+      <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={() => setOpenDialog(true)}>
         <AddIcon />
       </Fab>
 
@@ -854,21 +837,7 @@ export default function MenuManagement() {
               <TextField fullWidth label={t('item_name')} value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Autocomplete
-                freeSolo
-                options={categories}
-                value={newItem.category}
-                onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
-                onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    label={t('category')}
-                    placeholder={t('select_or_type_new_category')}
-                  />
-                )}
-              />
+              <Autocomplete freeSolo options={categories} value={newItem.category} onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label={t('category')} placeholder={t('select_or_type_new_category')} />} />
             </Grid>
             <Grid item xs={12}>
               <TextField fullWidth label={t('description')} multiline rows={2} value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })} />
@@ -971,20 +940,24 @@ export default function MenuManagement() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setOpenDialog(false)
-            setEditingItem(null)
-            setNewItem({
-              name: '',
-              description: '',
-              price: 0,
-              category: '',
-              ingredients: [],
-              allergens: [],
-              isAvailable: true,
-              prepTime: 5
-            })
-          }}>{t('cancel')}</Button>
+          <Button
+            onClick={() => {
+              setOpenDialog(false)
+              setEditingItem(null)
+              setNewItem({
+                name: '',
+                description: '',
+                price: 0,
+                category: '',
+                ingredients: [],
+                allergens: [],
+                isAvailable: true,
+                prepTime: 5
+              })
+            }}
+          >
+            {t('cancel')}
+          </Button>
           <Button onClick={handleSaveItem} variant="contained">
             {editingItem ? t('update_item') : t('add_item')}
           </Button>
@@ -994,48 +967,41 @@ export default function MenuManagement() {
       <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleIngredientsFileImport} />
 
       {/* Category Management Menu */}
-      <Menu 
-        anchorEl={categoryMenuAnchor} 
-        open={Boolean(categoryMenuAnchor)} 
-        onClose={() => setCategoryMenuAnchor(null)}
-        sx={{ direction: isRtl ? 'rtl' : 'ltr' }}
-      >
+      <Menu anchorEl={categoryMenuAnchor} open={Boolean(categoryMenuAnchor)} onClose={() => setCategoryMenuAnchor(null)} sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
         <MuiMenuItem onClick={handleAddCategory}>
           <ListItemIcon sx={{ minWidth: isRtl ? 'auto' : '56px', marginInlineEnd: isRtl ? 0 : 2, marginInlineStart: isRtl ? 2 : 0 }}>
             <AddIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-            {t('add_category')}
-          </ListItemText>
+          <ListItemText sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('add_category')}</ListItemText>
         </MuiMenuItem>
         <Divider />
         {categories.map(category => (
-          <MuiMenuItem 
-            key={category} 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
+          <MuiMenuItem
+            key={category}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
               flexDirection: isRtl ? 'row-reverse' : 'row',
               textAlign: isRtl ? 'right' : 'left'
             }}
           >
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              flex: 1,
-              flexDirection: isRtl ? 'row-reverse' : 'row'
-            }}>
-              <CategoryIcon 
-                fontSize="small" 
-                sx={{ 
-                  marginInlineEnd: isRtl ? 0 : 2, 
-                  marginInlineStart: isRtl ? 2 : 0 
-                }} 
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flex: 1,
+                flexDirection: isRtl ? 'row-reverse' : 'row'
+              }}
+            >
+              <CategoryIcon
+                fontSize="small"
+                sx={{
+                  marginInlineEnd: isRtl ? 0 : 2,
+                  marginInlineStart: isRtl ? 2 : 0
+                }}
               />
-              <Typography sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-                {category}
-              </Typography>
+              <Typography sx={{ textAlign: isRtl ? 'right' : 'left' }}>{category}</Typography>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
               <IconButton size="small" onClick={() => handleEditCategory(category)}>
@@ -1050,23 +1016,15 @@ export default function MenuManagement() {
       </Menu>
 
       {/* Category Add/Edit Dialog */}
-      <Dialog 
-        open={categoryDialogOpen} 
-        onClose={() => setCategoryDialogOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        sx={{ direction: isRtl ? 'rtl' : 'ltr' }}
-      >
-        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-          {editingCategory ? t('edit_category') : t('add_category')}
-        </DialogTitle>
+      <Dialog open={categoryDialogOpen} onClose={() => setCategoryDialogOpen(false)} maxWidth="sm" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{editingCategory ? t('edit_category') : t('add_category')}</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             label={t('category_name')}
             value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            sx={{ 
+            onChange={e => setNewCategoryName(e.target.value)}
+            sx={{
               mt: 2,
               '& .MuiInputBase-input': {
                 textAlign: isRtl ? 'right' : 'left'
@@ -1078,10 +1036,10 @@ export default function MenuManagement() {
             }}
           />
           {editingCategory && (
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                mt: 2, 
+            <Typography
+              variant="body2"
+              sx={{
+                mt: 2,
                 color: 'text.secondary',
                 textAlign: isRtl ? 'right' : 'left'
               }}
@@ -1090,13 +1048,13 @@ export default function MenuManagement() {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ 
-          flexDirection: isRtl ? 'row-reverse' : 'row',
-          justifyContent: isRtl ? 'flex-end' : 'flex-start'
-        }}>
-          <Button onClick={() => setCategoryDialogOpen(false)}>
-            {t('cancel')}
-          </Button>
+        <DialogActions
+          sx={{
+            flexDirection: isRtl ? 'row-reverse' : 'row',
+            justifyContent: isRtl ? 'flex-end' : 'flex-start'
+          }}
+        >
+          <Button onClick={() => setCategoryDialogOpen(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveCategory} variant="contained" disabled={!newCategoryName.trim()}>
             {editingCategory ? t('update') : t('add')}
           </Button>

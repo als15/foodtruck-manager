@@ -1,42 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  TextField,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Alert,
-  Chip,
-  IconButton,
-  Divider,
-  Switch,
-  FormControlLabel,
-  Autocomplete,
-  LinearProgress,
-  Stack,
-  useTheme
-} from '@mui/material'
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  TrendingUp as ProfitIcon,
-  TrendingDown as LossIcon,
-  Analytics as AnalyticsIcon,
-  Calculate as CalculateIcon,
-  Refresh as ResetIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  Receipt as ExpenseIcon
-} from '@mui/icons-material'
+import { Box, Typography, Card, CardContent, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert, Chip, IconButton, Divider, Switch, FormControlLabel, Autocomplete, LinearProgress, Stack, useTheme } from '@mui/material'
+import { Add as AddIcon, Delete as DeleteIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, Analytics as AnalyticsIcon, Calculate as CalculateIcon, Refresh as ResetIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Receipt as ExpenseIcon } from '@mui/icons-material'
 import { MenuItem, Expense, Ingredient } from '../types'
 import { menuItemsService, expensesService, ingredientsService } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
@@ -85,11 +49,7 @@ export default function BreakEvenAnalysis() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [menuData, expenseData, ingredientData] = await Promise.all([
-        menuItemsService.getAll(),
-        expensesService.getAll(),
-        ingredientsService.getAll()
-      ])
+      const [menuData, expenseData, ingredientData] = await Promise.all([menuItemsService.getAll(), expensesService.getAll(), ingredientsService.getAll()])
       setMenuItems(menuData.filter(item => item.isAvailable))
       setExpenses(expenseData.filter(expense => expense.isActive))
       setIngredients(ingredientData)
@@ -102,7 +62,7 @@ export default function BreakEvenAnalysis() {
 
   const addItemToScenario = () => {
     if (!selectedMenuItem) return
-    
+
     const existingIndex = salesScenario.findIndex(item => item.menuItemId === selectedMenuItem.id)
     if (existingIndex >= 0) {
       // Update existing item
@@ -111,11 +71,14 @@ export default function BreakEvenAnalysis() {
       setSalesScenario(updated)
     } else {
       // Add new item
-      setSalesScenario(prev => [...prev, {
-        menuItemId: selectedMenuItem.id,
-        menuItem: selectedMenuItem,
-        dailyQuantity: 1
-      }])
+      setSalesScenario(prev => [
+        ...prev,
+        {
+          menuItemId: selectedMenuItem.id,
+          menuItem: selectedMenuItem,
+          dailyQuantity: 1
+        }
+      ])
     }
     setSelectedMenuItem(null)
   }
@@ -143,58 +106,58 @@ export default function BreakEvenAnalysis() {
     return menuItem.ingredients.reduce((total, menuIngredient) => {
       const ingredient = ingredients.find(ing => ing.id === menuIngredient.ingredientId)
       if (ingredient) {
-        return total + (menuIngredient.quantity * ingredient.costPerUnit)
+        return total + menuIngredient.quantity * ingredient.costPerUnit
       }
       return total
     }, 0)
   }
 
   const getExpenseBreakdown = () => {
-    return expenses.map(expense => {
-      let dailyAmount = 0
-      switch (expense.frequency) {
-        case 'daily':
-          dailyAmount = expense.amount
-          break
-        case 'weekly':
-          // Weekly expenses divided by 7, but only for working days
-          dailyAmount = expense.amount / 7
-          break
-        case 'monthly':
-          // Monthly expenses divided by actual working days per month
-          dailyAmount = expense.amount / workingDaysPerMonth
-          break
-        case 'yearly':
-          // Yearly expenses divided by total working days per year
-          dailyAmount = expense.amount / (workingDaysPerMonth * 12)
-          break
-        case 'one_time':
-          dailyAmount = 0 // Don't include one-time expenses in daily calculations
-          break
-        default:
-          dailyAmount = 0
-      }
-      return {
-        ...expense,
-        dailyAmount
-      }
-    }).filter(expense => expense.dailyAmount > 0)
+    return expenses
+      .map(expense => {
+        let dailyAmount = 0
+        switch (expense.frequency) {
+          case 'daily':
+            dailyAmount = expense.amount
+            break
+          case 'weekly':
+            // Weekly expenses divided by 7, but only for working days
+            dailyAmount = expense.amount / 7
+            break
+          case 'monthly':
+            // Monthly expenses divided by actual working days per month
+            dailyAmount = expense.amount / workingDaysPerMonth
+            break
+          case 'yearly':
+            // Yearly expenses divided by total working days per year
+            dailyAmount = expense.amount / (workingDaysPerMonth * 12)
+            break
+          case 'one_time':
+            dailyAmount = 0 // Don't include one-time expenses in daily calculations
+            break
+          default:
+            dailyAmount = 0
+        }
+        return {
+          ...expense,
+          dailyAmount
+        }
+      })
+      .filter(expense => expense.dailyAmount > 0)
   }
 
   const calculateDailyFinancials = () => {
     // Calculate daily revenue and costs
     const dailyRevenue = salesScenario.reduce((total, item) => {
-      return total + (item.menuItem.price * item.dailyQuantity)
+      return total + item.menuItem.price * item.dailyQuantity
     }, 0)
 
     const dailyFoodCost = salesScenario.reduce((total, item) => {
       const itemCost = calculateItemCost(item.menuItem)
-      return total + (itemCost * item.dailyQuantity)
+      return total + itemCost * item.dailyQuantity
     }, 0)
 
-    const dailyLaborCost = settings.useMonthlyView 
-      ? settings.monthlyLaborCost / workingDaysPerMonth
-      : settings.dailyLaborCost
+    const dailyLaborCost = settings.useMonthlyView ? settings.monthlyLaborCost / workingDaysPerMonth : settings.dailyLaborCost
 
     // Calculate daily operating expenses based on working days
     const dailyOperatingExpenses = getExpenseBreakdown().reduce((sum, expense) => sum + expense.dailyAmount, 0)
@@ -215,7 +178,7 @@ export default function BreakEvenAnalysis() {
 
   const calculateMonthlyFinancials = () => {
     const daily = calculateDailyFinancials()
-    
+
     return {
       revenue: daily.revenue * workingDaysPerMonth,
       foodCost: daily.foodCost * workingDaysPerMonth,
@@ -229,12 +192,12 @@ export default function BreakEvenAnalysis() {
 
   const calculateBreakEvenPoint = () => {
     const monthly = calculateMonthlyFinancials()
-    
+
     if (monthly.revenue <= 0) return { daily: 0, monthly: 0, percentage: 0 }
-    
+
     const revenueNeeded = monthly.totalCost
     const currentMultiplier = revenueNeeded / monthly.revenue
-    
+
     return {
       daily: Math.ceil(currentMultiplier),
       monthly: Math.ceil(currentMultiplier),
@@ -263,12 +226,7 @@ export default function BreakEvenAnalysis() {
             Break-Even Analysis
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<ResetIcon />}
-          onClick={resetScenario}
-          disabled={salesScenario.length === 0}
-        >
+        <Button variant="outlined" startIcon={<ResetIcon />} onClick={resetScenario} disabled={salesScenario.length === 0}>
           Reset Scenario
         </Button>
       </Box>
@@ -282,16 +240,18 @@ export default function BreakEvenAnalysis() {
                 <CalculateIcon />
                 Settings
               </Typography>
-              
+
               <Stack spacing={2}>
                 <FormControlLabel
                   control={
                     <Switch
                       checked={settings.useMonthlyView}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        useMonthlyView: e.target.checked
-                      }))}
+                      onChange={e =>
+                        setSettings(prev => ({
+                          ...prev,
+                          useMonthlyView: e.target.checked
+                        }))
+                      }
                     />
                   }
                   label="Monthly View"
@@ -304,10 +264,12 @@ export default function BreakEvenAnalysis() {
                       label="Monthly Labor Cost"
                       type="number"
                       value={settings.monthlyLaborCost}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        monthlyLaborCost: parseFloat(e.target.value) || 0
-                      }))}
+                      onChange={e =>
+                        setSettings(prev => ({
+                          ...prev,
+                          monthlyLaborCost: parseFloat(e.target.value) || 0
+                        }))
+                      }
                       InputProps={{ startAdornment: '$' }}
                     />
                     <TextField
@@ -315,10 +277,12 @@ export default function BreakEvenAnalysis() {
                       label="Working Days per Week"
                       type="number"
                       value={settings.workingDaysPerWeek}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        workingDaysPerWeek: parseInt(e.target.value) || 3
-                      }))}
+                      onChange={e =>
+                        setSettings(prev => ({
+                          ...prev,
+                          workingDaysPerWeek: parseInt(e.target.value) || 3
+                        }))
+                      }
                       inputProps={{ min: 1, max: 7 }}
                     />
                     <TextField
@@ -326,16 +290,16 @@ export default function BreakEvenAnalysis() {
                       label="Weeks per Month"
                       type="number"
                       value={settings.weeksPerMonth}
-                      onChange={(e) => setSettings(prev => ({
-                        ...prev,
-                        weeksPerMonth: parseFloat(e.target.value) || 4.33
-                      }))}
+                      onChange={e =>
+                        setSettings(prev => ({
+                          ...prev,
+                          weeksPerMonth: parseFloat(e.target.value) || 4.33
+                        }))
+                      }
                       inputProps={{ min: 4, max: 5, step: 0.1 }}
                     />
                     <Alert severity="info" sx={{ mt: 1 }}>
-                      <Typography variant="caption">
-                        Working Days per Month: {Math.round(workingDaysPerMonth)} days
-                      </Typography>
+                      <Typography variant="caption">Working Days per Month: {Math.round(workingDaysPerMonth)} days</Typography>
                     </Alert>
                   </>
                 ) : (
@@ -344,10 +308,12 @@ export default function BreakEvenAnalysis() {
                     label="Daily Labor Cost"
                     type="number"
                     value={settings.dailyLaborCost}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      dailyLaborCost: parseFloat(e.target.value) || 0
-                    }))}
+                    onChange={e =>
+                      setSettings(prev => ({
+                        ...prev,
+                        dailyLaborCost: parseFloat(e.target.value) || 0
+                      }))
+                    }
                     InputProps={{ startAdornment: '$' }}
                   />
                 )}
@@ -361,16 +327,14 @@ export default function BreakEvenAnalysis() {
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Add Items to Scenario
               </Typography>
-              
+
               <Stack spacing={2}>
                 <Autocomplete
                   options={menuItems}
-                  getOptionLabel={(option) => option.name}
+                  getOptionLabel={option => option.name}
                   value={selectedMenuItem}
                   onChange={(_, newValue) => setSelectedMenuItem(newValue)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Select Menu Item" />
-                  )}
+                  renderInput={params => <TextField {...params} label="Select Menu Item" />}
                   renderOption={(props, option) => (
                     <li {...props}>
                       <Box>
@@ -382,14 +346,8 @@ export default function BreakEvenAnalysis() {
                     </li>
                   )}
                 />
-                
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={addItemToScenario}
-                  disabled={!selectedMenuItem}
-                  fullWidth
-                >
+
+                <Button variant="contained" startIcon={<AddIcon />} onClick={addItemToScenario} disabled={!selectedMenuItem} fullWidth>
                   Add to Scenario
                 </Button>
               </Stack>
@@ -404,11 +362,9 @@ export default function BreakEvenAnalysis() {
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Daily Sales Scenario
               </Typography>
-              
+
               {salesScenario.length === 0 ? (
-                <Alert severity="info">
-                  Add menu items to create your sales scenario and see break-even analysis.
-                </Alert>
+                <Alert severity="info">Add menu items to create your sales scenario and see break-even analysis.</Alert>
               ) : (
                 <TableContainer>
                   <Table size="small">
@@ -430,7 +386,7 @@ export default function BreakEvenAnalysis() {
                         const unitProfit = item.menuItem.price - unitCost
                         const dailyRevenue = item.menuItem.price * item.dailyQuantity
                         const dailyProfit = unitProfit * item.dailyQuantity
-                        
+
                         return (
                           <TableRow key={item.menuItemId}>
                             <TableCell>
@@ -444,19 +400,10 @@ export default function BreakEvenAnalysis() {
                               </Box>
                             </TableCell>
                             <TableCell align="center">
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={item.dailyQuantity}
-                                onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 0)}
-                                inputProps={{ min: 0, style: { textAlign: 'center' } }}
-                                sx={{ width: 80 }}
-                              />
+                              <TextField type="number" size="small" value={item.dailyQuantity} onChange={e => updateItemQuantity(index, parseInt(e.target.value) || 0)} inputProps={{ min: 0, style: { textAlign: 'center' } }} sx={{ width: 80 }} />
                             </TableCell>
                             <TableCell align="right">
-                              <Typography variant="body2">
-                                {formatCurrency(item.menuItem.price)}
-                              </Typography>
+                              <Typography variant="body2">{formatCurrency(item.menuItem.price)}</Typography>
                             </TableCell>
                             <TableCell align="right">
                               <Typography variant="body2" color="error.main">
@@ -464,11 +411,7 @@ export default function BreakEvenAnalysis() {
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
-                              <Typography 
-                                variant="body2" 
-                                color={unitProfit >= 0 ? 'success.main' : 'error.main'}
-                                sx={{ fontWeight: 600 }}
-                              >
+                              <Typography variant="body2" color={unitProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
                                 {formatCurrency(unitProfit)}
                               </Typography>
                             </TableCell>
@@ -478,30 +421,29 @@ export default function BreakEvenAnalysis() {
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
-                              <Typography 
-                                variant="body2" 
-                                color={dailyProfit >= 0 ? 'success.main' : 'error.main'}
-                                sx={{ fontWeight: 600 }}
-                              >
+                              <Typography variant="body2" color={dailyProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
                                 {formatCurrency(dailyProfit)}
                               </Typography>
                             </TableCell>
                             <TableCell align="center">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => removeItemFromScenario(index)}
-                              >
+                              <IconButton size="small" color="error" onClick={() => removeItemFromScenario(index)}>
                                 <DeleteIcon />
                               </IconButton>
                             </TableCell>
                           </TableRow>
                         )
                       })}
-                      
+
                       {/* Totals Row */}
                       {salesScenario.length > 0 && (
-                        <TableRow sx={{ bgcolor: 'grey.50', '& td': { fontWeight: 600 } }}>
+                        <TableRow
+                          sx={theme => ({
+                            bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                            '& td': { fontWeight: 600 },
+                            border: '1px solid',
+                            borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                          })}
+                        >
                           <TableCell>
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
                               TOTALS
@@ -519,10 +461,12 @@ export default function BreakEvenAnalysis() {
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
-                              {formatCurrency(salesScenario.reduce((sum, item) => {
-                                const unitCost = calculateItemCost(item.menuItem)
-                                return sum + (unitCost * item.dailyQuantity)
-                              }, 0))}
+                              {formatCurrency(
+                                salesScenario.reduce((sum, item) => {
+                                  const unitCost = calculateItemCost(item.menuItem)
+                                  return sum + unitCost * item.dailyQuantity
+                                }, 0)
+                              )}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
@@ -532,26 +476,34 @@ export default function BreakEvenAnalysis() {
                           </TableCell>
                           <TableCell align="right">
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {formatCurrency(salesScenario.reduce((sum, item) => {
-                                return sum + (item.menuItem.price * item.dailyQuantity)
-                              }, 0))}
+                              {formatCurrency(
+                                salesScenario.reduce((sum, item) => {
+                                  return sum + item.menuItem.price * item.dailyQuantity
+                                }, 0)
+                              )}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
-                            <Typography 
-                              variant="body2" 
+                            <Typography
+                              variant="body2"
                               sx={{ fontWeight: 700 }}
-                              color={salesScenario.reduce((sum, item) => {
-                                const unitCost = calculateItemCost(item.menuItem)
-                                const unitProfit = item.menuItem.price - unitCost
-                                return sum + (unitProfit * item.dailyQuantity)
-                              }, 0) >= 0 ? 'success.main' : 'error.main'}
+                              color={
+                                salesScenario.reduce((sum, item) => {
+                                  const unitCost = calculateItemCost(item.menuItem)
+                                  const unitProfit = item.menuItem.price - unitCost
+                                  return sum + unitProfit * item.dailyQuantity
+                                }, 0) >= 0
+                                  ? 'success.main'
+                                  : 'error.main'
+                              }
                             >
-                              {formatCurrency(salesScenario.reduce((sum, item) => {
-                                const unitCost = calculateItemCost(item.menuItem)
-                                const unitProfit = item.menuItem.price - unitCost
-                                return sum + (unitProfit * item.dailyQuantity)
-                              }, 0))}
+                              {formatCurrency(
+                                salesScenario.reduce((sum, item) => {
+                                  const unitCost = calculateItemCost(item.menuItem)
+                                  const unitProfit = item.menuItem.price - unitCost
+                                  return sum + unitProfit * item.dailyQuantity
+                                }, 0)
+                              )}
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
@@ -579,44 +531,43 @@ export default function BreakEvenAnalysis() {
                     <ProfitIcon />
                     Daily Analysis
                   </Typography>
-                  
+
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography color="text.secondary">Revenue:</Typography>
-                      <Typography sx={{ fontWeight: 600 }}>
-                        {formatCurrency(dailyFinancials.revenue)}
-                      </Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{formatCurrency(dailyFinancials.revenue)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography color="text.secondary">Food Cost:</Typography>
-                      <Typography color="error.main">
-                        {formatCurrency(dailyFinancials.foodCost)}
-                      </Typography>
+                      <Typography color="error.main">{formatCurrency(dailyFinancials.foodCost)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography color="text.secondary">Labor Cost:</Typography>
-                      <Typography color="error.main">
-                        {formatCurrency(dailyFinancials.laborCost)}
-                      </Typography>
+                      <Typography color="error.main">{formatCurrency(dailyFinancials.laborCost)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography color="text.secondary">Operating Expenses:</Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
-                        >
+                        <IconButton size="small" onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}>
                           {showExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
                       </Box>
-                      <Typography color="error.main">
-                        {formatCurrency(dailyFinancials.operatingExpenses)}
-                      </Typography>
+                      <Typography color="error.main">{formatCurrency(dailyFinancials.operatingExpenses)}</Typography>
                     </Box>
-                    
+
                     {/* Expense Breakdown */}
                     {showExpenseBreakdown && (
-                      <Box sx={{ ml: 2, mt: 1, p: 2, bgcolor: 'grey.25', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                      <Box
+                        sx={theme => ({
+                          ml: 2,
+                          mt: 1,
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.2)' : 'grey.200'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
                           Daily Expense Breakdown ({Math.round(workingDaysPerMonth)} working days/month):
                         </Typography>
@@ -636,7 +587,7 @@ export default function BreakEvenAnalysis() {
                               calculationNote = `${formatCurrency(expense.amount)}/year ÷ ${Math.round(workingDaysPerMonth * 12)}`
                               break
                           }
-                          
+
                           return (
                             <Box key={expense.id || index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -649,12 +600,7 @@ export default function BreakEvenAnalysis() {
                                     {calculationNote}
                                   </Typography>
                                 </Box>
-                                <Chip 
-                                  label={expense.frequency} 
-                                  size="small" 
-                                  variant="outlined"
-                                  sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }}
-                                />
+                                <Chip label={expense.frequency} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                               </Box>
                               <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                                 {formatCurrency(expense.dailyAmount)}
@@ -687,20 +633,13 @@ export default function BreakEvenAnalysis() {
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography sx={{ fontWeight: 600 }}>Daily Profit:</Typography>
-                      <Typography 
-                        sx={{ fontWeight: 600 }}
-                        color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}
-                      >
+                      <Typography sx={{ fontWeight: 600 }} color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
                         {formatCurrency(dailyFinancials.profit)}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography sx={{ fontWeight: 600 }}>Profit Margin:</Typography>
-                      <Chip
-                        label={`${dailyFinancials.profitMargin.toFixed(1)}%`}
-                        color={dailyFinancials.profitMargin >= 0 ? 'success' : 'error'}
-                        size="small"
-                      />
+                      <Chip label={`${dailyFinancials.profitMargin.toFixed(1)}%`} color={dailyFinancials.profitMargin >= 0 ? 'success' : 'error'} size="small" />
                     </Box>
                   </Stack>
                 </CardContent>
@@ -714,36 +653,39 @@ export default function BreakEvenAnalysis() {
                     <AnalyticsIcon />
                     Monthly Projection
                   </Typography>
-                  
+
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography color="text.secondary">Monthly Revenue:</Typography>
-                      <Typography sx={{ fontWeight: 600 }}>
-                        {formatCurrency(monthlyFinancials.revenue)}
-                      </Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{formatCurrency(monthlyFinancials.revenue)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography color="text.secondary">Monthly Costs:</Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => setShowMonthlyExpenseBreakdown(!showMonthlyExpenseBreakdown)}
-                        >
+                        <IconButton size="small" onClick={() => setShowMonthlyExpenseBreakdown(!showMonthlyExpenseBreakdown)}>
                           {showMonthlyExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
                       </Box>
-                      <Typography color="error.main">
-                        {formatCurrency(monthlyFinancials.totalCost)}
-                      </Typography>
+                      <Typography color="error.main">{formatCurrency(monthlyFinancials.totalCost)}</Typography>
                     </Box>
-                    
+
                     {/* Monthly Expense Breakdown */}
                     {showMonthlyExpenseBreakdown && (
-                      <Box sx={{ ml: 2, mt: 1, p: 2, bgcolor: 'grey.25', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                      <Box
+                        sx={theme => ({
+                          ml: 2,
+                          mt: 1,
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.2)' : 'grey.200'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
                           Monthly Cost Breakdown:
                         </Typography>
-                        
+
                         {/* Food Costs */}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -751,18 +693,13 @@ export default function BreakEvenAnalysis() {
                             <Typography variant="caption" color="text.secondary">
                               Food Costs
                             </Typography>
-                            <Chip 
-                              label="variable" 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }}
-                            />
+                            <Chip label="variable" size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                           </Box>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                             {formatCurrency(monthlyFinancials.foodCost)}
                           </Typography>
                         </Box>
-                        
+
                         {/* Labor Costs */}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -770,18 +707,13 @@ export default function BreakEvenAnalysis() {
                             <Typography variant="caption" color="text.secondary">
                               Labor Costs
                             </Typography>
-                            <Chip 
-                              label="fixed" 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }}
-                            />
+                            <Chip label="fixed" size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                           </Box>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                             {formatCurrency(monthlyFinancials.laborCost)}
                           </Typography>
                         </Box>
-                        
+
                         {/* Operating Expenses */}
                         {getExpenseBreakdown().map((expense, index) => (
                           <Box key={expense.id || index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
@@ -790,19 +722,14 @@ export default function BreakEvenAnalysis() {
                               <Typography variant="caption" color="text.secondary">
                                 {expense.name}
                               </Typography>
-                              <Chip 
-                                label={expense.frequency} 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }}
-                              />
+                              <Chip label={expense.frequency} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                             </Box>
                             <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                               {formatCurrency(expense.dailyAmount * workingDaysPerMonth)}
                             </Typography>
                           </Box>
                         ))}
-                        
+
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="caption" sx={{ fontWeight: 600 }}>
@@ -816,10 +743,7 @@ export default function BreakEvenAnalysis() {
                     )}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography sx={{ fontWeight: 600 }}>Monthly Profit:</Typography>
-                      <Typography 
-                        sx={{ fontWeight: 600 }}
-                        color={monthlyFinancials.profit >= 0 ? 'success.main' : 'error.main'}
-                      >
+                      <Typography sx={{ fontWeight: 600 }} color={monthlyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
                         {formatCurrency(monthlyFinancials.profit)}
                       </Typography>
                     </Box>
@@ -836,27 +760,29 @@ export default function BreakEvenAnalysis() {
                     <CalculateIcon />
                     Break-Even Analysis
                   </Typography>
-                  
+
                   <Box sx={{ mb: 3 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2">
-                        Progress to Break-Even
-                      </Typography>
+                      <Typography variant="body2">Progress to Break-Even</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {breakEven.percentage.toFixed(1)}%
                       </Typography>
                     </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={Math.min(breakEven.percentage, 100)}
-                      sx={{ height: 8, borderRadius: 4 }}
-                      color={breakEven.percentage >= 100 ? 'success' : 'primary'}
-                    />
+                    <LinearProgress variant="determinate" value={Math.min(breakEven.percentage, 100)} sx={{ height: 8, borderRadius: 4 }} color={breakEven.percentage >= 100 ? 'success' : 'primary'} />
                   </Box>
 
                   <Grid container spacing={3}>
                     <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Box
+                        sx={theme => ({
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary">
                           Current Status
                         </Typography>
@@ -875,15 +801,22 @@ export default function BreakEvenAnalysis() {
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Box
+                        sx={theme => ({
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary">
                           Revenue Needed
                         </Typography>
-                        <Typography variant="h6">
-                          {formatCurrency(monthlyFinancials.totalCost)}
-                        </Typography>
+                        <Typography variant="h6">{formatCurrency(monthlyFinancials.totalCost)}</Typography>
                         <Typography variant="caption" color="text.secondary">
                           per month
                         </Typography>
@@ -891,7 +824,16 @@ export default function BreakEvenAnalysis() {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Box
+                        sx={theme => ({
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary">
                           Daily Revenue Gap
                         </Typography>
@@ -905,13 +847,20 @@ export default function BreakEvenAnalysis() {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={3}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Box
+                        sx={theme => ({
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                        })}
+                      >
                         <Typography variant="caption" color="text.secondary">
                           Scale Factor Needed
                         </Typography>
-                        <Typography variant="h6">
-                          {breakEven.percentage < 100 ? `${(100 / breakEven.percentage).toFixed(1)}x` : '1.0x'}
-                        </Typography>
+                        <Typography variant="h6">{breakEven.percentage < 100 ? `${(100 / breakEven.percentage).toFixed(1)}x` : '1.0x'}</Typography>
                         <Typography variant="caption" color="text.secondary">
                           current volume
                         </Typography>
@@ -922,9 +871,7 @@ export default function BreakEvenAnalysis() {
                   {breakEven.percentage < 100 && (
                     <Alert severity="warning" sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        <strong>To reach break-even:</strong> You need to scale your current daily sales by{' '}
-                        <strong>{(100 / breakEven.percentage).toFixed(1)}x</strong> or increase revenue by{' '}
-                        <strong>{formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue)}</strong> per month.
+                        <strong>To reach break-even:</strong> You need to scale your current daily sales by <strong>{(100 / breakEven.percentage).toFixed(1)}x</strong> or increase revenue by <strong>{formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue)}</strong> per month.
                       </Typography>
                     </Alert>
                   )}
@@ -932,8 +879,7 @@ export default function BreakEvenAnalysis() {
                   {breakEven.percentage >= 100 && (
                     <Alert severity="success" sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        <strong>Congratulations!</strong> Your scenario is profitable with a monthly profit of{' '}
-                        <strong>{formatCurrency(monthlyFinancials.profit)}</strong>.
+                        <strong>Congratulations!</strong> Your scenario is profitable with a monthly profit of <strong>{formatCurrency(monthlyFinancials.profit)}</strong>.
                       </Typography>
                     </Alert>
                   )}

@@ -1,108 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  IconButton,
-  Select,
-  MenuItem as MuiMenuItem,
-  FormControl,
-  InputLabel,
-  Alert,
-  Tabs,
-  Tab,
-  Snackbar,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  useTheme,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Receipt as ReceiptIcon,
-  Upload as UploadIcon,
-  Kitchen as KitchenIcon,
-  CheckCircle as CompleteIcon,
-  Cancel as CancelIcon,
-  AttachMoney as MoneyIcon,
-  Schedule as TimeIcon,
-  Person as CustomerIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  TrendingFlat as TrendingFlatIcon,
-  LocationOn as LocationIcon,
-  AccessTime as PeakIcon,
-  Psychology as AIIcon,
-} from '@mui/icons-material';
-import { Order, OrderItem, MenuItem, Employee, Customer } from '../types';
-import { 
-  ordersService, 
-  menuItemsService, 
-  employeesService,
-  customersService,
-  subscriptions 
-} from '../services/supabaseService';
-import { useTranslation } from 'react-i18next';
-import { formatCurrency } from '../utils/currency';
-import AIOrderImporter from '../components/Orders/AIOrderImporter';
-import { ingredientsService } from '../services/supabaseService';
+import React, { useState, useEffect } from 'react'
+import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Alert, Tabs, Tab, Snackbar, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, useTheme, Accordion, AccordionSummary, AccordionDetails, TableSortLabel, Toolbar } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Receipt as ReceiptIcon, Upload as UploadIcon, Kitchen as KitchenIcon, CheckCircle as CompleteIcon, Cancel as CancelIcon, AttachMoney as MoneyIcon, Schedule as TimeIcon, Person as CustomerIcon, TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon, TrendingFlat as TrendingFlatIcon, LocationOn as LocationIcon, AccessTime as PeakIcon, Psychology as AIIcon, ExpandMore as ExpandMoreIcon, ViewList as ViewListIcon } from '@mui/icons-material'
+import { Order, OrderItem, MenuItem, Employee, Customer } from '../types'
+import { ordersService, menuItemsService, employeesService, customersService, subscriptions } from '../services/supabaseService'
+import { useTranslation } from 'react-i18next'
+import { formatCurrency } from '../utils/currency'
+import AIOrderImporter from '../components/Orders/AIOrderImporter'
+import { ingredientsService } from '../services/supabaseService'
 
 interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
+  children?: React.ReactNode
+  index: number
+  value: number
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const { children, value, index, ...other } = props
   return (
     <div role="tabpanel" hidden={value !== index} {...other}>
       {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
-  );
+  )
 }
 
 export default function Orders() {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const [tabValue, setTabValue] = useState(0);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ 
-    open: false, 
-    message: '', 
-    severity: 'success' as 'success' | 'error' 
-  });
+  const { t } = useTranslation()
+  const theme = useTheme()
+  const [tabValue, setTabValue] = useState(0)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [ingredients, setIngredients] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error'
+  })
 
   // Dialog states
-  const [openOrderDialog, setOpenOrderDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [openAIImportDialog, setOpenAIImportDialog] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [openOrderDialog, setOpenOrderDialog] = useState(false)
+  const [openImportDialog, setOpenImportDialog] = useState(false)
+  const [openAIImportDialog, setOpenAIImportDialog] = useState(false)
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+  const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month' | 'status' | 'location' | 'none'>('none')
+  const [sortBy, setSortBy] = useState<'time' | 'total' | 'status'>('time')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
   // Form states
   const [newOrder, setNewOrder] = useState<Partial<Order>>({
@@ -116,157 +61,149 @@ export default function Orders() {
     location: 'Main Location',
     paymentMethod: 'card',
     paymentStatus: 'completed'
-  });
+  })
 
   // Order form specific states
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
   const [newCustomer, setNewCustomer] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: ''
-  });
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [taxRate, setTaxRate] = useState(0.08); // 8% tax rate
+  })
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([])
+  const [taxRate, setTaxRate] = useState(0.08) // 8% tax rate
 
-  const [importData, setImportData] = useState('');
+  const [importData, setImportData] = useState('')
 
   // Load data on component mount
   useEffect(() => {
-    loadAllData();
-  }, []);
+    loadAllData()
+  }, [])
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const ordersSubscription = subscriptions.orders ? subscriptions.orders(() => {
-      loadOrders();
-    }) : null;
+    const ordersSubscription = subscriptions.orders
+      ? subscriptions.orders(() => {
+          loadOrders()
+        })
+      : null
 
     return () => {
       if (ordersSubscription) {
-        ordersSubscription.unsubscribe();
+        ordersSubscription.unsubscribe()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   const loadAllData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await Promise.all([
-        loadOrders(),
-        loadMenuItems(),
-        loadEmployees(),
-        loadCustomers(),
-        loadIngredients()
-      ]);
+      await Promise.all([loadOrders(), loadMenuItems(), loadEmployees(), loadCustomers(), loadIngredients()])
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to load data', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to load data', severity: 'error' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadOrders = async () => {
     try {
-      const data = await ordersService.getAll();
-      setOrders(data);
+      const data = await ordersService.getAll()
+      setOrders(data)
     } catch (error) {
-      console.error('Failed to load orders:', error);
+      console.error('Failed to load orders:', error)
     }
-  };
+  }
 
   const loadMenuItems = async () => {
     try {
-      const data = await menuItemsService.getAll();
-      setMenuItems(data);
+      const data = await menuItemsService.getAll()
+      setMenuItems(data)
     } catch (error) {
-      console.error('Failed to load menu items:', error);
+      console.error('Failed to load menu items:', error)
     }
-  };
+  }
 
   const loadEmployees = async () => {
     try {
-      const data = await employeesService.getAll();
-      setEmployees(data);
+      const data = await employeesService.getAll()
+      setEmployees(data)
     } catch (error) {
-      console.error('Failed to load employees:', error);
+      console.error('Failed to load employees:', error)
     }
-  };
+  }
 
   const loadCustomers = async () => {
     try {
-      const data = await customersService.getAll();
-      setCustomers(data);
+      const data = await customersService.getAll()
+      setCustomers(data)
     } catch (error) {
-      console.error('Failed to load customers:', error);
+      console.error('Failed to load customers:', error)
     }
-  };
+  }
 
   const loadIngredients = async () => {
     try {
-      const data = await ingredientsService.getAll();
-      setIngredients(data);
+      const data = await ingredientsService.getAll()
+      setIngredients(data)
     } catch (error) {
-      console.error('Failed to load ingredients:', error);
+      console.error('Failed to load ingredients:', error)
     }
-  };
+  }
 
   // Calculate food cost for an order
   const calculateOrderFoodCost = (order: Order): number => {
-    let totalFoodCost = 0;
+    let totalFoodCost = 0
 
     order.items.forEach(orderItem => {
-      const menuItem = menuItems.find(mi => mi.id === orderItem.menuItemId);
+      const menuItem = menuItems.find(mi => mi.id === orderItem.menuItemId)
       if (menuItem && menuItem.ingredients) {
         const itemFoodCost = menuItem.ingredients.reduce((cost, ingredient) => {
-          const ing = ingredients.find(i => i.id === ingredient.ingredientId);
+          const ing = ingredients.find(i => i.id === ingredient.ingredientId)
           if (ing) {
-            return cost + (ing.costPerUnit * ingredient.quantity);
+            return cost + ing.costPerUnit * ingredient.quantity
           }
-          return cost;
-        }, 0);
-        totalFoodCost += itemFoodCost * orderItem.quantity;
+          return cost
+        }, 0)
+        totalFoodCost += itemFoodCost * orderItem.quantity
       }
-    });
+    })
 
-    return totalFoodCost;
-  };
+    return totalFoodCost
+  }
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+    setTabValue(newValue)
+  }
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
-      await ordersService.updateStatus(orderId, status);
-      setSnackbar({ open: true, message: `Order ${status}`, severity: 'success' });
-      await loadOrders();
+      await ordersService.updateStatus(orderId, status)
+      setSnackbar({ open: true, message: `Order ${status}`, severity: 'success' })
+      await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to update order status', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to update order status', severity: 'error' })
     }
-  };
+  }
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      await ordersService.delete(orderId);
-      setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' });
-      await loadOrders();
+      await ordersService.delete(orderId)
+      setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' })
+      await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to delete order', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to delete order', severity: 'error' })
     }
-  };
+  }
 
   // Order form helper functions
   const addMenuItem = (menuItem: MenuItem) => {
-    const existingItem = orderItems.find(item => item.menuItemId === menuItem.id);
-    
+    const existingItem = orderItems.find(item => item.menuItemId === menuItem.id)
+
     if (existingItem) {
-      setOrderItems(prev => prev.map(item => 
-        item.menuItemId === menuItem.id 
-          ? { ...item, quantity: item.quantity + 1, totalPrice: (item.quantity + 1) * item.unitPrice }
-          : item
-      ));
+      setOrderItems(prev => prev.map(item => (item.menuItemId === menuItem.id ? { ...item, quantity: item.quantity + 1, totalPrice: (item.quantity + 1) * item.unitPrice } : item)))
     } else {
       const newItem: OrderItem = {
         menuItemId: menuItem.id,
@@ -278,42 +215,38 @@ export default function Orders() {
         quantity: 1,
         unitPrice: menuItem.price,
         totalPrice: menuItem.price
-      };
-      setOrderItems(prev => [...prev, newItem]);
+      }
+      setOrderItems(prev => [...prev, newItem])
     }
-  };
+  }
 
   const updateItemQuantity = (menuItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      setOrderItems(prev => prev.filter(item => item.menuItemId !== menuItemId));
+      setOrderItems(prev => prev.filter(item => item.menuItemId !== menuItemId))
     } else {
-      setOrderItems(prev => prev.map(item => 
-        item.menuItemId === menuItemId 
-          ? { ...item, quantity, totalPrice: quantity * item.unitPrice }
-          : item
-      ));
+      setOrderItems(prev => prev.map(item => (item.menuItemId === menuItemId ? { ...item, quantity, totalPrice: quantity * item.unitPrice } : item)))
     }
-  };
+  }
 
   const removeMenuItem = (menuItemId: string) => {
-    setOrderItems(prev => prev.filter(item => item.menuItemId !== menuItemId));
-  };
+    setOrderItems(prev => prev.filter(item => item.menuItemId !== menuItemId))
+  }
 
   // Calculate order totals
   const calculateTotals = () => {
-    const subtotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
-    const taxAmount = subtotal * taxRate;
-    const tipAmount = newOrder.tipAmount || 0;
-    const total = subtotal + taxAmount + tipAmount;
-    
-    return { subtotal, taxAmount, tipAmount, total };
-  };
+    const subtotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0)
+    const taxAmount = subtotal * taxRate
+    const tipAmount = newOrder.tipAmount || 0
+    const total = subtotal + taxAmount + tipAmount
+
+    return { subtotal, taxAmount, tipAmount, total }
+  }
 
   const resetOrderForm = () => {
-    setOrderItems([]);
-    setSelectedCustomerId('');
-    setNewCustomer({ firstName: '', lastName: '', email: '', phone: '' });
-    setShowNewCustomerForm(false);
+    setOrderItems([])
+    setSelectedCustomerId('')
+    setNewCustomer({ firstName: '', lastName: '', email: '', phone: '' })
+    setShowNewCustomerForm(false)
     setNewOrder({
       items: [],
       total: 0,
@@ -325,21 +258,21 @@ export default function Orders() {
       location: 'Main Location',
       paymentMethod: 'card',
       paymentStatus: 'completed'
-    });
-  };
+    })
+  }
 
   const handleCreateOrder = async () => {
     try {
-      let customerId = selectedCustomerId;
-      
+      let customerId = selectedCustomerId
+
       // Create new customer if needed
       if (showNewCustomerForm && newCustomer.firstName) {
-        const customer = await customersService.create(newCustomer as Omit<Customer, 'id' | 'businessId'>);
-        customerId = customer.id;
+        const customer = await customersService.create(newCustomer as Omit<Customer, 'id' | 'businessId'>)
+        customerId = customer.id
       }
-      
-      const totals = calculateTotals();
-      
+
+      const totals = calculateTotals()
+
       const orderData: Omit<Order, 'id' | 'orderNumber' | 'businessId'> = {
         customerId: customerId || undefined,
         items: orderItems,
@@ -355,189 +288,191 @@ export default function Orders() {
         paymentMethod: newOrder.paymentMethod || 'card',
         paymentStatus: 'completed',
         specialInstructions: newOrder.specialInstructions
-      };
-      
-      await ordersService.create(orderData);
-      setSnackbar({ open: true, message: 'Order created successfully', severity: 'success' });
-      setOpenOrderDialog(false);
-      resetOrderForm();
-      await loadOrders();
+      }
+
+      await ordersService.create(orderData)
+      setSnackbar({ open: true, message: 'Order created successfully', severity: 'success' })
+      setOpenOrderDialog(false)
+      resetOrderForm()
+      await loadOrders()
       if (showNewCustomerForm) {
-        await loadCustomers();
+        await loadCustomers()
       }
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to create order', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to create order', severity: 'error' })
     }
-  };
+  }
 
   const handleImportOrders = async () => {
     try {
       // Parse the import data (expecting JSON format)
-      const externalOrders = JSON.parse(importData);
-      const importedOrders = await ordersService.importFromExternal(externalOrders);
-      
-      setSnackbar({ 
-        open: true, 
-        message: `Successfully imported ${importedOrders.length} orders`, 
-        severity: 'success' 
-      });
-      
-      setImportData('');
-      setOpenImportDialog(false);
-      await loadOrders();
+      const externalOrders = JSON.parse(importData)
+      const importedOrders = await ordersService.importFromExternal(externalOrders)
+
+      setSnackbar({
+        open: true,
+        message: `Successfully imported ${importedOrders.length} orders`,
+        severity: 'success'
+      })
+
+      setImportData('')
+      setOpenImportDialog(false)
+      await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to import orders. Check JSON format.', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to import orders. Check JSON format.', severity: 'error' })
     }
-  };
+  }
 
   const handleAIOrdersImported = async (orders: Order[]) => {
-    setSnackbar({ 
-      open: true, 
-      message: `Successfully imported ${orders.length} orders using AI`, 
-      severity: 'success' 
-    });
-    await loadOrders();
-  };
+    setSnackbar({
+      open: true,
+      message: `Successfully imported ${orders.length} orders using AI`,
+      severity: 'success'
+    })
+    await loadOrders()
+  }
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return 'warning';
-      case 'preparing': return 'info';
-      case 'ready': return 'success';
-      case 'completed': return 'default';
-      case 'cancelled': return 'error';
-      case 'refunded': return 'error';
-      default: return 'default';
+      case 'pending':
+        return 'warning'
+      case 'preparing':
+        return 'info'
+      case 'ready':
+        return 'success'
+      case 'completed':
+        return 'default'
+      case 'cancelled':
+        return 'error'
+      case 'refunded':
+        return 'error'
+      default:
+        return 'default'
     }
-  };
+  }
 
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
-      case 'cash': return '💵';
-      case 'card': return '💳';
-      case 'mobile': return '📱';
-      case 'online': return '🌐';
-      default: return '💰';
+      case 'cash':
+        return '💵'
+      case 'card':
+        return '💳'
+      case 'mobile':
+        return '📱'
+      case 'online':
+        return '🌐'
+      default:
+        return '💰'
     }
-  };
+  }
 
   // Calculate comprehensive business analytics
   const getDateFilters = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const thisWeekStart = new Date(today);
-    thisWeekStart.setDate(today.getDate() - today.getDay());
-    const lastWeekStart = new Date(thisWeekStart);
-    lastWeekStart.setDate(thisWeekStart.getDate() - 7);
-    const lastWeekEnd = new Date(thisWeekStart);
-    lastWeekEnd.setDate(thisWeekStart.getDate() - 1);
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const thisWeekStart = new Date(today)
+    thisWeekStart.setDate(today.getDate() - today.getDay())
+    const lastWeekStart = new Date(thisWeekStart)
+    lastWeekStart.setDate(thisWeekStart.getDate() - 7)
+    const lastWeekEnd = new Date(thisWeekStart)
+    lastWeekEnd.setDate(thisWeekStart.getDate() - 1)
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
 
-    return { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd };
-  };
+    return { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd }
+  }
 
   const analytics = () => {
-    const { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd } = getDateFilters();
-    
+    const { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd } = getDateFilters()
+
     // Filter orders by time periods
-    const todayOrders = orders.filter(o => new Date(o.orderTime) >= today);
+    const todayOrders = orders.filter(o => new Date(o.orderTime) >= today)
     const yesterdayOrders = orders.filter(o => {
-      const orderDate = new Date(o.orderTime);
-      return orderDate >= yesterday && orderDate < today;
-    });
-    const thisWeekOrders = orders.filter(o => new Date(o.orderTime) >= thisWeekStart);
+      const orderDate = new Date(o.orderTime)
+      return orderDate >= yesterday && orderDate < today
+    })
+    const thisWeekOrders = orders.filter(o => new Date(o.orderTime) >= thisWeekStart)
     const lastWeekOrders = orders.filter(o => {
-      const orderDate = new Date(o.orderTime);
-      return orderDate >= lastWeekStart && orderDate <= lastWeekEnd;
-    });
-    const thisMonthOrders = orders.filter(o => new Date(o.orderTime) >= thisMonth);
+      const orderDate = new Date(o.orderTime)
+      return orderDate >= lastWeekStart && orderDate <= lastWeekEnd
+    })
+    const thisMonthOrders = orders.filter(o => new Date(o.orderTime) >= thisMonth)
     const lastMonthOrders = orders.filter(o => {
-      const orderDate = new Date(o.orderTime);
-      return orderDate >= lastMonth && orderDate <= lastMonthEnd;
-    });
+      const orderDate = new Date(o.orderTime)
+      return orderDate >= lastMonth && orderDate <= lastMonthEnd
+    })
 
     // Revenue calculations
-    const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
-    const yesterdayRevenue = yesterdayOrders.reduce((sum, o) => sum + o.total, 0);
-    const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + o.total, 0);
-    const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + o.total, 0);
-    const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + o.total, 0);
-    const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + o.total, 0);
+    const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0)
+    const yesterdayRevenue = yesterdayOrders.reduce((sum, o) => sum + o.total, 0)
+    const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + o.total, 0)
+    const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + o.total, 0)
+    const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + o.total, 0)
+    const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + o.total, 0)
 
     // Growth calculations
-    const dailyGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100) : 0;
-    const weeklyGrowth = lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) : 0;
-    const monthlyGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
+    const dailyGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : 0
+    const weeklyGrowth = lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100 : 0
+    const monthlyGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
 
     // Top-selling items analysis
     const itemSales = orders.reduce((acc, order) => {
       order.items.forEach(item => {
-        const itemName = item.menuItem?.name || 'Unknown Item';
+        const itemName = item.menuItem?.name || 'Unknown Item'
         if (!acc[itemName]) {
-          acc[itemName] = { quantity: 0, revenue: 0 };
+          acc[itemName] = { quantity: 0, revenue: 0 }
         }
-        acc[itemName].quantity += item.quantity;
-        acc[itemName].revenue += item.totalPrice;
-      });
-      return acc;
-    }, {} as Record<string, { quantity: number; revenue: number }>);
+        acc[itemName].quantity += item.quantity
+        acc[itemName].revenue += item.totalPrice
+      })
+      return acc
+    }, {} as Record<string, { quantity: number; revenue: number }>)
 
     const topItems = Object.entries(itemSales)
-      .sort(([,a], [,b]) => b.quantity - a.quantity)
-      .slice(0, 5);
+      .sort(([, a], [, b]) => b.quantity - a.quantity)
+      .slice(0, 5)
 
     // Peak hours analysis
     const hourlyOrders = orders.reduce((acc, order) => {
-      const hour = new Date(order.orderTime).getHours();
-      acc[hour] = (acc[hour] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
+      const hour = new Date(order.orderTime).getHours()
+      acc[hour] = (acc[hour] || 0) + 1
+      return acc
+    }, {} as Record<number, number>)
 
-    const peakHour = Object.entries(hourlyOrders)
-      .sort(([,a], [,b]) => b - a)[0];
+    const peakHour = Object.entries(hourlyOrders).sort(([, a], [, b]) => b - a)[0]
 
     // Payment method breakdown
     const paymentMethods = orders.reduce((acc, order) => {
-      acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+      acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
 
-    // Location performance
-    const locationStats = orders.reduce((acc, order) => {
-      const location = order.location || 'Unknown';
-      if (!acc[location]) {
-        acc[location] = { orders: 0, revenue: 0 };
-      }
-      acc[location].orders += 1;
-      acc[location].revenue += order.total;
-      return acc;
-    }, {} as Record<string, { orders: number; revenue: number }>);
 
     // Calculate average profit margin
     const ordersWithCost = orders.filter(order => {
-      const foodCost = calculateOrderFoodCost(order);
-      return foodCost > 0 && order.subtotal > 0;
-    });
-    
-    const averageProfitMargin = ordersWithCost.length > 0 
-      ? ordersWithCost.reduce((sum, order) => {
-          const foodCost = calculateOrderFoodCost(order);
-          const profit = order.subtotal - foodCost;
-          const margin = (profit / order.subtotal) * 100;
-          return sum + margin;
-        }, 0) / ordersWithCost.length
-      : 0;
+      const foodCost = calculateOrderFoodCost(order)
+      return foodCost > 0 && order.subtotal > 0
+    })
+
+    const averageProfitMargin =
+      ordersWithCost.length > 0
+        ? ordersWithCost.reduce((sum, order) => {
+            const foodCost = calculateOrderFoodCost(order)
+            const profit = order.subtotal - foodCost
+            const margin = (profit / order.subtotal) * 100
+            return sum + margin
+          }, 0) / ordersWithCost.length
+        : 0
 
     // Calculate total food costs and profits
-    const totalFoodCost = orders.reduce((sum, order) => sum + calculateOrderFoodCost(order), 0);
+    const totalFoodCost = orders.reduce((sum, order) => sum + calculateOrderFoodCost(order), 0)
     const totalProfit = orders.reduce((sum, order) => {
-      const foodCost = calculateOrderFoodCost(order);
-      return sum + (order.subtotal - foodCost);
-    }, 0);
+      const foodCost = calculateOrderFoodCost(order)
+      return sum + (order.subtotal - foodCost)
+    }, 0)
 
     return {
       todayOrders: todayOrders.length,
@@ -557,40 +492,125 @@ export default function Orders() {
       topItems,
       peakHour: peakHour ? { hour: parseInt(peakHour[0]), count: peakHour[1] } : null,
       paymentMethods,
-      locationStats,
       totalOrders: orders.length,
       totalRevenue: orders.reduce((sum, o) => sum + o.total, 0)
-    };
-  };
+    }
+  }
 
-  const stats = analytics();
+  const stats = analytics()
+
+  // Group and sort orders
+  const getGroupedOrders = () => {
+    // First sort orders
+    let sortedOrders = [...orders]
+    
+    switch (sortBy) {
+      case 'time':
+        sortedOrders.sort((a, b) => {
+          const timeA = new Date(a.orderTime).getTime()
+          const timeB = new Date(b.orderTime).getTime()
+          return sortOrder === 'desc' ? timeB - timeA : timeA - timeB
+        })
+        break
+      case 'total':
+        sortedOrders.sort((a, b) => {
+          return sortOrder === 'desc' ? b.total - a.total : a.total - b.total
+        })
+        break
+      case 'status':
+        const statusOrder = ['pending', 'preparing', 'ready', 'completed', 'cancelled', 'refunded']
+        sortedOrders.sort((a, b) => {
+          const indexA = statusOrder.indexOf(a.status)
+          const indexB = statusOrder.indexOf(b.status)
+          return sortOrder === 'desc' ? indexB - indexA : indexA - indexB
+        })
+        break
+    }
+
+    if (groupBy === 'none') {
+      return [{ group: 'All Orders', orders: sortedOrders, key: 'all' }]
+    }
+
+    // Group orders
+    const grouped = sortedOrders.reduce((groups, order) => {
+      let groupKey: string
+      
+      switch (groupBy) {
+        case 'day':
+          groupKey = new Date(order.orderTime).toLocaleDateString()
+          break
+        case 'week':
+          const weekStart = new Date(order.orderTime)
+          weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+          groupKey = `Week of ${weekStart.toLocaleDateString()}`
+          break
+        case 'month':
+          groupKey = new Date(order.orderTime).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+          break
+        case 'status':
+          groupKey = order.status.charAt(0).toUpperCase() + order.status.slice(1)
+          break
+        case 'location':
+          groupKey = order.location || 'Unknown Location'
+          break
+        default:
+          groupKey = 'All Orders'
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = []
+      }
+      groups[groupKey].push(order)
+      return groups
+    }, {} as Record<string, Order[]>)
+
+    return Object.entries(grouped)
+      .map(([group, orders]) => ({ group, orders, key: group }))
+      .sort((a, b) => {
+        if (groupBy === 'day' || groupBy === 'week' || groupBy === 'month') {
+          // Sort by newest date first for time-based grouping
+          return new Date(b.orders[0]?.orderTime).getTime() - new Date(a.orders[0]?.orderTime).getTime()
+        }
+        return a.group.localeCompare(b.group)
+      })
+  }
+
+  const toggleGroupExpansion = (groupKey: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(groupKey)) {
+      newExpanded.delete(groupKey)
+    } else {
+      newExpanded.add(groupKey)
+    }
+    setExpandedGroups(newExpanded)
+  }
+
+  // Auto-expand groups when grouping changes
+  useEffect(() => {
+    if (groupBy === 'day') {
+      // Auto-expand today's orders
+      const today = new Date().toLocaleDateString()
+      setExpandedGroups(new Set([today]))
+    } else if (groupBy !== 'none') {
+      // For other groupings, expand the first group by default
+      setExpandedGroups(new Set())
+    }
+  }, [groupBy])
+
+  const groupedOrders = getGroupedOrders()
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">{t('order_management')}</Typography>
         <Box>
-          <Button 
-            variant="outlined" 
-            startIcon={<UploadIcon />} 
-            onClick={() => setOpenImportDialog(true)}
-            sx={{ marginInlineEnd: 1 }}
-          >
+          <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => setOpenImportDialog(true)} sx={{ marginInlineEnd: 1 }}>
             {t('import_orders')}
           </Button>
-          <Button 
-            variant="outlined" 
-            startIcon={<AIIcon />} 
-            onClick={() => setOpenAIImportDialog(true)}
-            sx={{ marginInlineEnd: 1 }}
-          >
+          <Button variant="outlined" startIcon={<AIIcon />} onClick={() => setOpenAIImportDialog(true)} sx={{ marginInlineEnd: 1 }}>
             AI Import
           </Button>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={() => setOpenOrderDialog(true)}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenOrderDialog(true)}>
             {t('add_order_record')}
           </Button>
         </Box>
@@ -598,32 +618,27 @@ export default function Orders() {
 
       {/* Enhanced Business Analytics Dashboard */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        
         {/* Today's Performance */}
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="primary">{t('todays_performance')}</Typography>
-                  <Typography variant="h4" className="number-ltr">{formatCurrency(stats.todayRevenue)}</Typography>
+                  <Typography variant="h6" color="primary">
+                    {t('todays_performance')}
+                  </Typography>
+                  <Typography variant="h4" className="number-ltr" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {formatCurrency(stats.todayRevenue)}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {t('orders_count', { count: stats.todayOrders })}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.dailyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" className="trend-icon" />
-                  ) : stats.dailyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" className="trend-icon" />
-                  ) : (
-                    <TrendingFlatIcon color="disabled" className="trend-icon" />
-                  )}
-                  <Typography 
-                    variant="body2" 
-                    color={stats.dailyGrowth > 0 ? 'success.main' : stats.dailyGrowth < 0 ? 'error.main' : 'text.secondary'}
-                  >
-                    {stats.dailyGrowth > 0 ? '+' : ''}{stats.dailyGrowth.toFixed(1)}%
+                  {stats.dailyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.dailyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
+                  <Typography variant="body2" color={stats.dailyGrowth > 0 ? 'success.main' : stats.dailyGrowth < 0 ? 'error.main' : 'text.secondary'}>
+                    {stats.dailyGrowth > 0 ? '+' : ''}
+                    {stats.dailyGrowth.toFixed(1)}%
                   </Typography>
                 </Box>
               </Box>
@@ -637,25 +652,21 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="info.main">{t('this_week')}</Typography>
-                  <Typography variant="h4">{formatCurrency(stats.thisWeekRevenue)}</Typography>
+                  <Typography variant="h6" color="info.main">
+                    {t('this_week')}
+                  </Typography>
+                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {formatCurrency(stats.thisWeekRevenue)}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisWeekOrders} orders
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.weeklyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" className="trend-icon" />
-                  ) : stats.weeklyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" className="trend-icon" />
-                  ) : (
-                    <TrendingFlatIcon color="disabled" className="trend-icon" />
-                  )}
-                  <Typography 
-                    variant="body2" 
-                    color={stats.weeklyGrowth > 0 ? 'success.main' : stats.weeklyGrowth < 0 ? 'error.main' : 'text.secondary'}
-                  >
-                    {stats.weeklyGrowth > 0 ? '+' : ''}{stats.weeklyGrowth.toFixed(1)}%
+                  {stats.weeklyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.weeklyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
+                  <Typography variant="body2" color={stats.weeklyGrowth > 0 ? 'success.main' : stats.weeklyGrowth < 0 ? 'error.main' : 'text.secondary'}>
+                    {stats.weeklyGrowth > 0 ? '+' : ''}
+                    {stats.weeklyGrowth.toFixed(1)}%
                   </Typography>
                 </Box>
               </Box>
@@ -669,25 +680,21 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="secondary.main">{t('this_month')}</Typography>
-                  <Typography variant="h4">{formatCurrency(stats.thisMonthRevenue)}</Typography>
+                  <Typography variant="h6" color="secondary.main">
+                    {t('this_month')}
+                  </Typography>
+                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {formatCurrency(stats.thisMonthRevenue)}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.thisMonthOrders} orders
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.monthlyGrowth > 0 ? (
-                    <TrendingUpIcon color="success" className="trend-icon" />
-                  ) : stats.monthlyGrowth < 0 ? (
-                    <TrendingDownIcon color="error" className="trend-icon" />
-                  ) : (
-                    <TrendingFlatIcon color="disabled" className="trend-icon" />
-                  )}
-                  <Typography 
-                    variant="body2" 
-                    color={stats.monthlyGrowth > 0 ? 'success.main' : stats.monthlyGrowth < 0 ? 'error.main' : 'text.secondary'}
-                  >
-                    {stats.monthlyGrowth > 0 ? '+' : ''}{stats.monthlyGrowth.toFixed(1)}%
+                  {stats.monthlyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.monthlyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
+                  <Typography variant="body2" color={stats.monthlyGrowth > 0 ? 'success.main' : stats.monthlyGrowth < 0 ? 'error.main' : 'text.secondary'}>
+                    {stats.monthlyGrowth > 0 ? '+' : ''}
+                    {stats.monthlyGrowth.toFixed(1)}%
                   </Typography>
                 </Box>
               </Box>
@@ -701,8 +708,12 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="success.main">Avg Order Value</Typography>
-                  <Typography variant="h4">{formatCurrency(stats.averageOrderValue)}</Typography>
+                  <Typography variant="h6" color="success.main">
+                    Avg Order Value
+                  </Typography>
+                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                    {formatCurrency(stats.averageOrderValue)}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.totalOrders} total orders
                   </Typography>
@@ -722,20 +733,14 @@ export default function Orders() {
                   <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
                     Avg Profit Margin
                   </Typography>
-                  <Typography 
-                    variant="h4" 
-                    color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}
-                  >
+                  <Typography variant="h4" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
                     {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {stats.ordersWithCostData}/{stats.totalOrders} with cost data
                   </Typography>
                 </Box>
-                <TrendingUpIcon 
-                  color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} 
-                  sx={{ fontSize: 32 }} 
-                />
+                <TrendingUpIcon color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} sx={{ fontSize: 32 }} />
               </Box>
             </CardContent>
           </Card>
@@ -745,7 +750,9 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>🏆 {t('top_selling_items')}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                🏆 {t('top_selling_items')}
+              </Typography>
               <List dense>
                 {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
                   <ListItem key={itemName} sx={{ px: 0 }}>
@@ -778,17 +785,39 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>📊 {t('key_metrics')}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                📊 {t('key_metrics')}
+              </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Box
+                    sx={theme => ({
+                      textAlign: 'center',
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                    })}
+                  >
                     <MoneyIcon color="success" />
-                    <Typography variant="h6">{formatCurrency(stats.averageOrderValue)}</Typography>
+                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                      {formatCurrency(stats.averageOrderValue)}
+                    </Typography>
                     <Typography variant="caption">{t('avg_order_value')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Box
+                    sx={theme => ({
+                      textAlign: 'center',
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                    })}
+                  >
                     <TrendingUpIcon color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} />
                     <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
                       {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
@@ -797,34 +826,72 @@ export default function Orders() {
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Box
+                    sx={theme => ({
+                      textAlign: 'center',
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                    })}
+                  >
                     <ReceiptIcon color="primary" />
                     <Typography variant="h6">{stats.totalOrders}</Typography>
                     <Typography variant="caption">{t('total_orders')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Box
+                    sx={theme => ({
+                      textAlign: 'center',
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                    })}
+                  >
                     <MoneyIcon color="info" />
-                    <Typography variant="h6">{formatCurrency(stats.totalProfit)}</Typography>
+                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                      {formatCurrency(stats.totalProfit)}
+                    </Typography>
                     <Typography variant="caption">Total Profit</Typography>
                   </Box>
                 </Grid>
                 {stats.peakHour && (
                   <Grid item xs={6}>
-                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Box
+                      sx={theme => ({
+                        textAlign: 'center',
+                        p: 1,
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                      })}
+                    >
                       <PeakIcon color="warning" />
-                      <Typography variant="h6">
-                        {stats.peakHour.hour}:00
-                      </Typography>
+                      <Typography variant="h6">{stats.peakHour.hour}:00</Typography>
                       <Typography variant="caption">{t('peak_hour')}</Typography>
                     </Box>
                   </Grid>
                 )}
                 <Grid item xs={6}>
-                  <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Box
+                    sx={theme => ({
+                      textAlign: 'center',
+                      p: 1,
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                    })}
+                  >
                     <MoneyIcon color="info" />
-                    <Typography variant="h6">{formatCurrency(stats.totalRevenue)}</Typography>
+                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                      {formatCurrency(stats.totalRevenue)}
+                    </Typography>
                     <Typography variant="caption">{t('total_revenue')}</Typography>
                   </Box>
                 </Grid>
@@ -837,7 +904,9 @@ export default function Orders() {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>💳 {t('payment_methods')}</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                💳 {t('payment_methods')}
+              </Typography>
               <List dense>
                 {Object.entries(stats.paymentMethods).map(([method, count]) => (
                   <ListItem key={method} sx={{ px: 0 }}>
@@ -865,41 +934,6 @@ export default function Orders() {
           </Card>
         </Grid>
 
-        {/* Location Performance */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>📍 {t('location_performance')}</Typography>
-              <List dense>
-                {Object.entries(stats.locationStats)
-                  .sort(([,a], [,b]) => b.revenue - a.revenue)
-                  .map(([location, data]) => (
-                  <ListItem key={location} sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">
-                            <LocationIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
-                            {location}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {formatCurrency(data.revenue)}
-                          </Typography>
-                        </Box>
-                      }
-                      secondary={`${data.orders} orders • ${formatCurrency(data.revenue / data.orders)} avg`}
-                    />
-                  </ListItem>
-                ))}
-                {Object.keys(stats.locationStats).length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                    No location data available
-                  </Typography>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
       <Paper>
@@ -910,153 +944,346 @@ export default function Orders() {
 
         {/* All Orders Tab */}
         <TabPanel value={tabValue} index={0}>
-          <TableContainer>
-            <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('order_number')}</TableCell>
-                  <TableCell>{t('time')}</TableCell>
-                  <TableCell>{t('customer')}</TableCell>
-                  <TableCell>{t('items')}</TableCell>
-                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('total')}</TableCell>
-                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Food Cost</TableCell>
-                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Profit</TableCell>
-                  <TableCell>{t('payment')}</TableCell>
-                  <TableCell>{t('status')}</TableCell>
-                  <TableCell>{t('source')}</TableCell>
-                  <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id}>
+          {/* Table Toolbar with Grouping Control */}
+          <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
+            <Typography
+              sx={{ flex: '1 1 100%' }}
+              variant="h6"
+              id="tableTitle"
+              component="div"
+            >
+              Orders ({orders.length})
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Group by</InputLabel>
+                <Select
+                  value={groupBy}
+                  label="Group by"
+                  onChange={(e) => setGroupBy(e.target.value as any)}
+                >
+                  <MuiMenuItem value="none">No grouping</MuiMenuItem>
+                  <MuiMenuItem value="day">Day</MuiMenuItem>
+                  <MuiMenuItem value="week">Week</MuiMenuItem>
+                  <MuiMenuItem value="month">Month</MuiMenuItem>
+                  <MuiMenuItem value="status">Status</MuiMenuItem>
+                  <MuiMenuItem value="location">Location</MuiMenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Toolbar>
+          
+          {groupBy === 'none' ? (
+            // Standard table view with native sorting
+            <TableContainer>
+              <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('order_number')}</TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {order.orderNumber || order.id.slice(0, 8)}
-                      </Typography>
+                      <TableSortLabel
+                        active={sortBy === 'time'}
+                        direction={sortBy === 'time' ? sortOrder : 'asc'}
+                        onClick={() => {
+                          if (sortBy === 'time') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                          } else {
+                            setSortBy('time')
+                            setSortOrder('desc')
+                          }
+                        }}
+                      >
+                        {t('time')}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {order.orderTime.toLocaleString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {order.customer ? (
-                        <Box>
-                          <Typography variant="body2">
-                            {order.customer.firstName} {order.customer.lastName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {order.customer.phone}
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Walk-in
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {order.items.length} item(s)
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {order.items.map(item => 
-                          `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`
-                        ).join(', ')}
-                      </Typography>
-                    </TableCell>
+                    <TableCell>{t('customer')}</TableCell>
+                    <TableCell>{t('items')}</TableCell>
                     <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {formatCurrency(order.total)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Sub: {formatCurrency(order.subtotal)}
-                        {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
-                        {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
-                      </Typography>
+                      <TableSortLabel
+                        active={sortBy === 'total'}
+                        direction={sortBy === 'total' ? sortOrder : 'asc'}
+                        onClick={() => {
+                          if (sortBy === 'total') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                          } else {
+                            setSortBy('total')
+                            setSortOrder('desc')
+                          }
+                        }}
+                      >
+                        {t('total')}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                      {(() => {
-                        const foodCost = calculateOrderFoodCost(order);
-                        return (
-                          <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
-                            {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
-                          </Typography>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                      {(() => {
-                        const foodCost = calculateOrderFoodCost(order);
-                        const profit = order.subtotal - foodCost;
-                        const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0;
-                        return (
-                          <Box>
-                            <Typography 
-                              variant="body2" 
-                              sx={{ fontWeight: 'bold' }}
-                              color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}
-                            >
-                              {foodCost > 0 ? formatCurrency(profit) : 'No data'}
-                            </Typography>
-                            {foodCost > 0 && (
-                              <Typography variant="caption" color="text.secondary">
-                                {profitMargin.toFixed(1)}% margin
-                              </Typography>
-                            )}
-                          </Box>
-                        );
-                      })()}
-                    </TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Food Cost</TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Profit</TableCell>
+                    <TableCell>{t('payment')}</TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <span>{getPaymentMethodIcon(order.paymentMethod)}</span>
-                        <Typography variant="body2">
-                          {order.paymentMethod}
-                        </Typography>
-                      </Box>
+                      <TableSortLabel
+                        active={sortBy === 'status'}
+                        direction={sortBy === 'status' ? sortOrder : 'asc'}
+                        onClick={() => {
+                          if (sortBy === 'status') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+                          } else {
+                            setSortBy('status')
+                            setSortOrder('asc')
+                          }
+                        }}
+                      >
+                        {t('status')}
+                      </TableSortLabel>
                     </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={order.status} 
-                        color={getStatusColor(order.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {order.externalSource || 'manual'}
-                      </Typography>
-                      {order.externalOrderId && (
-                        <Typography variant="caption" color="text.secondary">
-                          ID: {order.externalOrderId}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleDeleteOrder(order.id)}
-                          title="Delete Order"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
+                    <TableCell>{t('source')}</TableCell>
+                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('actions')}</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {groupedOrders[0]?.orders.map(order => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {order.orderNumber || order.id.slice(0, 8)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{order.orderTime.toLocaleString()}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        {order.customer ? (
+                          <Box>
+                            <Typography variant="body2">
+                              {order.customer.firstName} {order.customer.lastName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {order.customer.phone}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            Walk-in
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{order.items.length} item(s)</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {order.items.map(item => `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`).join(', ')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {formatCurrency(order.total)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Sub: {formatCurrency(order.subtotal)}
+                          {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
+                          {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                        {(() => {
+                          const foodCost = calculateOrderFoodCost(order)
+                          return (
+                            <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
+                              {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
+                            </Typography>
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                        {(() => {
+                          const foodCost = calculateOrderFoodCost(order)
+                          const profit = order.subtotal - foodCost
+                          const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0
+                          return (
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }} color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}>
+                                {foodCost > 0 ? formatCurrency(profit) : 'No data'}
+                              </Typography>
+                              {foodCost > 0 && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {profitMargin.toFixed(1)}% margin
+                                </Typography>
+                              )}
+                            </Box>
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <span>{getPaymentMethodIcon(order.paymentMethod)}</span>
+                          <Typography variant="body2">{order.paymentMethod}</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{order.externalSource || 'manual'}</Typography>
+                        {order.externalOrderId && (
+                          <Typography variant="caption" color="text.secondary">
+                            ID: {order.externalOrderId}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
+                          <IconButton size="small" onClick={() => handleDeleteOrder(order.id)} title="Delete Order">
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            // Grouped view with accordions
+            <>
+              {groupedOrders.map((group) => (
+                <Accordion
+                  key={group.key}
+                  expanded={expandedGroups.has(group.key)}
+                  onChange={() => toggleGroupExpansion(group.key)}
+                  sx={{ mb: 1 }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mr: 2 }}>
+                      <Typography variant="h6">{group.group}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {group.orders.length} orders
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatCurrency(group.orders.reduce((sum, order) => sum + order.total, 0))}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ px: 0 }}>
+                    <TableContainer>
+                      <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
+                        <TableBody>
+                          {group.orders.map(order => (
+                            <TableRow key={order.id}>
+                              <TableCell>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {order.orderNumber || order.id.slice(0, 8)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">{order.orderTime.toLocaleString()}</Typography>
+                              </TableCell>
+                              <TableCell>
+                                {order.customer ? (
+                                  <Box>
+                                    <Typography variant="body2">
+                                      {order.customer.firstName} {order.customer.lastName}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {order.customer.phone}
+                                    </Typography>
+                                  </Box>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Walk-in
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">{order.items.length} item(s)</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {order.items.map(item => `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`).join(', ')}
+                                </Typography>
+                              </TableCell>
+                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {formatCurrency(order.total)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Sub: {formatCurrency(order.subtotal)}
+                                  {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
+                                  {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
+                                </Typography>
+                              </TableCell>
+                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                                {(() => {
+                                  const foodCost = calculateOrderFoodCost(order)
+                                  return (
+                                    <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
+                                      {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
+                                    </Typography>
+                                  )
+                                })()}
+                              </TableCell>
+                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                                {(() => {
+                                  const foodCost = calculateOrderFoodCost(order)
+                                  const profit = order.subtotal - foodCost
+                                  const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0
+                                  return (
+                                    <Box>
+                                      <Typography variant="body2" sx={{ fontWeight: 'bold' }} color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}>
+                                        {foodCost > 0 ? formatCurrency(profit) : 'No data'}
+                                      </Typography>
+                                      {foodCost > 0 && (
+                                        <Typography variant="caption" color="text.secondary">
+                                          {profitMargin.toFixed(1)}% margin
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  )
+                                })()}
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <span>{getPaymentMethodIcon(order.paymentMethod)}</span>
+                                  <Typography variant="body2">{order.paymentMethod}</Typography>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">{order.externalSource || 'manual'}</Typography>
+                                {order.externalOrderId && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    ID: {order.externalOrderId}
+                                  </Typography>
+                                )}
+                              </TableCell>
+                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
+                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
+                                  <IconButton size="small" onClick={() => handleDeleteOrder(order.id)} title="Delete Order">
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </>
+          )}
+          
+          {groupedOrders.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h6" color="text.secondary">
+                No orders found
+              </Typography>
+            </Box>
+          )}
         </TabPanel>
 
         {/* Analytics Tab */}
         <TabPanel value={tabValue} index={1}>
           <Alert severity="info" sx={{ mb: 3 }}>
-            Detailed analytics will be implemented here, including daily/weekly/monthly sales reports, 
-            popular items, peak hours, customer analytics, and revenue trends.
+            Detailed analytics will be implemented here, including daily/weekly/monthly sales reports, popular items, peak hours, customer analytics, and revenue trends.
           </Alert>
         </TabPanel>
       </Paper>
@@ -1066,8 +1293,7 @@ export default function Orders() {
         <DialogTitle>Import Orders from Clearing Device</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Paste the export data from your clearing device below (JSON or CSV format). The system will automatically 
-            process and import the orders into your database.
+            Paste the export data from your clearing device below (JSON or CSV format). The system will automatically process and import the orders into your database.
           </Alert>
           <TextField
             fullWidth
@@ -1075,7 +1301,7 @@ export default function Orders() {
             rows={10}
             label="Clearing Device Export Data"
             value={importData}
-            onChange={(e) => setImportData(e.target.value)}
+            onChange={e => setImportData(e.target.value)}
             placeholder={`[
   {
     "externalId": "DEF001",
@@ -1108,26 +1334,27 @@ export default function Orders() {
         <DialogTitle>Add Order Record</DialogTitle>
         <DialogContent>
           <Grid container spacing={3}>
-            
             {/* Customer Selection */}
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Customer Information</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Customer Information
+              </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel>Select Customer</InputLabel>
                     <Select
                       value={selectedCustomerId}
-                      onChange={(e) => {
-                        setSelectedCustomerId(e.target.value);
-                        setShowNewCustomerForm(false);
+                      onChange={e => {
+                        setSelectedCustomerId(e.target.value)
+                        setShowNewCustomerForm(false)
                       }}
                       disabled={showNewCustomerForm}
                     >
                       <MuiMenuItem value="">Walk-in Customer</MuiMenuItem>
                       {customers.map(customer => (
                         <MuiMenuItem key={customer.id} value={customer.id}>
-                          {customer.firstName} {customer.lastName} 
+                          {customer.firstName} {customer.lastName}
                           {customer.phone && ` - ${customer.phone}`}
                         </MuiMenuItem>
                       ))}
@@ -1136,14 +1363,14 @@ export default function Orders() {
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Button
-                    variant={showNewCustomerForm ? "contained" : "outlined"}
+                    variant={showNewCustomerForm ? 'contained' : 'outlined'}
                     onClick={() => {
-                      setShowNewCustomerForm(!showNewCustomerForm);
-                      setSelectedCustomerId('');
+                      setShowNewCustomerForm(!showNewCustomerForm)
+                      setSelectedCustomerId('')
                     }}
                     startIcon={<CustomerIcon />}
                   >
-                    {showNewCustomerForm ? "Cancel New Customer" : "Add New Customer"}
+                    {showNewCustomerForm ? 'Cancel New Customer' : 'Add New Customer'}
                   </Button>
                 </Grid>
               </Grid>
@@ -1152,37 +1379,16 @@ export default function Orders() {
               {showNewCustomerForm && (
                 <Grid container spacing={2} sx={{ mt: 1 }}>
                   <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="First Name"
-                      value={newCustomer.firstName}
-                      onChange={(e) => setNewCustomer({...newCustomer, firstName: e.target.value})}
-                    />
+                    <TextField fullWidth label="First Name" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} />
                   </Grid>
                   <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Last Name"
-                      value={newCustomer.lastName}
-                      onChange={(e) => setNewCustomer({...newCustomer, lastName: e.target.value})}
-                    />
+                    <TextField fullWidth label="Last Name" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} />
                   </Grid>
                   <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      value={newCustomer.email}
-                      onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                    />
+                    <TextField fullWidth label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
                   </Grid>
                   <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      value={newCustomer.phone}
-                      onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                    />
+                    <TextField fullWidth label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
                   </Grid>
                 </Grid>
               )}
@@ -1192,21 +1398,23 @@ export default function Orders() {
 
             {/* Menu Items Selection */}
             <Grid item xs={12} md={7}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Select Menu Items</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Select Menu Items
+              </Typography>
               <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {(() => {
                   // Group menu items by category
-                  const availableItems = menuItems.filter(item => item.isAvailable);
+                  const availableItems = menuItems.filter(item => item.isAvailable)
                   const groupedItems = availableItems.reduce((groups, item) => {
-                    const category = item.category || 'Other';
+                    const category = item.category || 'Other'
                     if (!groups[category]) {
-                      groups[category] = [];
+                      groups[category] = []
                     }
-                    groups[category].push(item);
-                    return groups;
-                  }, {} as Record<string, MenuItem[]>);
+                    groups[category].push(item)
+                    return groups
+                  }, {} as Record<string, MenuItem[]>)
 
-                  const categories = Object.keys(groupedItems).sort();
+                  const categories = Object.keys(groupedItems).sort()
 
                   return categories.map(category => (
                     <Box key={category} sx={{ mb: 3 }}>
@@ -1222,22 +1430,26 @@ export default function Orders() {
                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
                                   {item.description}
                                 </Typography>
-                                <Typography variant="h6" color="primary">{formatCurrency(item.price)}</Typography>
+                                <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                                  {formatCurrency(item.price)}
+                                </Typography>
                               </CardContent>
                             </Card>
                           </Grid>
                         ))}
                       </Grid>
                     </Box>
-                  ));
+                  ))
                 })()}
               </Box>
             </Grid>
 
             {/* Order Summary */}
             <Grid item xs={12} md={5}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Order Summary</Typography>
-              
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Order Summary
+              </Typography>
+
               {/* Selected Items */}
               <List sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}>
                 {orderItems.length === 0 ? (
@@ -1245,29 +1457,18 @@ export default function Orders() {
                     <ListItemText primary="No items selected" />
                   </ListItem>
                 ) : (
-                  orderItems.map((item) => (
+                  orderItems.map(item => (
                     <ListItem key={item.menuItemId} divider>
-                      <ListItemText
-                        primary={item.menuItem?.name}
-                        secondary={`${formatCurrency(item.unitPrice)} each`}
-                      />
+                      <ListItemText primary={item.menuItem?.name} secondary={`${formatCurrency(item.unitPrice)} each`} />
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => updateItemQuantity(item.menuItemId, item.quantity - 1)}
-                        >
+                        <IconButton size="small" onClick={() => updateItemQuantity(item.menuItemId, item.quantity - 1)}>
                           <DeleteIcon />
                         </IconButton>
                         <Typography>{item.quantity}</Typography>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => updateItemQuantity(item.menuItemId, item.quantity + 1)}
-                        >
+                        <IconButton size="small" onClick={() => updateItemQuantity(item.menuItemId, item.quantity + 1)}>
                           <AddIcon />
                         </IconButton>
-                        <Typography sx={{ ml: 1, minWidth: 60, textAlign: 'right' }}>
-                          {formatCurrency(item.totalPrice)}
-                        </Typography>
+                        <Typography sx={{ ml: 1, minWidth: 60, textAlign: 'right' }}>{formatCurrency(item.totalPrice)}</Typography>
                       </Box>
                     </ListItem>
                   ))
@@ -1276,9 +1477,18 @@ export default function Orders() {
 
               {/* Order Totals */}
               {orderItems.length > 0 && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box
+                  sx={theme => ({
+                    mt: 2,
+                    p: 2,
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
+                  })}
+                >
                   {(() => {
-                    const totals = calculateTotals();
+                    const totals = calculateTotals()
                     return (
                       <>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1289,52 +1499,29 @@ export default function Orders() {
                           <Typography>Tax ({(taxRate * 100).toFixed(0)}%):</Typography>
                           <Typography>{formatCurrency(totals.taxAmount)}</Typography>
                         </Box>
-                        <TextField
-                          fullWidth
-                          label="Tip Amount"
-                          type="number"
-                          size="small"
-                          value={newOrder.tipAmount || 0}
-                          onChange={(e) => setNewOrder({...newOrder, tipAmount: parseFloat(e.target.value) || 0})}
-                          sx={{ mt: 1 }}
-                        />
+                        <TextField fullWidth label="Tip Amount" type="number" size="small" value={newOrder.tipAmount || 0} onChange={e => setNewOrder({ ...newOrder, tipAmount: parseFloat(e.target.value) || 0 })} sx={{ mt: 1 }} />
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                           <Typography variant="h6">Total:</Typography>
-                          <Typography variant="h6">{formatCurrency(totals.total)}</Typography>
+                          <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                            {formatCurrency(totals.total)}
+                          </Typography>
                         </Box>
                       </>
-                    );
+                    )
                   })()}
                 </Box>
               )}
 
               {/* Order Details */}
               <Box sx={{ mt: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Order Date & Time"
-                  type="datetime-local"
-                  value={newOrder.orderTime ? newOrder.orderTime.toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setNewOrder({...newOrder, orderTime: new Date(e.target.value)})}
-                  sx={{ mb: 2 }}
-                  InputLabelProps={{ shrink: true }}
-                />
+                <TextField fullWidth label="Order Date & Time" type="datetime-local" value={newOrder.orderTime ? newOrder.orderTime.toISOString().slice(0, 16) : ''} onChange={e => setNewOrder({ ...newOrder, orderTime: new Date(e.target.value) })} sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} />
 
-                <TextField
-                  fullWidth
-                  label="Location"
-                  value={newOrder.location || 'Main Location'}
-                  onChange={(e) => setNewOrder({...newOrder, location: e.target.value})}
-                  sx={{ mb: 2 }}
-                />
+                <TextField fullWidth label="Location" value={newOrder.location || 'Main Location'} onChange={e => setNewOrder({ ...newOrder, location: e.target.value })} sx={{ mb: 2 }} />
 
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Payment Method</InputLabel>
-                  <Select
-                    value={newOrder.paymentMethod || 'card'}
-                    onChange={(e) => setNewOrder({...newOrder, paymentMethod: e.target.value as any})}
-                  >
+                  <Select value={newOrder.paymentMethod || 'card'} onChange={e => setNewOrder({ ...newOrder, paymentMethod: e.target.value as any })}>
                     <MuiMenuItem value="cash">Cash 💵</MuiMenuItem>
                     <MuiMenuItem value="card">Card 💳</MuiMenuItem>
                     <MuiMenuItem value="mobile">Mobile 📱</MuiMenuItem>
@@ -1343,43 +1530,30 @@ export default function Orders() {
                   </Select>
                 </FormControl>
 
-                <TextField
-                  fullWidth
-                  label="Special Instructions"
-                  multiline
-                  rows={2}
-                  value={newOrder.specialInstructions || ''}
-                  onChange={(e) => setNewOrder({...newOrder, specialInstructions: e.target.value})}
-                />
+                <TextField fullWidth label="Special Instructions" multiline rows={2} value={newOrder.specialInstructions || ''} onChange={e => setNewOrder({ ...newOrder, specialInstructions: e.target.value })} />
               </Box>
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {setOpenOrderDialog(false); resetOrderForm();}}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleCreateOrder}
-            disabled={orderItems.length === 0}
+          <Button
+            onClick={() => {
+              setOpenOrderDialog(false)
+              resetOrderForm()
+            }}
           >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleCreateOrder} disabled={orderItems.length === 0}>
             Add Order Record ({formatCurrency(calculateTotals().total)})
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* AI Order Importer Dialog */}
-      <AIOrderImporter
-        open={openAIImportDialog}
-        onClose={() => setOpenAIImportDialog(false)}
-        onOrdersImported={handleAIOrdersImported}
-      />
+      <AIOrderImporter open={openAIImportDialog} onClose={() => setOpenAIImportDialog(false)} onOrdersImported={handleAIOrdersImported} />
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        message={snackbar.message}
-      />
+      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })} message={snackbar.message} />
     </Box>
-  );
+  )
 }

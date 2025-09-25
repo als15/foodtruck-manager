@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 import {
   BarChart,
@@ -15,58 +16,213 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  LineChart,
   Line,
   PieChart,
   Pie,
   Cell,
   ResponsiveContainer,
+  ComposedChart,
 } from 'recharts';
 import { formatCurrency } from '../utils/currency';
-
-const salesData = [
-  { month: 'Jan', revenue: 12000, expenses: 8000, profit: 4000 },
-  { month: 'Feb', revenue: 15000, expenses: 9000, profit: 6000 },
-  { month: 'Mar', revenue: 18000, expenses: 11000, profit: 7000 },
-  { month: 'Apr', revenue: 22000, expenses: 13000, profit: 9000 },
-  { month: 'May', revenue: 25000, expenses: 15000, profit: 10000 },
-  { month: 'Jun', revenue: 28000, expenses: 16000, profit: 12000 },
-];
-
-const dailySalesData = [
-  { day: 'Mon', orders: 45, revenue: 890 },
-  { day: 'Tue', orders: 52, revenue: 1050 },
-  { day: 'Wed', orders: 38, revenue: 760 },
-  { day: 'Thu', orders: 61, revenue: 1220 },
-  { day: 'Fri', orders: 89, revenue: 1780 },
-  { day: 'Sat', orders: 125, revenue: 2500 },
-  { day: 'Sun', orders: 98, revenue: 1960 },
-];
-
-const popularItemsData = [
-  { name: 'Classic Burger', value: 35, color: '#0088FE' },
-  { name: 'Fish Tacos', value: 25, color: '#00C49F' },
-  { name: 'Veggie Wrap', value: 20, color: '#FFBB28' },
-  { name: 'BBQ Sandwich', value: 12, color: '#FF8042' },
-  { name: 'Other', value: 8, color: '#8884d8' },
-];
-
-const locationPerformanceData = [
-  { location: 'Downtown Park', revenue: 8500, orders: 245 },
-  { location: 'Business District', revenue: 6200, orders: 189 },
-  { location: 'Food Festival', revenue: 4800, orders: 156 },
-  { location: 'University Campus', revenue: 3900, orders: 132 },
-];
+import { ordersService, transactionsService, menuItemsService, customersService, shiftsService } from '../services/supabaseService';
+import { Order, Transaction, MenuItem, Customer, Shift } from '../types';
+import { useTranslation } from 'react-i18next';
 
 export default function Analytics() {
-  const totalRevenue = salesData.reduce((sum, item) => sum + item.revenue, 0);
-  const totalOrders = dailySalesData.reduce((sum, item) => sum + item.orders, 0);
-  const avgOrderValue = totalRevenue / totalOrders;
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [ordersData, transactionsData, menuItemsData, customersData, shiftsData] = await Promise.all([
+        ordersService.getAll(),
+        transactionsService.getAll(),
+        menuItemsService.getAll(),
+        customersService.getAll(),
+        shiftsService.getAll()
+      ]);
+      setOrders(ordersData);
+      setTransactions(transactionsData);
+      setMenuItems(menuItemsData);
+      setCustomers(customersData);
+      setShifts(shiftsData);
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Date calculations
+  const now = new Date();
+  const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Calculate monthly data for the last 6 months
+  const monthlyData = [];
+  for (let i = 5; i >= 0; i--) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    
+    const monthOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderTime);
+      return orderDate >= monthDate && orderDate < nextMonth;
+    });
+    
+    const revenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
+    
+    // Calculate expenses from transactions for this month
+    const monthTransactions = transactions.filter(txn => {
+      const txnDate = new Date(txn.date);
+      return txnDate >= monthDate && txnDate < nextMonth && txn.type === 'expense';
+    });
+    const expenses = monthTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+    
+    monthlyData.push({
+      month: monthDate.toLocaleDateString('en-US', { month: 'short' }),
+      revenue,
+      expenses,
+      profit: revenue - expenses,
+      orders: monthOrders.length
+    });
+  }
+
+  // Calculate daily data for the last 7 days
+  const dailyData = [];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dayOrders = orders.filter(order => {
+      const orderDate = new Date(order.orderTime);
+      return orderDate.toDateString() === date.toDateString();
+    });
+    
+    dailyData.push({
+      day: dayNames[date.getDay()],
+      orders: dayOrders.length,
+      revenue: dayOrders.reduce((sum, order) => sum + order.total, 0)
+    });
+  }
+
+  // Calculate popular menu items from last 30 days
+  const recentOrders = orders.filter(order => new Date(order.orderTime) >= last30Days);
+  const itemSales = new Map<string, { count: number; name: string }>();
+  recentOrders.forEach(order => {
+    order.items.forEach(item => {
+      const existing = itemSales.get(item.menuItemId) || { count: 0, name: '' };
+      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+      itemSales.set(item.menuItemId, {
+        count: existing.count + item.quantity,
+        name: menuItem?.name || 'Unknown Item'
+      });
+    });
+  });
+
+  const topItems = Array.from(itemSales.entries())
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const totalItemsSold = topItems.reduce((sum, item) => sum + item.count, 0);
+  const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const popularItemsData = topItems.map((item, index) => ({
+    name: item.name,
+    value: totalItemsSold > 0 ? Math.round((item.count / totalItemsSold) * 100) : 0,
+    count: item.count,
+    color: colors[index] || '#8884d8'
+  }));
+
+  // Calculate location performance
+  const locationMap = new Map<string, { revenue: number; orders: number }>();
+  recentOrders.forEach(order => {
+    const location = order.location || 'Unknown Location';
+    const existing = locationMap.get(location) || { revenue: 0, orders: 0 };
+    locationMap.set(location, {
+      revenue: existing.revenue + order.total,
+      orders: existing.orders + 1
+    });
+  });
+
+  const locationPerformanceData = Array.from(locationMap.entries())
+    .map(([location, data]) => ({ location, ...data }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 4);
+
+  // Calculate key metrics
+  const totalRevenue = recentOrders.reduce((sum, order) => sum + order.total, 0);
+  const totalOrders = recentOrders.length;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // Calculate profit margin
+  const totalCosts = recentOrders.reduce((sum, order) => {
+    return sum + order.items.reduce((itemSum, item) => {
+      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+      return itemSum + (menuItem?.totalIngredientCost || 0) * item.quantity;
+    }, 0);
+  }, 0);
+  const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalCosts) / totalRevenue) * 100 : 0;
+
+  // Customer metrics
+  const activeCustomers = customers.filter(customer => 
+    customer.lastVisit && new Date(customer.lastVisit) >= last30Days
+  ).length;
+
+  // Staff productivity
+  const recentShifts = shifts.filter(shift => new Date(shift.date) >= last7Days);
+  const totalHours = recentShifts.reduce((sum, shift) => sum + shift.hoursWorked, 0);
+  const ordersPerHour = totalHours > 0 ? dailyData.reduce((sum, day) => sum + day.orders, 0) / totalHours : 0;
+
+  // Average prep time (calculated from menu items)
+  const avgPrepTime = menuItems.length > 0 ? 
+    menuItems.reduce((sum, item) => sum + (item.prepTime || 0), 0) / menuItems.length : 0;
+
+  // Dynamic business insights calculations
+  const ordersByHour = new Map<number, number>();
+  recentOrders.forEach(order => {
+    const hour = new Date(order.orderTime).getHours();
+    ordersByHour.set(hour, (ordersByHour.get(hour) || 0) + 1);
+  });
+  
+  const peakHours = Array.from(ordersByHour.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([hour]) => `${hour}:00`);
+
+  const bestDay = dailyData.reduce((best, day) => 
+    day.revenue > best.revenue ? day : best, dailyData[0] || { day: 'N/A', revenue: 0 });
+
+  const bestLocation = locationPerformanceData[0] || { location: 'N/A', revenue: 0 };
+  
+  const topMenuItem = topItems[0] || { name: 'N/A', count: 0 };
+  const topItemPercentage = totalItemsSold > 0 ? Math.round((topMenuItem.count / totalItemsSold) * 100) : 0;
+
+  const repeatCustomers = customers.filter(c => c.totalOrders && c.totalOrders > 1).length;
+  const loyaltyRate = customers.length > 0 ? Math.round((repeatCustomers / customers.length) * 100) : 0;
+
+  const avgCustomerValue = activeCustomers > 0 ? Math.round(totalRevenue / activeCustomers) : 0;
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 3 }}>
-        Analytics Dashboard
+        {t('analytics')} Dashboard
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -74,13 +230,13 @@ export default function Analytics() {
           <Card>
             <CardContent>
               <Typography variant="h6" color="primary">
-                Total Revenue (6M)
+                {t('total_revenue')} (30D)
               </Typography>
               <Typography variant="h4">
                 {formatCurrency(totalRevenue)}
               </Typography>
-              <Typography variant="body2" color="success.main">
-                +15% from last period
+              <Typography variant="body2" color="text.secondary">
+                {totalOrders} {t('orders_text')} • {formatCurrency(avgOrderValue)} {t('avg_order_value')}
               </Typography>
             </CardContent>
           </Card>
@@ -89,13 +245,13 @@ export default function Analytics() {
           <Card>
             <CardContent>
               <Typography variant="h6" color="info.main">
-                Total Orders (7D)
+                {t('total_orders')} (30D)
               </Typography>
               <Typography variant="h4">
                 {totalOrders}
               </Typography>
-              <Typography variant="body2" color="success.main">
-                +8% from last week
+              <Typography variant="body2" color="text.secondary">
+                {activeCustomers} {t('active_customers')}
               </Typography>
             </CardContent>
           </Card>
@@ -104,13 +260,13 @@ export default function Analytics() {
           <Card>
             <CardContent>
               <Typography variant="h6" color="warning.main">
-                Avg Order Value
+                {t('average_order_value')}
               </Typography>
               <Typography variant="h4">
-                ${avgOrderValue.toFixed(2)}
+                {formatCurrency(avgOrderValue)}
               </Typography>
-              <Typography variant="body2" color="success.main">
-                +5% from last period
+              <Typography variant="body2" color="text.secondary">
+                {ordersPerHour.toFixed(1)} {t('orders_per_hour')}
               </Typography>
             </CardContent>
           </Card>
@@ -119,13 +275,13 @@ export default function Analytics() {
           <Card>
             <CardContent>
               <Typography variant="h6" color="success.main">
-                Profit Margin
+                {t('profit_margin')}
               </Typography>
               <Typography variant="h4">
-                42%
+                {profitMargin.toFixed(1)}%
               </Typography>
-              <Typography variant="body2" color="success.main">
-                +2% from last month
+              <Typography variant="body2" color="text.secondary">
+                {formatCurrency(totalRevenue - totalCosts)} {t('profit')}
               </Typography>
             </CardContent>
           </Card>
@@ -139,7 +295,7 @@ export default function Analytics() {
               Revenue vs Expenses (6 Months)
             </Typography>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={salesData}>
+              <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -187,7 +343,7 @@ export default function Analytics() {
               Daily Sales Trends (This Week)
             </Typography>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailySalesData}>
+              <ComposedChart data={dailyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis yAxisId="left" />
@@ -203,7 +359,7 @@ export default function Analytics() {
                   strokeWidth={3}
                   name="Revenue ($)"
                 />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
@@ -244,19 +400,21 @@ export default function Analytics() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Box>
                 <Typography variant="body1">Customer Retention Rate</Typography>
-                <Typography variant="h6" color="success.main">85%</Typography>
+                <Typography variant="h6" color="success.main">
+                  {totalOrders > 0 ? Math.round((customers.filter(c => c.totalOrders && c.totalOrders > 1).length / customers.length) * 100) : 0}%
+                </Typography>
               </Box>
               <Box>
                 <Typography variant="body1">Average Prep Time</Typography>
-                <Typography variant="h6" color="info.main">7.2 min</Typography>
+                <Typography variant="h6" color="info.main">{avgPrepTime.toFixed(1)} min</Typography>
               </Box>
               <Box>
-                <Typography variant="body1">Inventory Turnover</Typography>
-                <Typography variant="h6" color="warning.main">12.4x</Typography>
+                <Typography variant="body1">Active Customers (30d)</Typography>
+                <Typography variant="h6" color="warning.main">{activeCustomers}</Typography>
               </Box>
               <Box>
-                <Typography variant="body1">Employee Productivity</Typography>
-                <Typography variant="h6" color="primary.main">94%</Typography>
+                <Typography variant="body1">Orders per Hour</Typography>
+                <Typography variant="h6" color="primary.main">{ordersPerHour.toFixed(1)}</Typography>
               </Box>
             </Box>
           </Paper>
@@ -269,22 +427,22 @@ export default function Analytics() {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography variant="body2">
-                • Peak hours: 12:00 PM - 2:00 PM and 6:00 PM - 8:00 PM
+                • Peak hours: {peakHours.length > 0 ? peakHours.join(' and ') : 'No data available'}
               </Typography>
               <Typography variant="body2">
-                • Best performing day: Saturday (avg $2,500 revenue)
+                • Best performing day: {bestDay.day} ({formatCurrency(bestDay.revenue)} revenue)
               </Typography>
               <Typography variant="body2">
-                • Most profitable location: Downtown Park
+                • Most profitable location: {bestLocation.location}
               </Typography>
               <Typography variant="body2">
-                • Top menu item: Classic Burger (35% of orders)
+                • Top menu item: {topMenuItem.name} ({topItemPercentage}% of orders)
               </Typography>
               <Typography variant="body2">
-                • Customer loyalty program participation: 68%
+                • Customer retention rate: {loyaltyRate}%
               </Typography>
               <Typography variant="body2">
-                • Average customer lifetime value: $156
+                • Average customer value (30d): {formatCurrency(avgCustomerValue)}
               </Typography>
             </Box>
           </Paper>
