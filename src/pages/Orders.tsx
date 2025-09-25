@@ -450,7 +450,6 @@ export default function Orders() {
       return acc
     }, {} as Record<string, number>)
 
-
     // Calculate average profit margin
     const ordersWithCost = orders.filter(order => {
       const foodCost = calculateOrderFoodCost(order)
@@ -503,7 +502,7 @@ export default function Orders() {
   const getGroupedOrders = () => {
     // First sort orders
     let sortedOrders = [...orders]
-    
+
     switch (sortBy) {
       case 'time':
         sortedOrders.sort((a, b) => {
@@ -534,7 +533,7 @@ export default function Orders() {
     // Group orders
     const grouped = sortedOrders.reduce((groups, order) => {
       let groupKey: string
-      
+
       switch (groupBy) {
         case 'day':
           groupKey = new Date(order.orderTime).toLocaleDateString()
@@ -624,7 +623,7 @@ export default function Orders() {
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                  <Typography variant="h6" color="primary">
+                  <Typography variant="h6" color="text.primary">
                     {t('todays_performance')}
                   </Typography>
                   <Typography variant="h4" className="number-ltr" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
@@ -747,7 +746,7 @@ export default function Orders() {
         </Grid>
 
         {/* Top Selling Items */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={12} lg={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -782,7 +781,7 @@ export default function Orders() {
         </Grid>
 
         {/* Key Metrics */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={12} lg={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -901,7 +900,7 @@ export default function Orders() {
         </Grid>
 
         {/* Payment Methods Breakdown */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={12} lg={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -933,7 +932,6 @@ export default function Orders() {
             </CardContent>
           </Card>
         </Grid>
-
       </Grid>
 
       <Paper>
@@ -946,22 +944,13 @@ export default function Orders() {
         <TabPanel value={tabValue} index={0}>
           {/* Table Toolbar with Grouping Control */}
           <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
-            <Typography
-              sx={{ flex: '1 1 100%' }}
-              variant="h6"
-              id="tableTitle"
-              component="div"
-            >
+            <Typography sx={{ flex: '1 1 100%' }} variant="h6" id="tableTitle" component="div">
               Orders ({orders.length})
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Group by</InputLabel>
-                <Select
-                  value={groupBy}
-                  label="Group by"
-                  onChange={(e) => setGroupBy(e.target.value as any)}
-                >
+                <Select value={groupBy} label="Group by" onChange={e => setGroupBy(e.target.value as any)}>
                   <MuiMenuItem value="none">No grouping</MuiMenuItem>
                   <MuiMenuItem value="day">Day</MuiMenuItem>
                   <MuiMenuItem value="week">Week</MuiMenuItem>
@@ -972,7 +961,7 @@ export default function Orders() {
               </FormControl>
             </Box>
           </Toolbar>
-          
+
           {groupBy === 'none' ? (
             // Standard table view with native sorting
             <TableContainer>
@@ -1141,13 +1130,8 @@ export default function Orders() {
           ) : (
             // Grouped view with accordions
             <>
-              {groupedOrders.map((group) => (
-                <Accordion
-                  key={group.key}
-                  expanded={expandedGroups.has(group.key)}
-                  onChange={() => toggleGroupExpansion(group.key)}
-                  sx={{ mb: 1 }}
-                >
+              {groupedOrders.map(group => (
+                <Accordion key={group.key} expanded={expandedGroups.has(group.key)} onChange={() => toggleGroupExpansion(group.key)} sx={{ mb: 1 }}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mr: 2 }}>
                       <Typography variant="h6">{group.group}</Typography>
@@ -1270,7 +1254,7 @@ export default function Orders() {
               ))}
             </>
           )}
-          
+
           {groupedOrders.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography variant="h6" color="text.secondary">

@@ -393,10 +393,12 @@ export default function Ingredients() {
         <Grid item xs={12} md={3}>
           <Card>
             <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Typography variant="h6" color="primary">
+              <Typography variant="h6" color="text.primary">
                 {t('total_ingredients')}
               </Typography>
-              <Typography variant="h4">{totalIngredients}</Typography>
+              <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+                {totalIngredients}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
