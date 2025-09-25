@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider, Collapse } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon, Kitchen as PrepIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
@@ -38,7 +38,8 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     children: [
       { textKey: 'ingredients', text: t('ingredients'), icon: <InventoryIcon />, path: '/ingredients' },
       { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
-      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' }
+      { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
+      { textKey: 'prep_planner', text: t('prep_planner'), icon: <PrepIcon />, path: '/prep-planner' }
     ]
   },
   {
