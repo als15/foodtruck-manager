@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Avatar, Tab, Tabs, IconButton, Grid, Snackbar, Alert, useTheme } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Today as TodayIcon } from '@mui/icons-material'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Avatar, Tab, Tabs, IconButton, Grid, Snackbar, Alert, useTheme, FormGroup, FormControlLabel, Checkbox } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Today as TodayIcon, Download as PdfIcon, FileDownload as DownloadIcon, Settings as SettingsIcon } from '@mui/icons-material'
 import { Employee, Shift } from '../types'
 import { employeesService, shiftsService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
+import { exportScheduleToPDF, exportScheduleToImage } from '../utils/pdfExport'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -25,7 +26,10 @@ export default function Employees() {
   const theme = useTheme()
   const isRtl = theme.direction === 'rtl'
   const { t, i18n } = useTranslation()
-  const [tabValue, setTabValue] = useState(0)
+  const [tabValue, setTabValue] = useState(() => {
+    const savedTab = localStorage.getItem('employeesTabValue')
+    return savedTab ? parseInt(savedTab, 10) : 0
+  })
   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false)
   const [openShiftDialog, setOpenShiftDialog] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
@@ -33,6 +37,22 @@ export default function Employees() {
   const [loading, setLoading] = useState(false)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
   const [selectedWeek, setSelectedWeek] = useState(new Date()) // Week to display in payroll
+  const [scheduleWeek, setScheduleWeek] = useState(new Date()) // Week to display in schedule
+  const [weeklySchedule, setWeeklySchedule] = useState<{
+    [employeeId: string]: {
+      [dayKey: string]: {
+        startTime: string
+        endTime: string
+      }
+    }
+  }>({}) // Weekly schedule state
+
+  // Operating days configuration (0=Sunday, 1=Monday, ..., 6=Saturday)
+  const [operatingDays, setOperatingDays] = useState<number[]>(() => {
+    const saved = localStorage.getItem('operatingDays')
+    return saved ? JSON.parse(saved) : [4, 5, 6] // Thursday, Friday, Saturday by default
+  })
+  const [openDaysDialog, setOpenDaysDialog] = useState(false)
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
@@ -62,6 +82,18 @@ export default function Employees() {
   useEffect(() => {
     loadAllData()
   }, [])
+
+  // Load schedule when schedule week changes
+  useEffect(() => {
+    loadScheduleForWeek(scheduleWeek)
+  }, [scheduleWeek])
+
+  // Load schedule when shifts are initially loaded
+  useEffect(() => {
+    if (shifts.length > 0) {
+      loadScheduleForWeek(scheduleWeek)
+    }
+  }, [shifts.length])
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -108,8 +140,45 @@ export default function Employees() {
     }
   }
 
+  const loadScheduleForWeek = async (weekDate: Date) => {
+    try {
+      const data = await shiftsService.getAll()
+      const weekStart = new Date(weekDate)
+      weekStart.setDate(weekDate.getDate() - weekDate.getDay())
+      weekStart.setHours(0, 0, 0, 0)
+
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+
+      // Filter shifts for the current week
+      const weekShifts = data.filter(shift => {
+        const shiftDate = new Date(shift.date)
+        return shiftDate >= weekStart && shiftDate <= weekEnd
+      })
+
+      // Convert shifts to schedule format
+      const newSchedule: typeof weeklySchedule = {}
+      weekShifts.forEach(shift => {
+        const dayKey = formatDayKey(new Date(shift.date))
+        if (!newSchedule[shift.employeeId]) {
+          newSchedule[shift.employeeId] = {}
+        }
+        newSchedule[shift.employeeId][dayKey] = {
+          startTime: shift.startTime,
+          endTime: shift.endTime
+        }
+      })
+
+      setWeeklySchedule(newSchedule)
+    } catch (error) {
+      console.error('Failed to load schedule for week:', error)
+    }
+  }
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
+    localStorage.setItem('employeesTabValue', newValue.toString())
   }
 
   const handleSaveEmployee = async () => {
@@ -338,6 +407,183 @@ export default function Employees() {
     return weekShifts.reduce((total, shift) => total + shift.hoursWorked, 0)
   }
 
+  // Schedule helper functions
+  const navigateScheduleWeek = (direction: 'prev' | 'next' | 'current') => {
+    let newWeek: Date
+    if (direction === 'current') {
+      newWeek = new Date()
+    } else {
+      newWeek = new Date(scheduleWeek)
+      const daysToAdd = direction === 'next' ? 7 : -7
+      newWeek.setDate(scheduleWeek.getDate() + daysToAdd)
+    }
+    setScheduleWeek(newWeek)
+    loadScheduleForWeek(newWeek)
+  }
+
+  const getWeekDays = (date: Date) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return []
+    }
+
+    const weekStart = new Date(date)
+    weekStart.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+
+    const days = []
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(weekStart)
+      day.setDate(weekStart.getDate() + i)
+      days.push(day)
+    }
+
+    return days
+  }
+
+  const getWeekDaysForDisplay = (date: Date) => {
+    const days = getWeekDays(date)
+    // Filter only operating days
+    const operatingDaysOnly = days.filter(day => operatingDays.includes(day.getDay()))
+    // Reverse days for RTL (Hebrew) in UI only
+    return isRtl ? [...operatingDaysOnly].reverse() : operatingDaysOnly
+  }
+
+  const formatDayKey = (date: Date) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return new Date().toISOString().split('T')[0] // Fallback to today
+    }
+    return date.toISOString().split('T')[0] // YYYY-MM-DD format
+  }
+
+  const updateEmployeeSchedule = async (employeeId: string, dayKey: string, field: 'startTime' | 'endTime', value: string) => {
+    // Update local state first
+    const newSchedule = {
+      ...weeklySchedule,
+      [employeeId]: {
+        ...weeklySchedule[employeeId],
+        [dayKey]: {
+          startTime: weeklySchedule[employeeId]?.[dayKey]?.startTime || '',
+          endTime: weeklySchedule[employeeId]?.[dayKey]?.endTime || '',
+          [field]: value
+        }
+      }
+    }
+    setWeeklySchedule(newSchedule)
+
+    // Get the complete time data for this day
+    const daySchedule = newSchedule[employeeId][dayKey]
+    const date = new Date(dayKey)
+
+    try {
+      // Find existing shift for this employee and day
+      const existingShift = shifts.find(shift => shift.employeeId === employeeId && formatDayKey(new Date(shift.date)) === dayKey)
+
+      if (daySchedule.startTime && daySchedule.endTime) {
+        // Both times are set, create or update shift
+        const employee = employees.find(emp => emp.id === employeeId)
+        if (employee) {
+          const hoursWorked = calculateHoursWorked(daySchedule.startTime, daySchedule.endTime)
+
+          const shiftData = {
+            employeeId,
+            date,
+            startTime: daySchedule.startTime,
+            endTime: daySchedule.endTime,
+            hoursWorked,
+            role: employee.position,
+            location: 'Main Location'
+          }
+
+          if (existingShift) {
+            // Update existing shift
+            await shiftsService.update(existingShift.id, shiftData)
+          } else {
+            // Create new shift
+            await shiftsService.create(shiftData)
+          }
+
+          // Reload shifts to get updated data
+          await loadShifts()
+        }
+      } else if (existingShift && (!daySchedule.startTime || !daySchedule.endTime)) {
+        // One or both times are empty, delete the shift
+        await shiftsService.delete(existingShift.id)
+        await loadShifts()
+      }
+    } catch (error) {
+      console.error('Failed to save schedule change:', error)
+      // Optionally show error to user
+      setSnackbar({ open: true, message: t('failed_to_save_schedule'), severity: 'error' })
+    }
+  }
+
+  const addEmployeeToSchedule = () => {
+    const newEmployeeId = `temp-${Date.now()}`
+    setEmployees(prev => [
+      ...prev,
+      {
+        id: newEmployeeId,
+        businessId: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        position: '',
+        hourlyRate: 0,
+        hireDate: new Date(),
+        isActive: true
+      }
+    ])
+  }
+
+  const removeEmployeeFromSchedule = (employeeId: string) => {
+    if (employeeId.startsWith('temp-')) {
+      setEmployees(prev => prev.filter(emp => emp.id !== employeeId))
+      setWeeklySchedule(prev => {
+        const { [employeeId]: removed, ...rest } = prev
+        return rest
+      })
+    }
+  }
+
+  const handleExportToPDF = async () => {
+    try {
+      await exportScheduleToPDF({
+        employees,
+        scheduleData: weeklySchedule,
+        weekDays: getWeekDaysForDisplay(scheduleWeek),
+        weekRange: formatWeekRange(scheduleWeek),
+        businessName: 'Food Truck Manager',
+        isRtl,
+        operatingDays
+      })
+      setSnackbar({ open: true, message: t('schedule_exported_successfully'), severity: 'success' })
+    } catch (error) {
+      setSnackbar({ open: true, message: t('failed_to_export_schedule'), severity: 'error' })
+    }
+  }
+
+  const handleExportToImage = async () => {
+    try {
+      const fileName = `schedule-${formatWeekRange(scheduleWeek).replace(/[^a-zA-Z0-9]/g, '-')}.pdf`
+      await exportScheduleToImage('weekly-schedule-table', fileName)
+      setSnackbar({ open: true, message: t('schedule_exported_successfully'), severity: 'success' })
+    } catch (error) {
+      setSnackbar({ open: true, message: t('failed_to_export_schedule'), severity: 'error' })
+    }
+  }
+
+  // Helper function to get display name for employees
+  const getDisplayName = (employee: Employee, allEmployees: Employee[]) => {
+    const activeEmployees = allEmployees.filter(emp => emp.isActive)
+    const sameFirstName = activeEmployees.filter(emp => emp.firstName.toLowerCase() === employee.firstName.toLowerCase() && emp.id !== employee.id)
+
+    if (sameFirstName.length > 0) {
+      return `${employee.firstName} ${employee.lastName.charAt(0).toUpperCase()}.`
+    }
+
+    return employee.firstName
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
@@ -359,6 +605,7 @@ export default function Employees() {
           <Tab label={t('employees_tab')} />
           <Tab label={t('shifts_tab')} />
           <Tab label={t('payroll_tab')} />
+          <Tab label={t('schedule_tab')} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -538,6 +785,122 @@ export default function Employees() {
             </TableContainer>
           )}
         </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+              {t('weekly_schedule')}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+              <Button variant="outlined" startIcon={<SettingsIcon />} onClick={() => setOpenDaysDialog(true)} size="small">
+                {t('operating_days')}
+              </Button>
+              <Button variant="outlined" startIcon={<PdfIcon />} onClick={handleExportToPDF} size="small" color="secondary">
+                {t('export_pdf')}
+              </Button>
+              <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportToImage} size="small" color="secondary">
+                {t('export_image')}
+              </Button>
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={addEmployeeToSchedule} size="small">
+                {t('add_employee')}
+              </Button>
+              <IconButton onClick={() => navigateScheduleWeek('prev')} size="small">
+                {isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+              </IconButton>
+              <Button onClick={() => navigateScheduleWeek('current')} startIcon={<TodayIcon />} variant={isCurrentWeek(scheduleWeek) ? 'contained' : 'outlined'} size="small">
+                {isCurrentWeek(scheduleWeek) ? t('current_week') : t('go_to_current')}
+              </Button>
+              <IconButton onClick={() => navigateScheduleWeek('next')} size="small">
+                {isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+              </IconButton>
+            </Box>
+          </Box>
+
+          <Typography variant="subtitle1" sx={{ mb: 2, color: 'text.secondary' }}>
+            {t('week_of')} {formatWeekRange(scheduleWeek)}
+          </Typography>
+
+          <TableContainer component={Paper} sx={{ mb: 3 }} id="weekly-schedule-table">
+            <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('employee')}</TableCell>
+                  {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => (
+                    <TableCell key={formatDayKey(day)} align="center">
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'numeric', day: 'numeric' })}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  ))}
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {employees
+                  .filter(emp => emp.isActive)
+                  .map(employee => {
+                    const employeeSchedule = weeklySchedule[employee.id] || {}
+
+                    return (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <Box>
+                            {employee.id.startsWith('temp-') ? (
+                              <TextField
+                                size="small"
+                                placeholder="Employee name"
+                                value={`${employee.firstName} ${employee.lastName}`.trim()}
+                                onChange={e => {
+                                  const [firstName, ...lastNameParts] = e.target.value.split(' ')
+                                  const lastName = lastNameParts.join(' ')
+                                  setEmployees(prev => prev.map(emp => (emp.id === employee.id ? { ...emp, firstName: firstName || '', lastName: lastName || '' } : emp)))
+                                }}
+                                sx={{ width: 120 }}
+                              />
+                            ) : (
+                              <>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {getDisplayName(employee, employees)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {employee.position}
+                                </Typography>
+                              </>
+                            )}
+                          </Box>
+                        </TableCell>
+                        {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => {
+                          const dayKey = formatDayKey(day)
+                          const daySchedule = employeeSchedule[dayKey] || { startTime: '', endTime: '' }
+
+                          return (
+                            <TableCell key={dayKey} align="center">
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                                <TextField size="small" type="time" value={daySchedule.startTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'startTime', e.target.value)} sx={{ width: 100 }} placeholder="Start" />
+                                <TextField size="small" type="time" value={daySchedule.endTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'endTime', e.target.value)} sx={{ width: 100 }} placeholder="End" />
+                              </Box>
+                            </TableCell>
+                          )
+                        })}
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                          {employee.id.startsWith('temp-') && (
+                            <IconButton size="small" onClick={() => removeEmployeeFromSchedule(employee.id)}>
+                              <DeleteIcon />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
       </Paper>
 
       {/* Employee Dialog */}
@@ -626,6 +989,58 @@ export default function Employees() {
           <Button onClick={() => setOpenShiftDialog(false)}>{t('cancel')}</Button>
           <Button onClick={handleSaveShift} variant="contained">
             {editingShift ? t('update_shift') : t('schedule_shift')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Operating Days Dialog */}
+      <Dialog open={openDaysDialog} onClose={() => setOpenDaysDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('configure_operating_days')}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+            {t('select_days_business_operates')}
+          </Typography>
+          <FormGroup>
+            {[
+              { day: 0, label: t('sunday') },
+              { day: 1, label: t('monday') },
+              { day: 2, label: t('tuesday') },
+              { day: 3, label: t('wednesday') },
+              { day: 4, label: t('thursday') },
+              { day: 5, label: t('friday') },
+              { day: 6, label: t('saturday') }
+            ].map(({ day, label }) => (
+              <FormControlLabel
+                key={day}
+                control={
+                  <Checkbox
+                    checked={operatingDays.includes(day)}
+                    onChange={e => {
+                      let newDays: number[]
+                      if (e.target.checked) {
+                        newDays = [...operatingDays, day].sort()
+                      } else {
+                        newDays = operatingDays.filter(d => d !== day)
+                      }
+                      setOperatingDays(newDays)
+                      localStorage.setItem('operatingDays', JSON.stringify(newDays))
+                    }}
+                  />
+                }
+                label={label}
+              />
+            ))}
+          </FormGroup>
+          {operatingDays.length === 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              {t('select_at_least_one_day')}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDaysDialog(false)}>{t('cancel')}</Button>
+          <Button onClick={() => setOpenDaysDialog(false)} variant="contained" disabled={operatingDays.length === 0}>
+            {t('save')}
           </Button>
         </DialogActions>
       </Dialog>

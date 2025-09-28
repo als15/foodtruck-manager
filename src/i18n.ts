@@ -86,6 +86,15 @@ const resources = {
       employees_tab: 'Employees',
       shifts_tab: 'Shifts',
       payroll_tab: 'Payroll',
+      schedule_tab: 'Schedule',
+      weekly_schedule: 'Weekly Schedule',
+      day: 'Day',
+      shift_hours: 'Shift Hours',
+      assigned_employees: 'Assigned Employees',
+      select_employees: 'Select Employees',
+      save_shifts: 'Save Shifts',
+      shifts_scheduled_success: 'Shifts scheduled successfully',
+      failed_to_schedule_shifts: 'Failed to schedule shifts',
       employee: 'Employee',
       date: 'Date',
       start_time: 'Start Time',
@@ -121,6 +130,15 @@ const resources = {
       shift_scheduled_success: 'Shift scheduled successfully',
       failed_to_update_shift: 'Failed to update shift',
       failed_to_schedule_shift: 'Failed to schedule shift',
+      export_pdf: 'Export PDF',
+      export_image: 'Export Image',
+      schedule_exported_successfully: 'Schedule exported successfully',
+      failed_to_export_schedule: 'Failed to export schedule',
+      operating_days: 'Operating Days',
+      configure_operating_days: 'Configure Operating Days',
+      select_days_business_operates: 'Select the days your business operates:',
+      select_at_least_one_day: 'Please select at least one operating day',
+      failed_to_save_schedule: 'Failed to save schedule changes',
 
       // Suppliers Summary
       total_suppliers: 'Total Suppliers',
@@ -777,7 +795,9 @@ const resources = {
       mapped_products_label: 'Mapped Products',
       review_and_process: 'Review & Process',
       process_sales_data: 'Process Sales Data',
-      will_be_excluded: 'will be excluded from import'
+      will_be_excluded: 'will be excluded from import',
+      avg_profit_margin: 'Avg Profit Margin',
+      with_cost_data: 'with cost data'
     }
   },
   he: {
@@ -862,6 +882,15 @@ const resources = {
       employees_tab: 'עובדים',
       shifts_tab: 'משמרות',
       payroll_tab: 'שכר',
+      schedule_tab: 'לוח זמנים',
+      weekly_schedule: 'לוח זמנים שבועי',
+      day: 'יום',
+      shift_hours: 'שעות משמרת',
+      assigned_employees: 'עובדים שיוכו',
+      select_employees: 'בחר עובדים',
+      save_shifts: 'שמור משמרות',
+      shifts_scheduled_success: 'המשמרות נקבעו בהצלחה',
+      failed_to_schedule_shifts: 'נכשל בקביעת משמרות',
       employee: 'עובד',
       date: 'תאריך',
       start_time: 'שעת התחלה',
@@ -897,6 +926,15 @@ const resources = {
       shift_scheduled_success: 'המשמרת נקבעה בהצלחה',
       failed_to_update_shift: 'נכשל בעדכון משמרת',
       failed_to_schedule_shift: 'נכשל בקביעת משמרת',
+      export_pdf: 'ייצא PDF',
+      export_image: 'ייצא תמונה',
+      schedule_exported_successfully: 'לוח הזמנים יוצא בהצלחה',
+      failed_to_export_schedule: 'נכשל בייצוא לוח הזמנים',
+      operating_days: 'ימי פעילות',
+      configure_operating_days: 'הגדר ימי פעילות',
+      select_days_business_operates: 'בחר את הימים בהם העסק פועל:',
+      select_at_least_one_day: 'אנא בחר לפחות יום פעילות אחד',
+      failed_to_save_schedule: 'נכשל בשמירת שינויי לוח הזמנים',
 
       // Suppliers Summary
       total_suppliers: 'סך הספקים',
@@ -1508,7 +1546,9 @@ const resources = {
       mapped_products_label: 'מוצרים שמופו',
       review_and_process: 'סקירה ועיבוד',
       process_sales_data: 'עבד נתוני מכירות',
-      will_be_excluded: 'לא ייכלל בייבוא'
+      will_be_excluded: 'לא ייכלל בייבוא',
+      avg_profit_margin: 'שולי רווח ממוצעים',
+      with_cost_data: 'עם נתוני עלות'
     }
   }
 }

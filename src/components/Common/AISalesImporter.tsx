@@ -71,7 +71,8 @@ interface AISalesImporterProps {
 }
 
 const AISalesImporter: React.FC<AISalesImporterProps> = ({ open, onClose, onSalesDataImported, title = 'AI-Powered Sales Import', description = 'Import sales data from your payment provider' }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
   const [activeStep, setActiveStep] = useState(0)
   const [parsedData, setParsedData] = useState<ParsedData | null>(null)
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([])
@@ -502,7 +503,7 @@ const AISalesImporter: React.FC<AISalesImporterProps> = ({ open, onClose, onSale
 
       <DialogContent>
         <Box sx={{ mb: 3 }}>
-          <Stepper activeStep={activeStep} alternativeLabel>
+          <Stepper activeStep={activeStep} alternativeLabel sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
             {steps.map(label => (
               <Step key={label}>
                 <StepLabel>{label}</StepLabel>
