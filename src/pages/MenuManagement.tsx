@@ -295,10 +295,10 @@ export default function MenuManagement() {
               <CardContent sx={{ pb: 1 }}>
                 {/* Header */}
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 0.5, pr: 4 }}>
+                  <Typography variant="h6" sx={{ mb: 0.5, pr: 4, textAlign: isRtl ? 'right' : 'left' }}>
                     {item.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
                     {item.description}
                   </Typography>
                 </Box>
@@ -322,7 +322,8 @@ export default function MenuManagement() {
                       variant="h5"
                       sx={theme => ({
                         fontWeight: 'bold',
-                        color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
+                        color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary,
+                        textAlign: isRtl ? 'right' : 'left'
                       })}
                     >
                       {formatCurrency(item.price)}
@@ -333,10 +334,11 @@ export default function MenuManagement() {
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
-                      {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}% margin`}
+                      {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}% ${t('margin')}`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {item.prepTime}min prep
+                      {item.prepTime}
+                      {t('minutes_short')} {t('prep')}
                     </Typography>
                   </Box>
                 </Box>
@@ -425,7 +427,7 @@ export default function MenuManagement() {
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
-                    {profitMargin === -1 ? 'No cost data' : `${profitMargin.toFixed(1)}%`}
+                    {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}%`}
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
@@ -688,8 +690,8 @@ export default function MenuManagement() {
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Modern Header */}
       <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar sx={{ gap: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
+        <Toolbar sx={{ gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1, textAlign: isRtl ? 'right' : 'left' }}>
             {t('menu_management')}
           </Typography>
 
@@ -700,17 +702,27 @@ export default function MenuManagement() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              )
+              ...(isRtl
+                ? {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    )
+                  }
+                : {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    )
+                  })
             }}
             sx={{ minWidth: 250 }}
           />
 
           {/* View Toggle */}
-          <ToggleButtonGroup value={viewMode} exclusive onChange={(_, newMode) => newMode && setViewMode(newMode)} size="small">
+          <ToggleButtonGroup value={viewMode} exclusive onChange={(_, newMode) => newMode && setViewMode(newMode)} size="small" sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
             <ToggleButton value="grid">
               <GridViewIcon fontSize="small" />
             </ToggleButton>
@@ -734,7 +746,8 @@ export default function MenuManagement() {
           p: 2,
           bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
           borderBottom: 1,
-          borderColor: 'divider'
+          borderColor: 'divider',
+          flexDirection: isRtl ? 'row-reverse' : 'row'
         })}
       >
         {/* Category Tabs */}
@@ -756,7 +769,7 @@ export default function MenuManagement() {
             <Tab
               key={category}
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                   <Typography variant="body2">{category === 'all' ? t('all_items') : t(category)}</Typography>
                   <Chip label={getCategoryCount(category)} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
                 </Box>
@@ -852,7 +865,9 @@ export default function MenuManagement() {
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">{t('ingredients')}</Typography>
+                <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  {t('ingredients')}
+                </Typography>
                 <Stack direction="row" spacing={1}>
                   <Tooltip title={t('download_template_tooltip')}>
                     <Button variant="text" size="small" startIcon={<DownloadIcon />} onClick={downloadIngredientsTemplate}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Autocomplete, Switch, FormControlLabel, CircularProgress, Alert, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, useTheme } from '@mui/material'
+import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Autocomplete, Switch, FormControlLabel, CircularProgress, Alert, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, useTheme, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, Kitchen as KitchenIcon, Upload as UploadIcon, Download as DownloadIcon, MoreVert as MoreVertIcon, AutoAwesome as AIIcon } from '@mui/icons-material'
 import { Ingredient, Supplier } from '../types'
 import { ingredientsService, suppliersService, subscriptions } from '../services/supabaseService'
@@ -26,6 +26,9 @@ export default function Ingredients() {
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [selectedSupplierForImport, setSelectedSupplierForImport] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // View toggle: 'table' (default) or 'grouped'
+  const [ingredientsView, setIngredientsView] = useState<'table' | 'grouped'>('table')
 
   const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
     name: '',
@@ -379,7 +382,11 @@ export default function Ingredients() {
         <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
           {t('ingredient_management')}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <ToggleButtonGroup value={ingredientsView} exclusive onChange={(_, v) => v && setIngredientsView(v)} size="small" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }}>
+            <ToggleButton value="table">{t('table_view') || 'Table'}</ToggleButton>
+            <ToggleButton value="grouped">{t('grouped_view') || 'Grouped'}</ToggleButton>
+          </ToggleButtonGroup>
           <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={e => setMenuAnchor(e.currentTarget)}>
             {t('import_export')}
           </Button>
@@ -434,90 +441,162 @@ export default function Ingredients() {
         </Grid>
       </Grid>
 
-      {categories.map(category => (
-        <Box key={category} sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-            <KitchenIcon sx={{ marginInlineEnd: 1 }} />
-            {category}
-          </Typography>
+      {ingredientsView === 'table' ? (
+        <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+          <Table dir={isRtl ? 'rtl' : 'ltr'}>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('ingredient_name')}</TableCell>
+                <TableCell>{t('category')}</TableCell>
+                <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
+                <TableCell>{t('unit')}</TableCell>
+                <TableCell>{t('supplier_label')}</TableCell>
+                <TableCell>{t('status_text')}</TableCell>
+                <TableCell>{t('last_updated')}</TableCell>
+                <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {ingredients
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(ingredient => (
+                  <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
+                    <TableCell>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                        {ingredient.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                        {ingredient.category}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' }}>
+                        {formatCurrency(ingredient.costPerUnit)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                        {ingredient.unit}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                        {ingredient.supplier}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
+                        {ingredient.lastUpdated.toLocaleDateString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                      <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
+                        <DuplicateIcon />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        categories.map(category => (
+          <Box key={category} sx={{ mb: 4 }}>
+            <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+              <KitchenIcon sx={{ marginInlineEnd: 1 }} />
+              {category}
+            </Typography>
 
-          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-            <Table dir={isRtl ? 'rtl' : 'ltr'}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('ingredient_name')}</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
-                  <TableCell>{t('unit')}</TableCell>
-                  <TableCell>{t('supplier_label')}</TableCell>
-                  <TableCell>{t('status_text')}</TableCell>
-                  <TableCell>{t('last_updated')}</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ingredients
-                  .filter(ing => ing.category === category)
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map(ingredient => (
-                    <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
-                      <TableCell>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontWeight: 600,
-                            color: theme.palette.text.primary
-                          }}
-                        >
-                          {ingredient.name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontWeight: 600,
-                            color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' // Better contrast colors
-                          }}
-                        >
-                          {formatCurrency(ingredient.costPerUnit)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                          {ingredient.unit}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                          {ingredient.supplier}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
-                          {ingredient.lastUpdated.toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                        <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
-                          <DuplicateIcon />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-      ))}
+            <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+              <Table dir={isRtl ? 'rtl' : 'ltr'}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('ingredient_name')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
+                    <TableCell>{t('unit')}</TableCell>
+                    <TableCell>{t('supplier_label')}</TableCell>
+                    <TableCell>{t('status_text')}</TableCell>
+                    <TableCell>{t('last_updated')}</TableCell>
+                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {ingredients
+                    .filter(ing => ing.category === category)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(ingredient => (
+                      <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
+                        <TableCell>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              fontWeight: 600,
+                              color: theme.palette.text.primary
+                            }}
+                          >
+                            {ingredient.name}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              fontWeight: 600,
+                              color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' // Better contrast colors
+                            }}
+                          >
+                            {formatCurrency(ingredient.costPerUnit)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                            {ingredient.unit}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                            {ingredient.supplier}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
+                            {ingredient.lastUpdated.toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                          <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
+                            <DuplicateIcon />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        ))
+      )}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editingIngredient ? t('edit_ingredient') : t('add_new_ingredient')}</DialogTitle>
@@ -629,31 +708,6 @@ export default function Ingredients() {
       </Menu>
 
       <RecipeParser open={recipeParserOpen} onClose={() => setRecipeParserOpen(false)} onImport={handleRecipeParserImport} />
-
-      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Select Supplier for Import</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-            Please select the supplier that these ingredients will be associated with. All imported ingredients will be assigned to this supplier.
-          </Typography>
-          <Autocomplete options={supplierNames} value={selectedSupplierForImport} onChange={(_, value) => setSelectedSupplierForImport(value || '')} renderInput={params => <TextField {...params} fullWidth label="Select Supplier" placeholder="Choose a supplier for these ingredients" required />} />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setImportDialogOpen(false)
-              setSelectedSupplierForImport('')
-            }}
-          >
-            {t('cancel')}
-          </Button>
-          <Button onClick={handleSupplierImportConfirm} variant="contained" disabled={!selectedSupplierForImport}>
-            Continue with Import
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleFileImport} />
     </Box>
   )
 }

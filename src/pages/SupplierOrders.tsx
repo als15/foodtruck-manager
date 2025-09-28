@@ -782,7 +782,7 @@ export default function SupplierOrders() {
                           >
                             {ORDER_STATUSES.map(status => (
                               <MuiMenuItem key={status} value={status}>
-                                <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
+                                <Chip label={t(status)} color={getStatusColor(status)} size="small" />
                               </MuiMenuItem>
                             ))}
                           </Select>
@@ -846,7 +846,7 @@ export default function SupplierOrders() {
                 <Select value={newOrder.status || 'draft'} onChange={e => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })} label={t('status')}>
                   {ORDER_STATUSES.map(status => (
                     <MuiMenuItem key={status} value={status}>
-                      <Chip label={status.charAt(0).toUpperCase() + status.slice(1)} color={getStatusColor(status)} size="small" />
+                      <Chip label={t(status)} color={getStatusColor(status)} size="small" />
                     </MuiMenuItem>
                   ))}
                 </Select>

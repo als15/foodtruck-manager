@@ -12,15 +12,15 @@ const StatCard = ({ title, value, icon, color, subtitle, isRtl }: any) => (
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
         <Box sx={{ color, mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }}>{icon}</Box>
-        <Typography variant="h6" component="div" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+        <Typography variant="h6" component="div">
           {title}
         </Typography>
       </Box>
-      <Typography variant="h4" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left', width: '100%' }}>
+      <Typography variant="h4" sx={{ mb: 1, width: '100%', textAlign: isRtl ? 'right' : 'left' }}>
         {value}
       </Typography>
       {subtitle && (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+        <Typography variant="body2" color="text.secondary">
           {subtitle}
         </Typography>
       )}
@@ -198,10 +198,6 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
-        {t('dashboard')}
-      </Typography>
-
       <Grid container spacing={3} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard title={t('todays_revenue')} value={formatCurrency(todaysRevenue)} icon={<AttachMoney />} color={revenueChange >= 0 ? 'success.main' : 'error.main'} subtitle={revenueChange >= 0 ? t('plus_percent_from_yesterday', { percent: Math.abs(revenueChange).toFixed(1) }) : `${revenueChange.toFixed(1)}% ${t('from_yesterday')}`} isRtl={isRtl} />
@@ -225,19 +221,17 @@ export default function Dashboard() {
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                 <ShoppingCart sx={{ color: 'warning.main', mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
-                <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-                  {t('auto_order_status')}
-                </Typography>
+                <Typography variant="h6">{t('auto_order_status')}</Typography>
               </Box>
 
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                   <Warning sx={{ color: 'error.main', fontSize: 16, mr: isRtl ? 0 : 0.5, ml: isRtl ? 0.5 : 0 }} />
-                  <Typography variant="body2" color="error" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                  <Typography variant="body2" color="error">
                     {lowStockItems.length} {t('low_stock_items')}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="body2" color="text.secondary">
                   {autoOrderSuggestions.length} {t('suppliers_ready_for_auto_order')}
                 </Typography>
               </Box>
@@ -251,13 +245,12 @@ export default function Dashboard() {
                   borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
                 })}
               >
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="body2" color="text.secondary">
                   {t('estimated_order_value')}
                 </Typography>
                 <Typography
                   variant="h5"
                   sx={theme => ({
-                    textAlign: isRtl ? 'right' : 'left',
                     width: '100%',
                     color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary,
                     fontWeight: 700
@@ -267,35 +260,36 @@ export default function Dashboard() {
                 </Typography>
               </Box>
 
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: isRtl ? 'right' : 'left' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                 {t('visit_inventory_auto_order_to_review')}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
               {t('business_insights')}
             </Typography>
 
+            {/* TODO: Implement Revenue Goal Progress in future */}
             {/* Revenue Goal Progress */}
-            {monthlyRevenueGoal && (
+            {/* {monthlyRevenueGoal && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="body2" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
                   {t('monthly_revenue_goal')}
                 </Typography>
                 <LinearProgress variant="determinate" value={Math.min(goalProgress, 100)} sx={{ mb: 1, height: 8, borderRadius: 4 }} color={goalProgress >= 100 ? 'success' : goalProgress >= 75 ? 'primary' : 'warning'} />
-                <Typography variant="caption" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="caption" color="text.secondary">
                   {formatCurrency(thisMonthRevenue)} {t('of_goal', { value: formatCurrency(monthlyRevenueGoal.targetAmount) })} ({goalProgress.toFixed(1)}%)
                 </Typography>
               </Box>
-            )}
+            )} */}
 
             {/* Top Selling Items */}
             <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left', fontWeight: 'bold' }}>
+              <Typography variant="body2" sx={{ mb: 2, fontWeight: 'bold' }}>
                 {t('top_selling_items_this_week')}
               </Typography>
               {topSellingItems.length > 0 ? (
@@ -303,7 +297,7 @@ export default function Dashboard() {
                   {topSellingItems.map((item, index) => (
                     <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                       <Chip label={index + 1} size="small" color={index === 0 ? 'primary' : index === 1 ? 'secondary' : 'default'} icon={index === 0 ? <Star /> : undefined} />
-                      <Typography variant="body2" sx={{ flex: 1, textAlign: isRtl ? 'right' : 'left' }}>
+                      <Typography variant="body2" sx={{ flex: 1 }}>
                         {item.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -313,7 +307,7 @@ export default function Dashboard() {
                   ))}
                 </Box>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="body2" color="text.secondary">
                   {t('no_sales_this_week')}
                 </Typography>
               )}
@@ -369,7 +363,7 @@ export default function Dashboard() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* Weekly Performance */}
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
                   {t('this_week')}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
@@ -394,7 +388,7 @@ export default function Dashboard() {
 
               {/* Customer Insights */}
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
                   {t('customers')}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
@@ -419,7 +413,7 @@ export default function Dashboard() {
 
               {/* Staff Performance */}
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
                   {t('staff_efficiency')}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>

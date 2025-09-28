@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Typography, Card, CardContent, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert, Chip, IconButton, Divider, Switch, FormControlLabel, Autocomplete, LinearProgress, Stack, useTheme } from '@mui/material'
-import { Add as AddIcon, Delete as DeleteIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, Analytics as AnalyticsIcon, Calculate as CalculateIcon, Refresh as ResetIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Receipt as ExpenseIcon } from '@mui/icons-material'
+import { Add as AddIcon, Delete as DeleteIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, Analytics as AnalyticsIcon, Calculate as CalculateIcon, Refresh as ResetIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Receipt as ExpenseIcon, Upload as ImportIcon } from '@mui/icons-material'
 import { MenuItem, Expense, Ingredient } from '../types'
 import { menuItemsService, expensesService, ingredientsService } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
+import AISalesImporter from '../components/Common/AISalesImporter'
 
 interface SalesScenarioItem {
   menuItemId: string
@@ -23,6 +24,8 @@ interface BreakEvenSettings {
 export default function BreakEvenAnalysis() {
   const { t } = useTranslation()
   const theme = useTheme()
+  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : 'ltr'
+  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -31,6 +34,13 @@ export default function BreakEvenAnalysis() {
   const [loading, setLoading] = useState(true)
   const [showExpenseBreakdown, setShowExpenseBreakdown] = useState(false)
   const [showMonthlyExpenseBreakdown, setShowMonthlyExpenseBreakdown] = useState(false)
+  const [showImporter, setShowImporter] = useState(false)
+  const [importedSalesInfo, setImportedSalesInfo] = useState<{
+    businessName: string
+    dateRange: string
+    totalRevenue: number
+    totalQuantity: number
+  } | null>(null)
   const [settings, setSettings] = useState<BreakEvenSettings>({
     dailyLaborCost: 200,
     monthlyLaborCost: 6000,
@@ -99,6 +109,36 @@ export default function BreakEvenAnalysis() {
 
   const resetScenario = () => {
     setSalesScenario([])
+    setImportedSalesInfo(null)
+  }
+
+  const handleSalesDataImported = (salesData: any[], summary: any) => {
+    // Convert imported sales data to scenario items
+    const newScenarioItems: SalesScenarioItem[] = []
+
+    salesData.forEach(item => {
+      if (item.menuItem) {
+        // Check if this menu item already exists in scenario
+        const existingIndex = newScenarioItems.findIndex(s => s.menuItemId === item.menuItem.id)
+
+        if (existingIndex >= 0) {
+          // Add to existing quantity
+          newScenarioItems[existingIndex].dailyQuantity += item.quantity
+        } else {
+          // Add new item
+          newScenarioItems.push({
+            menuItemId: item.menuItem.id,
+            menuItem: item.menuItem,
+            dailyQuantity: item.quantity
+          })
+        }
+      }
+    })
+
+    // Set the scenario and import info
+    setSalesScenario(newScenarioItems)
+    setImportedSalesInfo(summary)
+    setShowImporter(false)
   }
 
   const calculateItemCost = (menuItem: MenuItem): number => {
@@ -219,16 +259,21 @@ export default function BreakEvenAnalysis() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <AnalyticsIcon color="primary" sx={{ fontSize: 32 }} />
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Break-Even Analysis
+            {t('break_even_analysis')}
           </Typography>
         </Box>
-        <Button variant="outlined" startIcon={<ResetIcon />} onClick={resetScenario} disabled={salesScenario.length === 0}>
-          Reset Scenario
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Button variant="contained" startIcon={<ImportIcon />} onClick={() => setShowImporter(true)}>
+            {t('import_sales_data')}
+          </Button>
+          <Button variant="outlined" startIcon={<ResetIcon />} onClick={resetScenario} disabled={salesScenario.length === 0}>
+            {t('reset_scenario')}
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -238,7 +283,7 @@ export default function BreakEvenAnalysis() {
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CalculateIcon />
-                Settings
+                {t('bea_settings')}
               </Typography>
 
               <Stack spacing={2}>
@@ -254,14 +299,14 @@ export default function BreakEvenAnalysis() {
                       }
                     />
                   }
-                  label="Monthly View"
+                  label={t('monthly_view')}
                 />
 
                 {settings.useMonthlyView ? (
                   <>
                     <TextField
                       fullWidth
-                      label="Monthly Labor Cost"
+                      label={t('monthly_labor_cost_label')}
                       type="number"
                       value={settings.monthlyLaborCost}
                       onChange={e =>
@@ -270,11 +315,11 @@ export default function BreakEvenAnalysis() {
                           monthlyLaborCost: parseFloat(e.target.value) || 0
                         }))
                       }
-                      InputProps={{ startAdornment: '$' }}
+                      InputProps={isRtl ? { endAdornment: '$' } : { startAdornment: '$' }}
                     />
                     <TextField
                       fullWidth
-                      label="Working Days per Week"
+                      label={t('working_days_per_week_label')}
                       type="number"
                       value={settings.workingDaysPerWeek}
                       onChange={e =>
@@ -287,7 +332,7 @@ export default function BreakEvenAnalysis() {
                     />
                     <TextField
                       fullWidth
-                      label="Weeks per Month"
+                      label={t('weeks_per_month_label')}
                       type="number"
                       value={settings.weeksPerMonth}
                       onChange={e =>
@@ -299,13 +344,13 @@ export default function BreakEvenAnalysis() {
                       inputProps={{ min: 4, max: 5, step: 0.1 }}
                     />
                     <Alert severity="info" sx={{ mt: 1 }}>
-                      <Typography variant="caption">Working Days per Month: {Math.round(workingDaysPerMonth)} days</Typography>
+                      <Typography variant="caption">{t('working_days_per_month_info', { days: Math.round(workingDaysPerMonth) })}</Typography>
                     </Alert>
                   </>
                 ) : (
                   <TextField
                     fullWidth
-                    label="Daily Labor Cost"
+                    label={t('daily_labor_cost_label')}
                     type="number"
                     value={settings.dailyLaborCost}
                     onChange={e =>
@@ -314,7 +359,7 @@ export default function BreakEvenAnalysis() {
                         dailyLaborCost: parseFloat(e.target.value) || 0
                       }))
                     }
-                    InputProps={{ startAdornment: '$' }}
+                    InputProps={isRtl ? { endAdornment: '$' } : { startAdornment: '$' }}
                   />
                 )}
               </Stack>
@@ -325,7 +370,7 @@ export default function BreakEvenAnalysis() {
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Add Items to Scenario
+                {t('add_items_to_scenario')}
               </Typography>
 
               <Stack spacing={2}>
@@ -334,7 +379,7 @@ export default function BreakEvenAnalysis() {
                   getOptionLabel={option => option.name}
                   value={selectedMenuItem}
                   onChange={(_, newValue) => setSelectedMenuItem(newValue)}
-                  renderInput={params => <TextField {...params} label="Select Menu Item" />}
+                  renderInput={params => <TextField {...params} label={t('select_menu_item_label')} inputProps={{ ...params.inputProps, dir: isRtl ? 'rtl' : 'ltr' }} />}
                   renderOption={(props, option) => (
                     <li {...props}>
                       <Box>
@@ -348,7 +393,7 @@ export default function BreakEvenAnalysis() {
                 />
 
                 <Button variant="contained" startIcon={<AddIcon />} onClick={addItemToScenario} disabled={!selectedMenuItem} fullWidth>
-                  Add to Scenario
+                  {t('add_to_scenario')}
                 </Button>
               </Stack>
             </CardContent>
@@ -360,24 +405,36 @@ export default function BreakEvenAnalysis() {
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Daily Sales Scenario
+                {t('daily_sales_scenario')}
               </Typography>
 
+              {/* Show imported sales info */}
+              {importedSalesInfo && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    📊 Imported Sales Data: {importedSalesInfo.businessName}
+                  </Typography>
+                  <Typography variant="caption" display="block">
+                    Period: {importedSalesInfo.dateRange} | Total Revenue: ₪{importedSalesInfo.totalRevenue.toFixed(2)} | Total Items: {importedSalesInfo.totalQuantity}
+                  </Typography>
+                </Alert>
+              )}
+
               {salesScenario.length === 0 ? (
-                <Alert severity="info">Add menu items to create your sales scenario and see break-even analysis.</Alert>
+                <Alert severity="info">{t('sales_scenario_hint')}</Alert>
               ) : (
-                <TableContainer>
-                  <Table size="small">
+                <TableContainer dir={isRtl ? 'rtl' : 'ltr'}>
+                  <Table size="small" dir={isRtl ? 'rtl' : 'ltr'}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Item</TableCell>
-                        <TableCell align="center">Daily Qty</TableCell>
-                        <TableCell align="right">Unit Price</TableCell>
-                        <TableCell align="right">Unit Cost</TableCell>
-                        <TableCell align="right">Unit Profit</TableCell>
-                        <TableCell align="right">Daily Revenue</TableCell>
-                        <TableCell align="right">Daily Profit</TableCell>
-                        <TableCell align="center">Actions</TableCell>
+                        <TableCell>{t('item_col')}</TableCell>
+                        <TableCell align="center">{t('daily_qty_col')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_price_col')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_cost_col')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_profit_col')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('daily_revenue_col')}</TableCell>
+                        <TableCell align={isRtl ? 'left' : 'right'}>{t('daily_profit_col')}</TableCell>
+                        <TableCell align="center">{t('actions')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -402,25 +459,25 @@ export default function BreakEvenAnalysis() {
                             <TableCell align="center">
                               <TextField type="number" size="small" value={item.dailyQuantity} onChange={e => updateItemQuantity(index, parseInt(e.target.value) || 0)} inputProps={{ min: 0, style: { textAlign: 'center' } }} sx={{ width: 80 }} />
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align={isRtl ? 'left' : 'right'}>
                               <Typography variant="body2">{formatCurrency(item.menuItem.price)}</Typography>
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align={isRtl ? 'left' : 'right'}>
                               <Typography variant="body2" color="error.main">
                                 {formatCurrency(unitCost)}
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align={isRtl ? 'left' : 'right'}>
                               <Typography variant="body2" color={unitProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
                                 {formatCurrency(unitProfit)}
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align={isRtl ? 'left' : 'right'}>
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                 {formatCurrency(dailyRevenue)}
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align={isRtl ? 'left' : 'right'}>
                               <Typography variant="body2" color={dailyProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
                                 {formatCurrency(dailyProfit)}
                               </Typography>
@@ -446,7 +503,7 @@ export default function BreakEvenAnalysis() {
                         >
                           <TableCell>
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              TOTALS
+                              {t('totals')}
                             </Typography>
                           </TableCell>
                           <TableCell align="center">
@@ -454,12 +511,12 @@ export default function BreakEvenAnalysis() {
                               {salesScenario.reduce((sum, item) => sum + item.dailyQuantity, 0)}
                             </Typography>
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align={isRtl ? 'left' : 'right'}>
                             <Typography variant="body2" color="text.secondary">
                               -
                             </Typography>
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align={isRtl ? 'left' : 'right'}>
                             <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
                               {formatCurrency(
                                 salesScenario.reduce((sum, item) => {
@@ -469,12 +526,12 @@ export default function BreakEvenAnalysis() {
                               )}
                             </Typography>
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align={isRtl ? 'left' : 'right'}>
                             <Typography variant="body2" color="text.secondary">
                               -
                             </Typography>
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align={isRtl ? 'left' : 'right'}>
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
                               {formatCurrency(
                                 salesScenario.reduce((sum, item) => {
@@ -483,7 +540,7 @@ export default function BreakEvenAnalysis() {
                               )}
                             </Typography>
                           </TableCell>
-                          <TableCell align="right">
+                          <TableCell align={isRtl ? 'left' : 'right'}>
                             <Typography
                               variant="body2"
                               sx={{ fontWeight: 700 }}
@@ -529,25 +586,25 @@ export default function BreakEvenAnalysis() {
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ProfitIcon />
-                    Daily Analysis
+                    {t('daily_analysis')}
                   </Typography>
 
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">Revenue:</Typography>
+                      <Typography color="text.secondary">{t('revenue_label')}</Typography>
                       <Typography sx={{ fontWeight: 600 }}>{formatCurrency(dailyFinancials.revenue)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">Food Cost:</Typography>
+                      <Typography color="text.secondary">{t('food_cost_label')}</Typography>
                       <Typography color="error.main">{formatCurrency(dailyFinancials.foodCost)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">Labor Cost:</Typography>
+                      <Typography color="text.secondary">{t('labor_cost_label')}</Typography>
                       <Typography color="error.main">{formatCurrency(dailyFinancials.laborCost)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography color="text.secondary">Operating Expenses:</Typography>
+                        <Typography color="text.secondary">{t('operating_expenses_label')}</Typography>
                         <IconButton size="small" onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}>
                           {showExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
@@ -559,7 +616,7 @@ export default function BreakEvenAnalysis() {
                     {showExpenseBreakdown && (
                       <Box
                         sx={theme => ({
-                          ml: 2,
+                          ...(isRtl ? { mr: 2 } : { ml: 2 }),
                           mt: 1,
                           p: 2,
                           bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
@@ -569,7 +626,7 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
-                          Daily Expense Breakdown ({Math.round(workingDaysPerMonth)} working days/month):
+                          {t('daily_expense_breakdown_title', { days: Math.round(workingDaysPerMonth) })}
                         </Typography>
                         {getExpenseBreakdown().map((expense, index) => {
                           let calculationNote = ''
@@ -600,7 +657,7 @@ export default function BreakEvenAnalysis() {
                                     {calculationNote}
                                   </Typography>
                                 </Box>
-                                <Chip label={expense.frequency} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
+                                <Chip label={t(expense.frequency)} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                               </Box>
                               <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                                 {formatCurrency(expense.dailyAmount)}
@@ -616,7 +673,7 @@ export default function BreakEvenAnalysis() {
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Total Daily Operating Expenses:
+                            {t('total_daily_operating_expenses')}
                           </Typography>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
                             {formatCurrency(getExpenseBreakdown().reduce((sum, exp) => sum + exp.dailyAmount, 0))}
@@ -626,19 +683,19 @@ export default function BreakEvenAnalysis() {
                     )}
                     <Divider />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>Total Cost:</Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{t('total_cost_label')}</Typography>
                       <Typography sx={{ fontWeight: 600 }} color="error.main">
                         {formatCurrency(dailyFinancials.totalCost)}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>Daily Profit:</Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{t('daily_profit_label')}</Typography>
                       <Typography sx={{ fontWeight: 600 }} color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
                         {formatCurrency(dailyFinancials.profit)}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>Profit Margin:</Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{t('profit_margin_label')}</Typography>
                       <Chip label={`${dailyFinancials.profitMargin.toFixed(1)}%`} color={dailyFinancials.profitMargin >= 0 ? 'success' : 'error'} size="small" />
                     </Box>
                   </Stack>
@@ -651,17 +708,17 @@ export default function BreakEvenAnalysis() {
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <AnalyticsIcon />
-                    Monthly Projection
+                    {t('monthly_projection')}
                   </Typography>
 
                   <Stack spacing={2}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">Monthly Revenue:</Typography>
+                      <Typography color="text.secondary">{t('monthly_revenue_label')}</Typography>
                       <Typography sx={{ fontWeight: 600 }}>{formatCurrency(monthlyFinancials.revenue)}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography color="text.secondary">Monthly Costs:</Typography>
+                        <Typography color="text.secondary">{t('monthly_costs_label')}</Typography>
                         <IconButton size="small" onClick={() => setShowMonthlyExpenseBreakdown(!showMonthlyExpenseBreakdown)}>
                           {showMonthlyExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
@@ -673,7 +730,7 @@ export default function BreakEvenAnalysis() {
                     {showMonthlyExpenseBreakdown && (
                       <Box
                         sx={theme => ({
-                          ml: 2,
+                          ...(isRtl ? { mr: 2 } : { ml: 2 }),
                           mt: 1,
                           p: 2,
                           bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
@@ -683,7 +740,7 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
-                          Monthly Cost Breakdown:
+                          {t('monthly_cost_breakdown')}
                         </Typography>
 
                         {/* Food Costs */}
@@ -691,9 +748,9 @@ export default function BreakEvenAnalysis() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              Food Costs
+                              {t('food_costs_label')}
                             </Typography>
-                            <Chip label="variable" size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
+                            <Chip label={t('variable_label')} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                           </Box>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                             {formatCurrency(monthlyFinancials.foodCost)}
@@ -705,9 +762,9 @@ export default function BreakEvenAnalysis() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              Labor Costs
+                              {t('labor_costs_label')}
                             </Typography>
-                            <Chip label="fixed" size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
+                            <Chip label={t('fixed_label')} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
                           </Box>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                             {formatCurrency(monthlyFinancials.laborCost)}
@@ -733,7 +790,7 @@ export default function BreakEvenAnalysis() {
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                            Total Monthly Costs:
+                            {t('total_monthly_costs_label')}
                           </Typography>
                           <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
                             {formatCurrency(monthlyFinancials.totalCost)}
@@ -742,7 +799,7 @@ export default function BreakEvenAnalysis() {
                       </Box>
                     )}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>Monthly Profit:</Typography>
+                      <Typography sx={{ fontWeight: 600 }}>{t('monthly_profit_label')}</Typography>
                       <Typography sx={{ fontWeight: 600 }} color={monthlyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
                         {formatCurrency(monthlyFinancials.profit)}
                       </Typography>
@@ -758,12 +815,12 @@ export default function BreakEvenAnalysis() {
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CalculateIcon />
-                    Break-Even Analysis
+                    {t('break_even_analysis')}
                   </Typography>
 
                   <Box sx={{ mb: 3 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2">Progress to Break-Even</Typography>
+                      <Typography variant="body2">{t('progress_to_breakeven')}</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {breakEven.percentage.toFixed(1)}%
                       </Typography>
@@ -784,18 +841,18 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary">
-                          Current Status
+                          {t('current_status')}
                         </Typography>
                         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                           {breakEven.percentage >= 100 ? (
                             <>
                               <ProfitIcon color="success" />
-                              Profitable
+                              {t('profitable')}
                             </>
                           ) : (
                             <>
                               <LossIcon color="error" />
-                              Below Break-Even
+                              {t('below_breakeven')}
                             </>
                           )}
                         </Typography>
@@ -814,11 +871,11 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary">
-                          Revenue Needed
+                          {t('revenue_needed')}
                         </Typography>
                         <Typography variant="h6">{formatCurrency(monthlyFinancials.totalCost)}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          per month
+                          {t('per_month_short')}
                         </Typography>
                       </Box>
                     </Grid>
@@ -835,13 +892,13 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary">
-                          Daily Revenue Gap
+                          {t('daily_revenue_gap')}
                         </Typography>
                         <Typography variant="h6" color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
                           {formatCurrency(Math.abs((monthlyFinancials.totalCost - monthlyFinancials.revenue) / workingDaysPerMonth))}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {dailyFinancials.profit >= 0 ? 'surplus' : 'shortage'}
+                          {dailyFinancials.profit >= 0 ? t('surplus') : t('shortage')}
                         </Typography>
                       </Box>
                     </Grid>
@@ -858,11 +915,11 @@ export default function BreakEvenAnalysis() {
                         })}
                       >
                         <Typography variant="caption" color="text.secondary">
-                          Scale Factor Needed
+                          {t('scale_factor_needed')}
                         </Typography>
                         <Typography variant="h6">{breakEven.percentage < 100 ? `${(100 / breakEven.percentage).toFixed(1)}x` : '1.0x'}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          current volume
+                          {t('current_volume')}
                         </Typography>
                       </Box>
                     </Grid>
@@ -870,17 +927,13 @@ export default function BreakEvenAnalysis() {
 
                   {breakEven.percentage < 100 && (
                     <Alert severity="warning" sx={{ mt: 2 }}>
-                      <Typography variant="body2">
-                        <strong>To reach break-even:</strong> You need to scale your current daily sales by <strong>{(100 / breakEven.percentage).toFixed(1)}x</strong> or increase revenue by <strong>{formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue)}</strong> per month.
-                      </Typography>
+                      <Typography variant="body2">{t('to_reach_breakeven_msg', { scale: (100 / breakEven.percentage).toFixed(1), amount: formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue) })}</Typography>
                     </Alert>
                   )}
 
                   {breakEven.percentage >= 100 && (
                     <Alert severity="success" sx={{ mt: 2 }}>
-                      <Typography variant="body2">
-                        <strong>Congratulations!</strong> Your scenario is profitable with a monthly profit of <strong>{formatCurrency(monthlyFinancials.profit)}</strong>.
-                      </Typography>
+                      <Typography variant="body2">{t('congratulations_profitable_msg', { amount: formatCurrency(monthlyFinancials.profit) })}</Typography>
                     </Alert>
                   )}
                 </CardContent>
@@ -889,6 +942,9 @@ export default function BreakEvenAnalysis() {
           </>
         )}
       </Grid>
+
+      {/* AI Sales Importer Dialog */}
+      <AISalesImporter open={showImporter} onClose={() => setShowImporter(false)} onSalesDataImported={handleSalesDataImported} title={t('import_sales_data_title')} description={t('import_sales_data_description')} />
     </Box>
   )
 }

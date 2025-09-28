@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AppBar, Box, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useTheme, useMediaQuery, Menu, MenuItem, Avatar, Divider, Collapse } from '@mui/material'
-import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon, Kitchen as PrepIcon, Calculate as BreakEvenIcon } from '@mui/icons-material'
+import { Menu as MenuIcon, Dashboard as DashboardIcon, Receipt as OrdersIcon, AttachMoney as FinanceIcon, Restaurant as MenuManagementIcon, People as EmployeeIcon, Route as LogisticsIcon, Inventory as InventoryIcon, Person as CustomerIcon, Business as SupplierIcon, Business, ShoppingCart as SupplierOrdersIcon, Analytics as AnalyticsIcon, AccountCircle, Settings, Logout, ExpandLess, ExpandMore, Store as StoreIcon, AccountBalanceWallet as WalletIcon, Category as ProductsIcon, LocalShipping as SuppliesIcon, TrendingUp as InsightsIcon, Group as TeamIcon, PointOfSale as SalesIcon, Kitchen as PrepIcon, Calculate as BreakEvenIcon } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
@@ -183,8 +183,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
             }}
             sx={{
-              pl: level * 2 + 2,
-              pr: 2,
+              display: 'flex',
+              flexDirection: isRtl ? 'row-reverse' : 'row',
+              pl: isRtl ? 2 : level * 2 + 2,
+              pr: isRtl ? level * 2 + 2 : 2,
               borderRadius: 1,
               mx: 1,
               my: 0.25,
@@ -211,7 +213,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
               sx={{
                 minWidth: 40,
                 color: isSelected ? 'inherit' : level > 0 ? 'text.secondary' : 'text.primary',
-                fontSize: level > 0 ? '1.2rem' : '1.3rem'
+                fontSize: level > 0 ? '1.2rem' : '1.3rem',
+                mr: isRtl ? 0 : 1,
+                ml: isRtl ? 1 : 0
               }}
             >
               {item.icon}
@@ -221,7 +225,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               primaryTypographyProps={{
                 variant: level > 0 ? 'body2' : 'body1',
                 fontWeight: isSelected ? 600 : level > 0 ? 400 : 500,
-                color: 'inherit'
+                color: 'inherit',
+                sx: { textAlign: isRtl ? 'right' : 'left' }
               }}
             />
             {hasChildren && <Box sx={{ color: isSelected ? 'inherit' : 'text.secondary' }}>{isExpanded ? <ExpandLess /> : <ExpandMore />}</Box>}
@@ -417,6 +422,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       <Settings fontSize="small" />
                     </ListItemIcon>
                     {t('user_management')}
+                  </MenuItem>
+                  <MenuItem onClick={() => {
+                    handleUserMenuClose()
+                    navigate('/settings/business')
+                  }}>
+                    <ListItemIcon>
+                      <Business fontSize="small" />
+                    </ListItemIcon>
+                    {t('business_settings')}
                   </MenuItem>
                   <Divider />
                   <MenuItem onClick={handleSignOut}>

@@ -87,6 +87,15 @@ const lightTheme = createTheme({
       styleOverrides: {
         body: {
           backgroundColor: brand.bgDefault
+        },
+        'html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3, html[dir="rtl"] h4, html[dir="rtl"] h5, html[dir="rtl"] h6': {
+          textAlign: 'right'
+        },
+        'html[dir="rtl"] .MuiTypography-h1, html[dir="rtl"] .MuiTypography-h2, html[dir="rtl"] .MuiTypography-h3, html[dir="rtl"] .MuiTypography-h4, html[dir="rtl"] .MuiTypography-h5, html[dir="rtl"] .MuiTypography-h6': {
+          textAlign: 'right !important'
+        },
+        'html[dir="rtl"] .MuiTypography-root.MuiTypography-h1, html[dir="rtl"] .MuiTypography-root.MuiTypography-h2, html[dir="rtl"] .MuiTypography-root.MuiTypography-h3, html[dir="rtl"] .MuiTypography-root.MuiTypography-h4, html[dir="rtl"] .MuiTypography-root.MuiTypography-h5, html[dir="rtl"] .MuiTypography-root.MuiTypography-h6': {
+          textAlign: 'right !important'
         }
       }
     },
@@ -240,6 +249,19 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: brand.darkPaper
+        }
+      }
+    },
+    MuiCssBaseline: {
+      styleOverrides: {
+        'html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3, html[dir="rtl"] h4, html[dir="rtl"] h5, html[dir="rtl"] h6': {
+          textAlign: 'right'
+        },
+        'html[dir="rtl"] .MuiTypography-h1, html[dir="rtl"] .MuiTypography-h2, html[dir="rtl"] .MuiTypography-h3, html[dir="rtl"] .MuiTypography-h4, html[dir="rtl"] .MuiTypography-h5, html[dir="rtl"] .MuiTypography-h6': {
+          textAlign: 'right !important'
+        },
+        'html[dir="rtl"] .MuiTypography-root.MuiTypography-h1, html[dir="rtl"] .MuiTypography-root.MuiTypography-h2, html[dir="rtl"] .MuiTypography-root.MuiTypography-h3, html[dir="rtl"] .MuiTypography-root.MuiTypography-h4, html[dir="rtl"] .MuiTypography-root.MuiTypography-h5, html[dir="rtl"] .MuiTypography-root.MuiTypography-h6': {
+          textAlign: 'right !important'
         }
       }
     },
@@ -410,7 +432,9 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
     setMode(prevMode => (prevMode === 'light' ? 'dark' : 'light'))
   }
 
-  const theme = mode === 'light' ? lightTheme : darkTheme
+  const baseTheme = mode === 'light' ? lightTheme : darkTheme
+  const direction = typeof document !== 'undefined' && document.dir === 'rtl' ? 'rtl' : 'ltr'
+  const theme = React.useMemo(() => createTheme({ ...baseTheme, direction }), [baseTheme, direction])
   const isDarkMode = mode === 'dark'
 
   return (

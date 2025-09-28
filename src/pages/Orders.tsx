@@ -702,7 +702,7 @@ export default function Orders() {
         </Grid>
 
         {/* Average Order Value */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -724,7 +724,7 @@ export default function Orders() {
         </Grid>
 
         {/* Average Profit Margin */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -746,7 +746,7 @@ export default function Orders() {
         </Grid>
 
         {/* Top Selling Items */}
-        <Grid item xs={12} md={12} lg={6}>
+        <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -781,7 +781,7 @@ export default function Orders() {
         </Grid>
 
         {/* Key Metrics */}
-        <Grid item xs={12} md={12} lg={6}>
+        <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -900,7 +900,7 @@ export default function Orders() {
         </Grid>
 
         {/* Payment Methods Breakdown */}
-        <Grid item xs={12} md={12} lg={6}>
+        <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>

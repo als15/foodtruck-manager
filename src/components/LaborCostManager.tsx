@@ -1,145 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Alert,
-  LinearProgress,
-  Divider,
-} from '@mui/material';
-import {
-  Group as TeamIcon,
-  Schedule as ScheduleIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  AttachMoney as MoneyIcon,
-  Timer as TimerIcon,
-} from '@mui/icons-material';
-import { Employee, Shift, LaborProjection } from '../types';
-import { 
-  LaborCalculator, 
-  LaborCostSummary, 
-  LaborEfficiencyMetrics,
-  formatLaborCurrency,
-  formatHours 
-} from '../utils/laborCalculations';
+import React, { useState, useEffect } from 'react'
+import { Box, Typography, Grid, Card, CardContent, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, LinearProgress, Divider } from '@mui/material'
+import { Group as TeamIcon, Schedule as ScheduleIcon, TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon, AttachMoney as MoneyIcon, Timer as TimerIcon } from '@mui/icons-material'
+import { Employee, Shift, LaborProjection } from '../types'
+import { LaborCalculator, LaborCostSummary, LaborEfficiencyMetrics, formatLaborCurrency, formatHours } from '../utils/laborCalculations'
+import { useTranslation } from 'react-i18next'
 
 interface LaborCostManagerProps {
-  employees: Employee[];
-  shifts: Shift[];
-  weeklyRevenue?: number;
-  weeklyOrders?: number;
-  onLaborCostUpdate?: (monthlyCost: number) => void;
+  employees: Employee[]
+  shifts: Shift[]
+  weeklyRevenue?: number
+  weeklyOrders?: number
+  onLaborCostUpdate?: (monthlyCost: number) => void
 }
 
-export default function LaborCostManager({ 
-  employees, 
-  shifts, 
-  weeklyRevenue = 0, 
-  weeklyOrders = 0,
-  onLaborCostUpdate 
-}: LaborCostManagerProps) {
-  const [laborCosts, setLaborCosts] = useState<LaborCostSummary | null>(null);
-  const [efficiency, setEfficiency] = useState<LaborEfficiencyMetrics | null>(null);
-  const [openProjectionDialog, setOpenProjectionDialog] = useState(false);
-  const [projectedHours, setProjectedHours] = useState(160); // Default 40 hours/week for 4 employees
-  const [projectedRevenue, setProjectedRevenue] = useState(weeklyRevenue);
+export default function LaborCostManager({ employees, shifts, weeklyRevenue = 0, weeklyOrders = 0, onLaborCostUpdate }: LaborCostManagerProps) {
+  const { t } = useTranslation()
+  const [laborCosts, setLaborCosts] = useState<LaborCostSummary | null>(null)
+  const [efficiency, setEfficiency] = useState<LaborEfficiencyMetrics | null>(null)
+  const [openProjectionDialog, setOpenProjectionDialog] = useState(false)
+  const [projectedHours, setProjectedHours] = useState(160) // Default 40 hours/week for 4 employees
+  const [projectedRevenue, setProjectedRevenue] = useState(weeklyRevenue)
 
   useEffect(() => {
-    calculateLaborMetrics();
-  }, [employees, shifts, weeklyRevenue, weeklyOrders]);
+    calculateLaborMetrics()
+  }, [employees, shifts, weeklyRevenue, weeklyOrders])
 
   useEffect(() => {
     if (laborCosts && onLaborCostUpdate) {
-      onLaborCostUpdate(laborCosts.totalMonthlyCost);
+      onLaborCostUpdate(laborCosts.totalMonthlyCost)
     }
-  }, [laborCosts, onLaborCostUpdate]);
+  }, [laborCosts, onLaborCostUpdate])
 
   const calculateLaborMetrics = () => {
-    if (employees.length === 0) return;
+    if (employees.length === 0) return
 
     // Calculate for the last 7 days
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7);
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - 7)
 
-    const costs = LaborCalculator.calculateLaborCosts(employees, shifts, startDate, endDate);
-    const eff = LaborCalculator.calculateLaborEfficiency(costs, weeklyRevenue, weeklyOrders, weeklyRevenue);
+    const costs = LaborCalculator.calculateLaborCosts(employees, shifts, startDate, endDate)
+    const eff = LaborCalculator.calculateLaborEfficiency(costs, weeklyRevenue, weeklyOrders, weeklyRevenue)
 
-    setLaborCosts(costs);
-    setEfficiency(eff);
-  };
+    setLaborCosts(costs)
+    setEfficiency(eff)
+  }
 
   const createLaborProjection = () => {
-    const projection = LaborCalculator.projectLaborCosts(
-      employees,
-      projectedHours,
-      projectedRevenue
-    );
-    
-    setOpenProjectionDialog(false);
-    
+    const projection = LaborCalculator.projectLaborCosts(employees, projectedHours, projectedRevenue)
+
+    setOpenProjectionDialog(false)
+
     // Here you would typically save the projection to the database
-    console.log('Labor Projection Created:', projection);
-  };
+    console.log('Labor Projection Created:', projection)
+  }
 
   const getLaborHealthColor = (percentage: number) => {
-    if (percentage <= 25) return 'success';
-    if (percentage <= 30) return 'warning';
-    return 'error';
-  };
+    if (percentage <= 25) return 'success'
+    if (percentage <= 30) return 'warning'
+    return 'error'
+  }
 
   const getEfficiencyStatus = (score: number) => {
-    if (score >= 8) return { label: 'Excellent', color: 'success' };
-    if (score >= 6) return { label: 'Good', color: 'info' };
-    if (score >= 4) return { label: 'Fair', color: 'warning' };
-    return { label: 'Poor', color: 'error' };
-  };
+    if (score >= 8) return { label: 'Excellent', color: 'success' }
+    if (score >= 6) return { label: 'Good', color: 'info' }
+    if (score >= 4) return { label: 'Fair', color: 'warning' }
+    return { label: 'Poor', color: 'error' }
+  }
 
   if (!laborCosts || !efficiency) {
     return (
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Labor Cost Analysis
+            {t('labor_cost_analysis')}
           </Typography>
-          <Alert severity="info">
-            Add employees and shifts to see labor cost analysis
-          </Alert>
+          <Alert severity="info">{t('labor_cost_analysis_hint')}</Alert>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  const insights = LaborCalculator.generateLaborInsights(laborCosts, efficiency);
-  const efficiencyStatus = getEfficiencyStatus(efficiency.productivityScore);
+  const insights = LaborCalculator.generateLaborInsights(laborCosts, efficiency)
+  const efficiencyStatus = getEfficiencyStatus(efficiency.productivityScore)
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5">Labor Cost Management</Typography>
-        <Button
-          variant="outlined"
-          onClick={() => setOpenProjectionDialog(true)}
-          startIcon={<TrendingUpIcon />}
-        >
-          Create Projection
+        <Typography variant="h5">{t('labor_cost_management')}</Typography>
+        <Button variant="outlined" onClick={() => setOpenProjectionDialog(true)} startIcon={<TrendingUpIcon />}>
+          {t('create_labor_cost_projection')}
         </Button>
       </Box>
 
@@ -151,14 +101,12 @@ export default function LaborCostManager({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <MoneyIcon color="primary" />
                 <Typography variant="h6" color="primary">
-                  Monthly Labor Cost
+                  {t('monthly_labor_cost')}
                 </Typography>
               </Box>
-              <Typography variant="h4">
-                {formatLaborCurrency(laborCosts.totalMonthlyCost)}
-              </Typography>
+              <Typography variant="h4">{formatLaborCurrency(laborCosts.totalMonthlyCost)}</Typography>
               <Typography variant="caption" color="text.secondary">
-                Including taxes & benefits
+                {t('including_taxes_benefits')}
               </Typography>
             </CardContent>
           </Card>
@@ -170,17 +118,11 @@ export default function LaborCostManager({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <TeamIcon color="info" />
                 <Typography variant="h6" color="info">
-                  Labor Percentage
+                  {t('labor_percentage')}
                 </Typography>
               </Box>
-              <Typography variant="h4">
-                {efficiency.laborCostPercentage.toFixed(1)}%
-              </Typography>
-              <Chip 
-                label={efficiency.laborCostPercentage <= 30 ? 'Healthy' : 'High'} 
-                color={getLaborHealthColor(efficiency.laborCostPercentage)}
-                size="small"
-              />
+              <Typography variant="h4">{efficiency.laborCostPercentage.toFixed(1)}%</Typography>
+              <Chip label={efficiency.laborCostPercentage <= 30 ? t('healthy') : t('high')} color={getLaborHealthColor(efficiency.laborCostPercentage)} size="small" />
             </CardContent>
           </Card>
         </Grid>
@@ -191,15 +133,11 @@ export default function LaborCostManager({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <TimerIcon color="success" />
                 <Typography variant="h6" color="success">
-                  Avg Hourly Rate
+                  {t('avg_hourly_rate')}
                 </Typography>
               </Box>
-              <Typography variant="h4">
-                {formatLaborCurrency(laborCosts.averageHourlyRate)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {formatHours(laborCosts.totalWeeklyHours)} weekly hours
-              </Typography>
+              <Typography variant="h4">{formatLaborCurrency(laborCosts.averageHourlyRate)}</Typography>
+              <Typography variant="caption" color="text.secondary">{`${formatHours(laborCosts.totalWeeklyHours)} ${t('weekly_hours')}`}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -210,17 +148,11 @@ export default function LaborCostManager({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <ScheduleIcon color="warning" />
                 <Typography variant="h6" color="warning">
-                  Efficiency Score
+                  {t('efficiency_score')}
                 </Typography>
               </Box>
-              <Typography variant="h4">
-                {efficiency.productivityScore.toFixed(1)}
-              </Typography>
-              <Chip 
-                label={efficiencyStatus.label} 
-                color={efficiencyStatus.color as any}
-                size="small"
-              />
+              <Typography variant="h4">{efficiency.productivityScore.toFixed(1)}</Typography>
+              <Chip label={efficiencyStatus.label} color={efficiencyStatus.color as any} size="small" />
             </CardContent>
           </Card>
         </Grid>
@@ -232,40 +164,31 @@ export default function LaborCostManager({
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Labor Cost Breakdown
+                {t('labor_cost_breakdown')}
               </Typography>
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Base Wages</Typography>
-                  <Typography variant="body2">
-                    {formatLaborCurrency(laborCosts.totalMonthlyCost - laborCosts.employerTaxes - laborCosts.benefits)}
-                  </Typography>
+                  <Typography variant="body2">{t('base_wages')}</Typography>
+                  <Typography variant="body2">{formatLaborCurrency(laborCosts.totalMonthlyCost - laborCosts.employerTaxes - laborCosts.benefits)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Employer Taxes</Typography>
-                  <Typography variant="body2">
-                    {formatLaborCurrency(laborCosts.employerTaxes)}
-                  </Typography>
+                  <Typography variant="body2">{t('employer_taxes')}</Typography>
+                  <Typography variant="body2">{formatLaborCurrency(laborCosts.employerTaxes)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Benefits</Typography>
-                  <Typography variant="body2">
-                    {formatLaborCurrency(laborCosts.benefits)}
-                  </Typography>
+                  <Typography variant="body2">{t('benefits')}</Typography>
+                  <Typography variant="body2">{formatLaborCurrency(laborCosts.benefits)}</Typography>
                 </Box>
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                  <Typography variant="body1">Total Monthly Cost</Typography>
-                  <Typography variant="body1">
-                    {formatLaborCurrency(laborCosts.totalMonthlyCost)}
-                  </Typography>
+                  <Typography variant="body1">{t('total_monthly_cost')}</Typography>
+                  <Typography variant="body1">{formatLaborCurrency(laborCosts.totalMonthlyCost)}</Typography>
                 </Box>
               </Box>
 
               {laborCosts.overtimeHours > 0 && (
                 <Alert severity="warning" sx={{ mt: 2 }}>
-                  {formatHours(laborCosts.overtimeHours)} of overtime detected. 
-                  Consider hiring additional staff to reduce overtime costs.
+                  {t('overtime_detected_message', { hours: formatHours(laborCosts.overtimeHours) })}
                 </Alert>
               )}
             </CardContent>
@@ -276,31 +199,25 @@ export default function LaborCostManager({
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                Performance Metrics
+                {t('performance_metrics')}
               </Typography>
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Sales per Labor Hour
+                  {t('sales_per_labor_hour')}
                 </Typography>
-                <Typography variant="h6">
-                  {formatLaborCurrency(efficiency.salesPerLaborHour)}
-                </Typography>
+                <Typography variant="h6">{formatLaborCurrency(efficiency.salesPerLaborHour)}</Typography>
               </Box>
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Orders per Employee
+                  {t('orders_per_employee')}
                 </Typography>
-                <Typography variant="h6">
-                  {efficiency.averageOrdersPerEmployee.toFixed(1)}
-                </Typography>
+                <Typography variant="h6">{efficiency.averageOrdersPerEmployee.toFixed(1)}</Typography>
               </Box>
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Labor Cost per Hour
+                  {t('labor_cost_per_hour')}
                 </Typography>
-                <Typography variant="h6">
-                  {formatLaborCurrency(laborCosts.laborCostPerHour)}
-                </Typography>
+                <Typography variant="h6">{formatLaborCurrency(laborCosts.laborCostPerHour)}</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -311,28 +228,26 @@ export default function LaborCostManager({
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Labor Cost by Employee
+            {t('labor_cost_by_employee')}
           </Typography>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Employee</TableCell>
-                  <TableCell>Position</TableCell>
-                  <TableCell>Hourly Rate</TableCell>
-                  <TableCell>Weekly Cost</TableCell>
-                  <TableCell>Monthly Cost</TableCell>
-                  <TableCell>Percentage</TableCell>
+                  <TableCell>{t('employee')}</TableCell>
+                  <TableCell>{t('position')}</TableCell>
+                  <TableCell>{t('hourly_rate')}</TableCell>
+                  <TableCell>{t('weekly_cost')}</TableCell>
+                  <TableCell>{t('monthly_cost')}</TableCell>
+                  <TableCell>{t('percentage_label')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {employees.map((employee) => {
-                  const weeklyCost = laborCosts.costByEmployee[employee.id] || 0;
-                  const monthlyCost = weeklyCost * 4.33;
-                  const percentage = laborCosts.totalMonthlyCost > 0 
-                    ? (monthlyCost / laborCosts.totalMonthlyCost) * 100 
-                    : 0;
-                  
+                {employees.map(employee => {
+                  const weeklyCost = laborCosts.costByEmployee[employee.id] || 0
+                  const monthlyCost = weeklyCost * 4.33
+                  const percentage = laborCosts.totalMonthlyCost > 0 ? (monthlyCost / laborCosts.totalMonthlyCost) * 100 : 0
+
                   return (
                     <TableRow key={employee.id}>
                       <TableCell>
@@ -344,18 +259,12 @@ export default function LaborCostManager({
                       <TableCell>{formatLaborCurrency(monthlyCost)}</TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={percentage} 
-                            sx={{ width: 60 }}
-                          />
-                          <Typography variant="body2">
-                            {percentage.toFixed(1)}%
-                          </Typography>
+                          <LinearProgress variant="determinate" value={percentage} sx={{ width: 60 }} />
+                          <Typography variant="body2">{percentage.toFixed(1)}%</Typography>
                         </Box>
                       </TableCell>
                     </TableRow>
-                  );
+                  )
                 })}
               </TableBody>
             </Table>
@@ -368,7 +277,7 @@ export default function LaborCostManager({
         <Card>
           <CardContent>
             <Typography variant="h6" sx={{ mb: 2 }}>
-              Insights & Recommendations
+              {t('insights_recommendations')}
             </Typography>
             {insights.insights.map((insight, index) => (
               <Alert key={index} severity="info" sx={{ mb: 1 }}>
@@ -377,7 +286,7 @@ export default function LaborCostManager({
             ))}
             {insights.recommendations.map((recommendation, index) => (
               <Alert key={index} severity="warning" sx={{ mb: 1 }}>
-                <strong>Recommendation:</strong> {recommendation}
+                <strong>{t('recommendation_label')}</strong> {recommendation}
               </Alert>
             ))}
           </CardContent>
@@ -386,46 +295,33 @@ export default function LaborCostManager({
 
       {/* Labor Projection Dialog */}
       <Dialog open={openProjectionDialog} onClose={() => setOpenProjectionDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Labor Cost Projection</DialogTitle>
+        <DialogTitle>{t('create_labor_cost_projection')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Projected Weekly Hours"
-                type="number"
-                value={projectedHours}
-                onChange={(e) => setProjectedHours(parseInt(e.target.value) || 0)}
-                helperText="Total hours across all employees per week"
-              />
+              <TextField fullWidth label={t('projected_weekly_hours')} type="number" value={projectedHours} onChange={e => setProjectedHours(parseInt(e.target.value) || 0)} helperText={t('projected_weekly_hours_help')} />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Projected Weekly Revenue"
-                type="number"
-                inputProps={{ step: "0.01" }}
-                value={projectedRevenue}
-                onChange={(e) => setProjectedRevenue(parseFloat(e.target.value) || 0)}
-                helperText="Expected weekly revenue for labor percentage calculation"
-              />
+              <TextField fullWidth label={t('projected_weekly_revenue')} type="number" inputProps={{ step: '0.01' }} value={projectedRevenue} onChange={e => setProjectedRevenue(parseFloat(e.target.value) || 0)} helperText={t('projected_weekly_revenue_help')} />
             </Grid>
             <Grid item xs={12}>
               <Alert severity="info">
-                Current team: {employees.length} employees<br/>
-                Average wage: {formatLaborCurrency(laborCosts.averageHourlyRate)}<br/>
-                Target labor percentage: 25-30% of revenue
+                {t('current_team_summary', { count: employees.length })}
+                <br />
+                {t('average_wage_label')}: {formatLaborCurrency(laborCosts.averageHourlyRate)}
+                <br />
+                {t('target_labor_percentage')}
               </Alert>
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenProjectionDialog(false)}>Cancel</Button>
+          <Button onClick={() => setOpenProjectionDialog(false)}>{t('cancel')}</Button>
           <Button onClick={createLaborProjection} variant="contained">
-            Create Projection
+            {t('create_labor_cost_projection')}
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
-  );
+  )
 }

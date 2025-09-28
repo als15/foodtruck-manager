@@ -590,8 +590,10 @@ export default function FinancialManagement() {
           <Tab label={t('expenses')} />
           <Tab label={t('labor_costs')} />
           <Tab label={t('projections')} />
-          <Tab label={t('goals')} />
-          <Tab label={t('reports')} />
+          {/* TODO: Implement Goals functionality in future */}
+          {/* <Tab label={t('goals')} /> */}
+          {/* TODO: Implement Reports functionality in future */}
+          {/* <Tab label={t('reports')} /> */}
         </Tabs>
       </Box>
 
@@ -856,8 +858,9 @@ export default function FinancialManagement() {
         </Grid>
       </TabPanel>
 
+      {/* TODO: Implement Goals Tab in future */}
       {/* Goals Tab */}
-      <TabPanel value={currentTab} index={3}>
+      {/* <TabPanel value={currentTab} index={3}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
             {t('goals')}
@@ -890,17 +893,18 @@ export default function FinancialManagement() {
             </Grid>
           ))}
         </Grid>
-      </TabPanel>
+      </TabPanel> */}
 
+      {/* TODO: Implement Reports Tab in future */}
       {/* Reports Tab */}
-      <TabPanel value={currentTab} index={4}>
+      {/* <TabPanel value={currentTab} index={4}>
         <Typography variant="h5" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
           {t('reports')}
         </Typography>
         <Alert severity="info" sx={{ mb: 3, textAlign: isRtl ? 'right' : 'left' }}>
           {t('reports_coming_soon')}
         </Alert>
-      </TabPanel>
+      </TabPanel> */}
 
       {/* Add Expense Dialog */}
       <Dialog
@@ -979,8 +983,9 @@ export default function FinancialManagement() {
         </DialogActions>
       </Dialog>
 
+      {/* TODO: Implement Add Goal Dialog in future */}
       {/* Add Goal Dialog */}
-      <Dialog open={openGoalDialog} onClose={() => setOpenGoalDialog(false)} maxWidth="sm" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      {/* <Dialog open={openGoalDialog} onClose={() => setOpenGoalDialog(false)} maxWidth="sm" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
         <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('set_goal')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -1021,7 +1026,7 @@ export default function FinancialManagement() {
             {t('create_goal')}
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> */}
 
       {/* Create Projection Dialog */}
       <Dialog open={openProjectionDialog} onClose={() => setOpenProjectionDialog(false)} maxWidth="md" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>

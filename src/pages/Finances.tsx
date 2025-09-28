@@ -231,7 +231,8 @@ export default function Finances() {
           <Tab label="All Transactions" />
           <Tab label="Revenue" />
           <Tab label="Expenses" />
-          <Tab label="Reports" />
+          {/* TODO: Implement Reports functionality in future */}
+          {/* <Tab label="Reports" /> */}
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -285,10 +286,11 @@ export default function Finances() {
           <Typography variant="body2">Expense categorization and analysis coming soon...</Typography>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        {/* TODO: Implement Reports TabPanel in future */}
+        {/* <TabPanel value={tabValue} index={3}>
           <Typography variant="h6">Financial Reports</Typography>
           <Typography variant="body2">Detailed financial reports coming soon...</Typography>
-        </TabPanel>
+        </TabPanel> */}
       </Paper>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
