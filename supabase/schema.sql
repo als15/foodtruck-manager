@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     cost_per_unit DECIMAL(10,2) NOT NULL,
     supplier VARCHAR(255),
     last_restocked DATE NOT NULL,
+    disposed_quantity DECIMAL(10,3) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

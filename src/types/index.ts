@@ -157,6 +157,7 @@ export interface InventoryItem {
   reservedQuantity?: number; // quantity reserved for pending orders
   ingredientId?: string; // link to ingredient table
   lastMovementDate?: Date;
+  disposedQuantity?: number; // quantity marked as disposed/wasted
 }
 
 // New interface for tracking all inventory movements

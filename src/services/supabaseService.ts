@@ -625,7 +625,8 @@ export const inventoryService = {
       minThreshold: item.min_threshold,
       costPerUnit: item.cost_per_unit,
       supplier: item.supplier || '',
-      lastRestocked: new Date(item.last_restocked)
+      lastRestocked: new Date(item.last_restocked),
+      disposedQuantity: item.disposed_quantity || 0
     }));
   },
 
@@ -650,7 +651,8 @@ export const inventoryService = {
       minThreshold: data.min_threshold,
       costPerUnit: data.cost_per_unit,
       supplier: data.supplier || '',
-      lastRestocked: new Date(data.last_restocked)
+      lastRestocked: new Date(data.last_restocked),
+      disposedQuantity: data.disposed_quantity || 0
     };
   },
 
@@ -684,7 +686,8 @@ export const inventoryService = {
       minThreshold: data.min_threshold,
       costPerUnit: data.cost_per_unit,
       supplier: data.supplier || '',
-      lastRestocked: new Date(data.last_restocked)
+      lastRestocked: new Date(data.last_restocked),
+      disposedQuantity: data.disposed_quantity || 0
     };
   },
 
@@ -699,6 +702,7 @@ export const inventoryService = {
     if (inventoryItem.costPerUnit !== undefined) updateData.cost_per_unit = inventoryItem.costPerUnit;
     if (inventoryItem.supplier !== undefined) updateData.supplier = inventoryItem.supplier;
     if (inventoryItem.lastRestocked !== undefined) updateData.last_restocked = inventoryItem.lastRestocked.toISOString().split('T')[0];
+    if (inventoryItem.disposedQuantity !== undefined) updateData.disposed_quantity = inventoryItem.disposedQuantity;
     
     const { data, error } = await supabase
       .from('inventory_items')
@@ -720,7 +724,8 @@ export const inventoryService = {
       minThreshold: data.min_threshold,
       costPerUnit: data.cost_per_unit,
       supplier: data.supplier || '',
-      lastRestocked: new Date(data.last_restocked)
+      lastRestocked: new Date(data.last_restocked),
+      disposedQuantity: data.disposed_quantity || 0
     };
   },
 

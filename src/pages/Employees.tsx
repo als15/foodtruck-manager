@@ -824,20 +824,41 @@ export default function Employees() {
             <Table sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>{t('employee')}</TableCell>
-                  {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => (
-                    <TableCell key={formatDayKey(day)} align="center">
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'numeric', day: 'numeric' })}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  ))}
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+                  {isRtl ? (
+                    <>
+                      <TableCell sx={{ textAlign: 'start' }}>{t('actions')}</TableCell>
+                      {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => (
+                        <TableCell key={formatDayKey(day)} align="center">
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                              {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'numeric', day: 'numeric' })}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      ))}
+                      <TableCell>{t('employee')}</TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell>{t('employee')}</TableCell>
+                      {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => (
+                        <TableCell key={formatDayKey(day)} align="center">
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                              {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {day.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US', { month: 'numeric', day: 'numeric' })}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      ))}
+                      <TableCell sx={{ textAlign: 'end' }}>{t('actions')}</TableCell>
+                    </>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -845,55 +866,73 @@ export default function Employees() {
                   .filter(emp => emp.isActive)
                   .map(employee => {
                     const employeeSchedule = weeklySchedule[employee.id] || {}
+                    const employeeCell = (
+                      <TableCell key={`emp-${employee.id}`}>
+                        <Box>
+                          {employee.id.startsWith('temp-') ? (
+                            <TextField
+                              size="small"
+                              placeholder="Employee name"
+                              value={`${employee.firstName} ${employee.lastName}`.trim()}
+                              onChange={e => {
+                                const [firstName, ...lastNameParts] = e.target.value.split(' ')
+                                const lastName = lastNameParts.join(' ')
+                                setEmployees(prev => prev.map(emp => (emp.id === employee.id ? { ...emp, firstName: firstName || '', lastName: lastName || '' } : emp)))
+                              }}
+                              sx={{ width: 120 }}
+                            />
+                          ) : (
+                            <>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                {getDisplayName(employee, employees)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {employee.position}
+                              </Typography>
+                            </>
+                          )}
+                        </Box>
+                      </TableCell>
+                    )
+
+                    const dayCells = (getWeekDaysForDisplay(scheduleWeek) || []).map(day => {
+                      const dayKey = formatDayKey(day)
+                      const daySchedule = employeeSchedule[dayKey] || { startTime: '', endTime: '' }
+                      return (
+                        <TableCell key={`${employee.id}-${dayKey}`} align="center">
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                            <TextField size="small" type="time" value={daySchedule.startTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'startTime', e.target.value)} sx={{ width: 100 }} placeholder="Start" />
+                            <TextField size="small" type="time" value={daySchedule.endTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'endTime', e.target.value)} sx={{ width: 100 }} placeholder="End" />
+                          </Box>
+                        </TableCell>
+                      )
+                    })
+
+                    const actionsCell = (
+                      <TableCell key={`act-${employee.id}`} sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                        {employee.id.startsWith('temp-') && (
+                          <IconButton size="small" onClick={() => removeEmployeeFromSchedule(employee.id)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    )
 
                     return (
                       <TableRow key={employee.id}>
-                        <TableCell>
-                          <Box>
-                            {employee.id.startsWith('temp-') ? (
-                              <TextField
-                                size="small"
-                                placeholder="Employee name"
-                                value={`${employee.firstName} ${employee.lastName}`.trim()}
-                                onChange={e => {
-                                  const [firstName, ...lastNameParts] = e.target.value.split(' ')
-                                  const lastName = lastNameParts.join(' ')
-                                  setEmployees(prev => prev.map(emp => (emp.id === employee.id ? { ...emp, firstName: firstName || '', lastName: lastName || '' } : emp)))
-                                }}
-                                sx={{ width: 120 }}
-                              />
-                            ) : (
-                              <>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                  {getDisplayName(employee, employees)}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {employee.position}
-                                </Typography>
-                              </>
-                            )}
-                          </Box>
-                        </TableCell>
-                        {(getWeekDaysForDisplay(scheduleWeek) || []).map(day => {
-                          const dayKey = formatDayKey(day)
-                          const daySchedule = employeeSchedule[dayKey] || { startTime: '', endTime: '' }
-
-                          return (
-                            <TableCell key={dayKey} align="center">
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
-                                <TextField size="small" type="time" value={daySchedule.startTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'startTime', e.target.value)} sx={{ width: 100 }} placeholder="Start" />
-                                <TextField size="small" type="time" value={daySchedule.endTime} onChange={e => updateEmployeeSchedule(employee.id, dayKey, 'endTime', e.target.value)} sx={{ width: 100 }} placeholder="End" />
-                              </Box>
-                            </TableCell>
-                          )
-                        })}
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                          {employee.id.startsWith('temp-') && (
-                            <IconButton size="small" onClick={() => removeEmployeeFromSchedule(employee.id)}>
-                              <DeleteIcon />
-                            </IconButton>
-                          )}
-                        </TableCell>
+                        {isRtl ? (
+                          <>
+                            {actionsCell}
+                            {dayCells}
+                            {employeeCell}
+                          </>
+                        ) : (
+                          <>
+                            {employeeCell}
+                            {dayCells}
+                            {actionsCell}
+                          </>
+                        )}
                       </TableRow>
                     )
                   })}

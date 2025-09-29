@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Switch, FormControlLabel, Tabs, Tab, Alert, CircularProgress, Snackbar, Divider, LinearProgress } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, AttachMoney as RevenueIcon, Receipt as ExpenseIcon, Assessment as AnalyticsIcon, Flag as GoalIcon, PieChart as ChartIcon, AccountBalance as CashFlowIcon } from '@mui/icons-material'
-import { Expense, ExpenseCategory, FinancialGoal, FinancialProjection, CashFlow, MenuItem } from '../types'
-import { expensesService, expenseCategoriesService, financialGoalsService, financialProjectionsService, menuItemsService, employeesService, shiftsService, ordersService, subscriptions } from '../services/supabaseService'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, AttachMoney as RevenueIcon, Receipt as ExpenseIcon, Assessment as AnalyticsIcon, Flag as GoalIcon, PieChart as ChartIcon, AccountBalance as CashFlowIcon, DeleteOutline as WasteIcon } from '@mui/icons-material'
+import { Expense, ExpenseCategory, FinancialGoal, FinancialProjection, CashFlow, MenuItem, InventoryItem, Ingredient } from '../types'
+import { expensesService, expenseCategoriesService, financialGoalsService, financialProjectionsService, menuItemsService, employeesService, shiftsService, ordersService, subscriptions, inventoryService, ingredientsService } from '../services/supabaseService'
 import LaborCostManager from '../components/LaborCostManager'
+import WasteAnalyticsDashboard from '../components/WasteAnalyticsDashboard'
 import { Employee, Shift } from '../types'
 import { useTheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
@@ -48,6 +49,8 @@ export default function FinancialManagement() {
   const [shifts, setShifts] = useState<Shift[]>([])
   const [orders, setOrders] = useState<any[]>([])
   const [monthlyLaborCost, setMonthlyLaborCost] = useState(0)
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]) 
 
   // Calculate real revenue and order data
   const calculateWeeklyMetrics = () => {
@@ -128,7 +131,7 @@ export default function FinancialManagement() {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      await Promise.all([loadExpenses(), loadExpenseCategories(), loadGoals(), loadProjections(), loadMenuItems(), loadEmployees(), loadShifts(), loadOrders()])
+      await Promise.all([loadExpenses(), loadExpenseCategories(), loadGoals(), loadProjections(), loadMenuItems(), loadEmployees(), loadShifts(), loadOrders(), loadInventoryItems(), loadIngredients()])
     } catch (error) {
       setSnackbar({ open: true, message: t('failed_to_load_financial_data'), severity: 'error' })
     } finally {
@@ -205,6 +208,24 @@ export default function FinancialManagement() {
       setOrders(data)
     } catch (error) {
       console.error('Failed to load orders:', error)
+    }
+  }
+
+  const loadInventoryItems = async () => {
+    try {
+      const data = await inventoryService.getAll()
+      setInventoryItems(data)
+    } catch (error) {
+      console.error('Failed to load inventory items:', error)
+    }
+  }
+
+  const loadIngredients = async () => {
+    try {
+      const data = await ingredientsService.getAll()
+      setIngredients(data)
+    } catch (error) {
+      console.error('Failed to load ingredients:', error)
     }
   }
 
@@ -589,6 +610,7 @@ export default function FinancialManagement() {
         >
           <Tab label={t('expenses')} />
           <Tab label={t('labor_costs')} />
+          <Tab label="Waste Analytics" icon={<WasteIcon />} />
           <Tab label={t('projections')} />
           {/* TODO: Implement Goals functionality in future */}
           {/* <Tab label={t('goals')} /> */}
@@ -703,8 +725,36 @@ export default function FinancialManagement() {
         })()}
       </TabPanel>
 
-      {/* Projections Tab */}
+      {/* Waste Analytics Tab */}
       <TabPanel value={currentTab} index={2}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+            Waste Analytics & Cost Management
+          </Typography>
+        </Box>
+        
+        <WasteAnalyticsDashboard 
+          inventoryItems={inventoryItems}
+          orders={orders}
+          menuItems={menuItems}
+          ingredients={ingredients}
+          onWasteExpenseCalculated={async (expense) => {
+            try {
+              // This will be handled by the waste expense integration
+              setSnackbar({ 
+                open: true, 
+                message: `Waste expense of ${formatCurrency(expense.amount)} calculated for financial planning`, 
+                severity: 'success' 
+              })
+            } catch (error) {
+              console.error('Failed to process waste expense:', error)
+            }
+          }}
+        />
+      </TabPanel>
+
+      {/* Projections Tab */}
+      <TabPanel value={currentTab} index={3}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
           <Typography variant="h5" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
             {t('projections')}
