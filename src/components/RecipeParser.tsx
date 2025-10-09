@@ -1,175 +1,137 @@
-import React, { useState, useRef } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Stepper,
-  Step,
-  StepLabel,
-  Alert,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Chip,
-  Divider,
-  useTheme
-} from '@mui/material';
-import {
-  Upload as UploadIcon,
-  AutoAwesome as AIIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Download as DownloadIcon,
-  PhotoCamera as CameraIcon,
-  TextFields as TextIcon,
-  AttachFile as FileIcon,
-  CheckCircle as CheckIcon
-} from '@mui/icons-material';
-import { useTranslation } from 'react-i18next';
-import Papa from 'papaparse';
+import React, { useState, useRef } from 'react'
+import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Stepper, Step, StepLabel, Alert, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Chip, Divider, useTheme } from '@mui/material'
+import { Upload as UploadIcon, AutoAwesome as AIIcon, Edit as EditIcon, Delete as DeleteIcon, Download as DownloadIcon, PhotoCamera as CameraIcon, TextFields as TextIcon, AttachFile as FileIcon, CheckCircle as CheckIcon } from '@mui/icons-material'
+import { useTranslation } from 'react-i18next'
+import Papa from 'papaparse'
 
 interface ParsedIngredient {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  category: string;
-  estimatedCost: number;
-  confidence: number;
-  notes?: string;
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  category: string
+  estimatedCost: number
+  confidence: number
+  notes?: string
 }
 
 interface RecipeParserProps {
-  open: boolean;
-  onClose: () => void;
-  onImport: (ingredients: ParsedIngredient[]) => void;
+  open: boolean
+  onClose: () => void
+  onImport: (ingredients: ParsedIngredient[]) => void
 }
 
-const PARSING_STEPS = ['upload', 'parse', 'review', 'generate'];
+const PARSING_STEPS = ['upload', 'parse', 'review', 'generate']
 
 export default function RecipeParser({ open, onClose, onImport }: RecipeParserProps) {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  
-  const [activeStep, setActiveStep] = useState(0);
-  const [parsing, setParsing] = useState(false);
-  const [uploadMethod, setUploadMethod] = useState<'text' | 'image' | 'file' | null>(null);
-  const [recipeText, setRecipeText] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const theme = useTheme()
+  const { t } = useTranslation()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  const [activeStep, setActiveStep] = useState(0)
+  const [parsing, setParsing] = useState(false)
+  const [uploadMethod, setUploadMethod] = useState<'text' | 'image' | 'file' | null>(null)
+  const [recipeText, setRecipeText] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const handleClose = () => {
-    setActiveStep(0);
-    setUploadMethod(null);
-    setRecipeText('');
-    setSelectedFile(null);
-    setParsedIngredients([]);
-    setError(null);
-    onClose();
-  };
+    setActiveStep(0)
+    setUploadMethod(null)
+    setRecipeText('')
+    setSelectedFile(null)
+    setParsedIngredients([])
+    setError(null)
+    onClose()
+  }
 
   const handleTextUpload = () => {
-    setUploadMethod('text');
-    setActiveStep(1);
-  };
+    setUploadMethod('text')
+    setActiveStep(1)
+  }
 
   const handleImageUpload = () => {
-    setUploadMethod('image');
-    imageInputRef.current?.click();
-  };
+    setUploadMethod('image')
+    imageInputRef.current?.click()
+  }
 
   const handleFileUpload = () => {
-    setUploadMethod('file');
-    fileInputRef.current?.click();
-  };
+    setUploadMethod('file')
+    fileInputRef.current?.click()
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0]
     if (file) {
-      setSelectedFile(file);
-      setActiveStep(1);
+      setSelectedFile(file)
+      setActiveStep(1)
       // Auto-parse if it's a text file
       if (file.type.startsWith('text/')) {
-        readFileContent(file);
+        readFileContent(file)
       }
     }
-  };
+  }
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setActiveStep(1);
+      setSelectedFile(file)
+      setActiveStep(1)
     }
-  };
+  }
 
   const readFileContent = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setRecipeText(content);
-    };
-    reader.readAsText(file);
-  };
+    const reader = new FileReader()
+    reader.onload = e => {
+      const content = e.target?.result as string
+      setRecipeText(content)
+    }
+    reader.readAsText(file)
+  }
 
   const parseRecipe = async () => {
-    setParsing(true);
-    setError(null);
-    
+    setParsing(true)
+    setError(null)
+
     try {
-      let contentToAnalyze = '';
-      
+      let contentToAnalyze = ''
+
       if (uploadMethod === 'text') {
-        contentToAnalyze = recipeText;
+        contentToAnalyze = recipeText
       } else if (uploadMethod === 'image' && selectedFile) {
         // For image parsing, we would need OCR service
-        contentToAnalyze = await extractTextFromImage(selectedFile);
+        contentToAnalyze = await extractTextFromImage(selectedFile)
       } else if (uploadMethod === 'file' && selectedFile) {
-        contentToAnalyze = recipeText;
+        contentToAnalyze = recipeText
       }
 
-      const ingredients = await analyzeRecipeWithAI(contentToAnalyze);
-      setParsedIngredients(ingredients);
-      setActiveStep(2);
+      const ingredients = await analyzeRecipeWithAI(contentToAnalyze)
+      setParsedIngredients(ingredients)
+      setActiveStep(2)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse recipe');
+      setError(err instanceof Error ? err.message : t('failed_to_parse_recipe') || 'Failed to parse recipe')
     } finally {
-      setParsing(false);
+      setParsing(false)
     }
-  };
+  }
 
   const extractTextFromImage = async (file: File): Promise<string> => {
     // This would integrate with an OCR service like Google Vision API or Tesseract
     // For now, return a placeholder
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       setTimeout(() => {
-        resolve("OCR extraction would happen here - integrating with vision API");
-      }, 2000);
-    });
-  };
+        resolve(t('ocr_placeholder') || 'OCR extraction would happen here - integrating with vision API')
+      }, 2000)
+    })
+  }
 
   const analyzeRecipeWithAI = async (recipeText: string): Promise<ParsedIngredient[]> => {
     // This would integrate with OpenAI API or similar AI service
     // For now, simulate the parsing with realistic data
-    
-    return new Promise((resolve) => {
+
+    return new Promise(resolve => {
       setTimeout(() => {
         // Simulate AI parsing results
         const mockIngredients: ParsedIngredient[] = [
@@ -184,13 +146,13 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
             notes: 'Detected from "2 pounds ground beef"'
           },
           {
-            id: '2', 
+            id: '2',
             name: 'Onions',
             quantity: 1,
             unit: 'piece',
             category: 'Vegetables',
-            estimatedCost: 1.50,
-            confidence: 0.90,
+            estimatedCost: 1.5,
+            confidence: 0.9,
             notes: 'Detected from "1 large onion, diced"'
           },
           {
@@ -199,7 +161,7 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
             quantity: 3,
             unit: 'cloves',
             category: 'Herbs & Spices',
-            estimatedCost: 0.50,
+            estimatedCost: 0.5,
             confidence: 0.85,
             notes: 'Detected from "3 cloves garlic, minced"'
           },
@@ -213,24 +175,20 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
             confidence: 0.92,
             notes: 'Detected from "1 can (15oz) tomato sauce"'
           }
-        ];
-        
-        resolve(mockIngredients);
-      }, 3000);
-    });
-  };
+        ]
+
+        resolve(mockIngredients)
+      }, 3000)
+    })
+  }
 
   const updateIngredient = (id: string, field: keyof ParsedIngredient, value: any) => {
-    setParsedIngredients(prev => 
-      prev.map(ing => 
-        ing.id === id ? { ...ing, [field]: value } : ing
-      )
-    );
-  };
+    setParsedIngredients(prev => prev.map(ing => (ing.id === id ? { ...ing, [field]: value } : ing)))
+  }
 
   const removeIngredient = (id: string) => {
-    setParsedIngredients(prev => prev.filter(ing => ing.id !== id));
-  };
+    setParsedIngredients(prev => prev.filter(ing => ing.id !== id))
+  }
 
   const generateCSV = () => {
     const csvData = parsedIngredients.map(ing => ({
@@ -244,17 +202,17 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
       packageType: '',
       minimumOrderQuantity: 1,
       orderByPackage: false
-    }));
+    }))
 
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'parsed-ingredients.csv';
-    link.click();
-    
-    setActiveStep(3);
-  };
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'parsed-ingredients.csv'
+    link.click()
+
+    setActiveStep(3)
+  }
 
   const getStepContent = (step: number) => {
     switch (step) {
@@ -263,14 +221,14 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                How would you like to upload your recipe?
+                {t('how_upload_recipe')}
               </Typography>
             </Grid>
-            
+
             <Grid item xs={12} md={4}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer', 
+              <Card
+                sx={{
+                  cursor: 'pointer',
                   '&:hover': { transform: 'scale(1.02)' },
                   transition: 'transform 0.2s'
                 }}
@@ -279,19 +237,19 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
                 <CardContent sx={{ textAlign: 'center', py: 4 }}>
                   <TextIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
                   <Typography variant="h6" gutterBottom>
-                    Paste Recipe Text
+                    {t('paste_recipe_text')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Copy and paste your recipe text directly
+                    {t('paste_recipe_text_desc')}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer', 
+              <Card
+                sx={{
+                  cursor: 'pointer',
                   '&:hover': { transform: 'scale(1.02)' },
                   transition: 'transform 0.2s'
                 }}
@@ -300,19 +258,19 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
                 <CardContent sx={{ textAlign: 'center', py: 4 }}>
                   <CameraIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
                   <Typography variant="h6" gutterBottom>
-                    Upload Image
+                    {t('upload_image_label')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Upload a photo of your recipe
+                    {t('upload_image_desc')}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Card 
-                sx={{ 
-                  cursor: 'pointer', 
+              <Card
+                sx={{
+                  cursor: 'pointer',
                   '&:hover': { transform: 'scale(1.02)' },
                   transition: 'transform 0.2s'
                 }}
@@ -321,142 +279,82 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
                 <CardContent sx={{ textAlign: 'center', py: 4 }}>
                   <FileIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
                   <Typography variant="h6" gutterBottom>
-                    Upload File
+                    {t('upload_file_label')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Upload a text file or document
+                    {t('upload_file_desc')}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
-        );
+        )
 
       case 1:
         return (
           <Box>
-            {uploadMethod === 'text' && (
-              <TextField
-                fullWidth
-                multiline
-                rows={10}
-                label="Recipe Text"
-                value={recipeText}
-                onChange={(e) => setRecipeText(e.target.value)}
-                placeholder="Paste your recipe here..."
-                sx={{ mb: 3 }}
-              />
-            )}
-            
+            {uploadMethod === 'text' && <TextField fullWidth multiline rows={10} label={t('recipe_text_label')} value={recipeText} onChange={e => setRecipeText(e.target.value)} placeholder={t('recipe_text_placeholder')} sx={{ mb: 3 }} />}
+
             {selectedFile && (
               <Alert severity="info" sx={{ mb: 3 }}>
-                Selected file: {selectedFile.name}
+                {t('selected_file_label', { name: selectedFile.name })}
               </Alert>
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <Button
-                variant="contained"
-                onClick={parseRecipe}
-                disabled={parsing || (!recipeText && !selectedFile)}
-                startIcon={parsing ? <CircularProgress size={20} /> : <AIIcon />}
-                size="large"
-              >
-                {parsing ? 'Parsing with AI...' : 'Parse Recipe with AI'}
+              <Button variant="contained" onClick={parseRecipe} disabled={parsing || (!recipeText && !selectedFile)} startIcon={parsing ? <CircularProgress size={20} /> : <AIIcon />} size="large">
+                {parsing ? t('parsing_with_ai') : t('parse_recipe_button')}
               </Button>
             </Box>
           </Box>
-        );
+        )
 
       case 2:
         return (
           <Box>
             <Alert severity="success" sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                AI parsing complete! Found {parsedIngredients.length} ingredients.
+                {t('ai_parsing_complete', { count: parsedIngredients.length })}
               </Typography>
-              <Typography variant="body2">
-                Review and edit the parsed ingredients below before generating the CSV.
-              </Typography>
+              <Typography variant="body2">{t('review_edit_hint')}</Typography>
             </Alert>
 
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Ingredient</TableCell>
-                    <TableCell>Quantity</TableCell>
-                    <TableCell>Unit</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Est. Cost</TableCell>
-                    <TableCell>Confidence</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell>{t('ingredient_col')}</TableCell>
+                    <TableCell>{t('quantity_col')}</TableCell>
+                    <TableCell>{t('unit_col')}</TableCell>
+                    <TableCell>{t('category_col')}</TableCell>
+                    <TableCell>{t('estimated_cost_col')}</TableCell>
+                    <TableCell>{t('confidence_col')}</TableCell>
+                    <TableCell>{t('actions_col')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {parsedIngredients.map((ingredient) => (
+                  {parsedIngredients.map(ingredient => (
                     <TableRow key={ingredient.id}>
                       <TableCell>
-                        <TextField
-                          value={ingredient.name}
-                          onChange={(e) => updateIngredient(ingredient.id, 'name', e.target.value)}
-                          variant="outlined"
-                          size="small"
-                          fullWidth
-                        />
+                        <TextField value={ingredient.name} onChange={e => updateIngredient(ingredient.id, 'name', e.target.value)} variant="outlined" size="small" fullWidth />
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          type="number"
-                          value={ingredient.quantity}
-                          onChange={(e) => updateIngredient(ingredient.id, 'quantity', parseFloat(e.target.value))}
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 80 }}
-                        />
+                        <TextField type="number" value={ingredient.quantity} onChange={e => updateIngredient(ingredient.id, 'quantity', parseFloat(e.target.value))} variant="outlined" size="small" sx={{ width: 80 }} />
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          value={ingredient.unit}
-                          onChange={(e) => updateIngredient(ingredient.id, 'unit', e.target.value)}
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 100 }}
-                        />
+                        <TextField value={ingredient.unit} onChange={e => updateIngredient(ingredient.id, 'unit', e.target.value)} variant="outlined" size="small" sx={{ width: 100 }} />
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          value={ingredient.category}
-                          onChange={(e) => updateIngredient(ingredient.id, 'category', e.target.value)}
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 120 }}
-                        />
+                        <TextField value={ingredient.category} onChange={e => updateIngredient(ingredient.id, 'category', e.target.value)} variant="outlined" size="small" sx={{ width: 120 }} />
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          type="number"
-                          value={ingredient.estimatedCost}
-                          onChange={(e) => updateIngredient(ingredient.id, 'estimatedCost', parseFloat(e.target.value))}
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 100 }}
-                          InputProps={{ startAdornment: '$' }}
-                        />
+                        <TextField type="number" value={ingredient.estimatedCost} onChange={e => updateIngredient(ingredient.id, 'estimatedCost', parseFloat(e.target.value))} variant="outlined" size="small" sx={{ width: 100 }} InputProps={{ startAdornment: '$' }} />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={`${Math.round(ingredient.confidence * 100)}%`}
-                          color={ingredient.confidence > 0.8 ? 'success' : 'warning'}
-                          size="small"
-                        />
+                        <Chip label={`${Math.round(ingredient.confidence * 100)}%`} color={ingredient.confidence > 0.8 ? 'success' : 'warning'} size="small" />
                       </TableCell>
                       <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={() => removeIngredient(ingredient.id)}
-                          color="error"
-                        >
+                        <IconButton size="small" onClick={() => removeIngredient(ingredient.id)} color="error">
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
@@ -467,79 +365,61 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
             </TableContainer>
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-              <Button
-                variant="contained"
-                onClick={generateCSV}
-                startIcon={<DownloadIcon />}
-                size="large"
-                disabled={parsedIngredients.length === 0}
-              >
-                Generate CSV for Import
+              <Button variant="contained" onClick={generateCSV} startIcon={<DownloadIcon />} size="large" disabled={parsedIngredients.length === 0}>
+                {t('generate_csv_button')}
               </Button>
             </Box>
           </Box>
-        );
+        )
 
       case 3:
         return (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <CheckIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
             <Typography variant="h5" gutterBottom>
-              CSV Generated Successfully!
+              {t('csv_generated_title')}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              Your ingredients CSV has been downloaded and is ready to import.
+              {t('csv_generated_desc')}
             </Typography>
-            <Button
-              variant="contained"
-              onClick={() => onImport(parsedIngredients)}
-              size="large"
-            >
-              Import Ingredients Now
+            <Button variant="contained" onClick={() => onImport(parsedIngredients)} size="large">
+              {t('import_ingredients_now')}
             </Button>
           </Box>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
     <>
-      <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="lg" 
-        fullWidth
-        PaperProps={{ sx: { minHeight: '80vh' } }}
-      >
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth PaperProps={{ sx: { minHeight: '80vh' } }}>
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <AIIcon color="primary" />
-            <Typography variant="h5">
-              AI Recipe Parser
-            </Typography>
+            <Typography variant="h5">{t('ai_recipe_parser_title')}</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Upload recipes and let AI extract ingredients automatically
+            {t('ai_recipe_parser_subtitle')}
           </Typography>
         </DialogTitle>
 
         <DialogContent>
           <Box sx={{ mb: 4 }}>
-            <Stepper activeStep={activeStep} alternativeLabel>
+            <Stepper activeStep={activeStep} alternativeLabel sx={{ flexDirection: theme.direction === 'rtl' ? 'row-reverse' : 'row' }}>
               <Step>
-                <StepLabel>Upload Recipe</StepLabel>
+                <StepLabel>{t('step_upload_recipe')}</StepLabel>
               </Step>
               <Step>
-                <StepLabel>AI Parsing</StepLabel>
+                <StepLabel>{t('step_ai_parsing')}</StepLabel>
               </Step>
               <Step>
-                <StepLabel>Review & Edit</StepLabel>
+                <StepLabel>{t('step_review_edit')}</StepLabel>
               </Step>
               <Step>
-                <StepLabel>Generate CSV</StepLabel>
+                <StepLabel>{t('step_generate_csv')}</StepLabel>
               </Step>
             </Stepper>
           </Box>
@@ -554,32 +434,14 @@ export default function RecipeParser({ open, onClose, onImport }: RecipeParserPr
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleClose}>
-            {activeStep === 3 ? 'Done' : 'Cancel'}
-          </Button>
-          {activeStep > 0 && activeStep < 3 && (
-            <Button onClick={() => setActiveStep(prev => prev - 1)}>
-              Back
-            </Button>
-          )}
+          <Button onClick={handleClose}>{activeStep === 3 ? t('done') : t('cancel')}</Button>
+          {activeStep > 0 && activeStep < 3 && <Button onClick={() => setActiveStep(prev => prev - 1)}>{t('back')}</Button>}
         </DialogActions>
       </Dialog>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        accept=".txt,.doc,.docx,.pdf"
-        onChange={handleFileSelect}
-      />
-      
-      <input
-        type="file"
-        ref={imageInputRef}
-        style={{ display: 'none' }}
-        accept="image/*"
-        onChange={handleImageSelect}
-      />
+      <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".txt,.doc,.docx,.pdf" onChange={handleFileSelect} />
+
+      <input type="file" ref={imageInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageSelect} />
     </>
-  );
+  )
 }

@@ -31,6 +31,8 @@ export interface WasteRecommendation {
   potentialSavings: number
   description: string
   priority: 'high' | 'medium' | 'low'
+  descriptionKey?: string
+  descriptionArgs?: { [key: string]: string | number }
 }
 
 export interface SalesUsageData {
@@ -41,16 +43,10 @@ export interface SalesUsageData {
 }
 
 class WasteAnalyticsService {
-  
   /**
    * Calculate theoretical ingredient usage based on sales data
    */
-  calculateTheoreticalUsage(
-    orders: Order[], 
-    menuItems: MenuItem[], 
-    ingredients: Ingredient[],
-    timeframe: 'week' | 'month' | 'quarter' = 'month'
-  ): SalesUsageData[] {
+  calculateTheoreticalUsage(orders: Order[], menuItems: MenuItem[], ingredients: Ingredient[], timeframe: 'week' | 'month' | 'quarter' = 'month'): SalesUsageData[] {
     const cutoffDate = new Date()
     switch (timeframe) {
       case 'week':
@@ -65,10 +61,7 @@ class WasteAnalyticsService {
     }
 
     // Filter orders within timeframe
-    const recentOrders = orders.filter(order => 
-      order.orderTime >= cutoffDate && 
-      order.status === 'completed'
-    )
+    const recentOrders = orders.filter(order => order.orderTime >= cutoffDate && order.status === 'completed')
 
     const usageMap = new Map<string, SalesUsageData>()
 
@@ -104,28 +97,24 @@ class WasteAnalyticsService {
   /**
    * Calculate waste rates for each inventory item
    */
-  calculateWasteRates(
-    inventoryItems: InventoryItem[],
-    salesUsage: SalesUsageData[],
-    timeframe: 'month' | 'quarter' = 'month'
-  ): WasteRateItem[] {
+  calculateWasteRates(inventoryItems: InventoryItem[], salesUsage: SalesUsageData[], timeframe: 'month' | 'quarter' = 'month'): WasteRateItem[] {
     return inventoryItems.map(item => {
       const usage = salesUsage.find(s => s.itemId === item.ingredientId || s.itemName.toLowerCase() === item.name.toLowerCase())
       const theoreticalUsage = usage ? Object.values(usage.ingredientUsage).reduce((sum, val) => sum + val, 0) : 0
-      
+
       // Get disposed quantity - this is the key metric for waste tracking
       const disposedQuantity = item.disposedQuantity || 0
-      
+
       // If we have disposal data but no sales data, we still want to track waste
       // Estimate actual usage: if we have sales data use it, otherwise assume disposal represents waste
       const actualUsage = theoreticalUsage > 0 ? theoreticalUsage + disposedQuantity : Math.max(disposedQuantity, item.currentStock + disposedQuantity)
-      
+
       // Calculate waste rate - if no sales data, assume 100% waste rate for disposed items
-      const wasteRate = actualUsage > 0 ? (disposedQuantity / actualUsage) * 100 : (disposedQuantity > 0 ? 100 : 0)
-      
+      const wasteRate = actualUsage > 0 ? (disposedQuantity / actualUsage) * 100 : disposedQuantity > 0 ? 100 : 0
+
       // Calculate waste value - this is the direct cost impact
       const wasteValue = disposedQuantity * item.costPerUnit
-      
+
       console.log(`Item: ${item.name}, Disposed: ${disposedQuantity}, Cost: ${item.costPerUnit}, Waste Value: ${wasteValue}`)
 
       // Generate recommendation
@@ -173,6 +162,8 @@ class WasteAnalyticsService {
           currentWasteRate: item.wasteRate,
           potentialSavings: item.wasteValue * 0.7, // Assume 70% reduction possible
           description: `Reduce order quantities for ${item.itemName} by 20-30% to minimize waste`,
+          descriptionKey: 'wa_reduce_order_desc',
+          descriptionArgs: { item: item.itemName },
           priority: item.wasteRate > 25 ? 'high' : 'medium'
         })
       })
@@ -189,6 +180,8 @@ class WasteAnalyticsService {
           currentWasteRate: item.wasteRate,
           potentialSavings: item.wasteValue * 0.5,
           description: `Improve storage conditions for ${item.itemName} to extend shelf life`,
+          descriptionKey: 'wa_improve_storage_desc',
+          descriptionArgs: { item: item.itemName },
           priority: 'high'
         })
       })
@@ -210,6 +203,8 @@ class WasteAnalyticsService {
           currentWasteRate: 0,
           potentialSavings: wasteValue * 0.3,
           description: `Consider menu optimization for ${category} items to reduce overall waste`,
+          descriptionKey: 'wa_menu_optimization_desc',
+          descriptionArgs: { category },
           priority: 'medium'
         })
       })
@@ -220,32 +215,22 @@ class WasteAnalyticsService {
   /**
    * Calculate comprehensive waste analytics
    */
-  calculateWasteAnalytics(
-    inventoryItems: InventoryItem[],
-    orders: Order[],
-    menuItems: MenuItem[],
-    ingredients: Ingredient[],
-    timeframe: 'month' | 'quarter' = 'month'
-  ): WasteAnalytics {
+  calculateWasteAnalytics(inventoryItems: InventoryItem[], orders: Order[], menuItems: MenuItem[], ingredients: Ingredient[], timeframe: 'month' | 'quarter' = 'month'): WasteAnalytics {
     const salesUsage = this.calculateTheoreticalUsage(orders, menuItems, ingredients, timeframe)
     const wasteRates = this.calculateWasteRates(inventoryItems, salesUsage, timeframe)
-    
+
     const totalWasteValue = wasteRates.reduce((sum, item) => sum + item.wasteValue, 0)
     const wasteByCategory = wasteRates.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + item.wasteValue
       return acc
     }, {} as { [category: string]: number })
 
-    const totalInventoryValue = inventoryItems.reduce((sum, item) => 
-      sum + (item.currentStock * item.costPerUnit), 0
-    )
-    
-    const averageWastePercentage = wasteRates.length > 0 
-      ? wasteRates.reduce((sum, item) => sum + item.wasteRate, 0) / wasteRates.length 
-      : 0
+    const totalInventoryValue = inventoryItems.reduce((sum, item) => sum + item.currentStock * item.costPerUnit, 0)
+
+    const averageWastePercentage = wasteRates.length > 0 ? wasteRates.reduce((sum, item) => sum + item.wasteRate, 0) / wasteRates.length : 0
 
     const wasteEfficiencyRate = 100 - averageWastePercentage
-    
+
     // Monthly projection (multiply by period multiplier)
     const periodMultiplier = timeframe === 'month' ? 1 : timeframe === 'quarter' ? 0.33 : 4.33
     const monthlyWasteExpense = totalWasteValue * periodMultiplier

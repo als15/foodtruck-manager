@@ -36,7 +36,7 @@ const getNavigationItems = (t: any): NavigationItem[] => [
     text: t('products_inventory'),
     icon: <ProductsIcon />,
     children: [
-      { textKey: 'ingredients', text: t('ingredients'), icon: <InventoryIcon />, path: '/ingredients' },
+      { textKey: 'products', text: t('products'), icon: <InventoryIcon />, path: '/products' },
       { textKey: 'inventory', text: t('inventory'), icon: <InventoryIcon />, path: '/inventory' },
       { textKey: 'menu_management', text: t('menu_management'), icon: <MenuManagementIcon />, path: '/menu' },
       { textKey: 'prep_planner', text: t('prep_planner'), icon: <PrepIcon />, path: '/prep-planner' }

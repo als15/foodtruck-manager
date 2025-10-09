@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, Card, CardContent, Grid, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert, Chip, IconButton, Divider, Switch, FormControlLabel, Autocomplete, LinearProgress, Stack, useTheme } from '@mui/material'
-import { Add as AddIcon, Delete as DeleteIcon, TrendingUp as ProfitIcon, TrendingDown as LossIcon, Analytics as AnalyticsIcon, Calculate as CalculateIcon, Refresh as ResetIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Receipt as ExpenseIcon, Upload as ImportIcon } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Button, Input, Table, Tag, Space, Spin, Alert, message, Select, Switch, Divider, Progress, AutoComplete } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, DeleteOutlined, RiseOutlined, FallOutlined, BarChartOutlined, CalculatorOutlined, ReloadOutlined, DownOutlined, UpOutlined, DollarOutlined, UploadOutlined } from '@ant-design/icons'
 import { MenuItem, Expense, Ingredient } from '../types'
 import { menuItemsService, expensesService, ingredientsService } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
 import AISalesImporter from '../components/Common/AISalesImporter'
+
+const { Title, Text } = Typography
 
 interface SalesScenarioItem {
   menuItemId: string
@@ -22,10 +25,8 @@ interface BreakEvenSettings {
 }
 
 export default function BreakEvenAnalysis() {
-  const { t } = useTranslation()
-  const theme = useTheme()
-  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : 'ltr'
-  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -251,383 +252,412 @@ export default function BreakEvenAnalysis() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <Typography>Loading...</Typography>
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
+  // Autocomplete options for menu items
+  const menuItemOptions = menuItems.map(item => ({
+    value: item.id,
+    label: item.name,
+    item: item
+  }))
+
+  // Scenario table columns
+  const scenarioColumns: ColumnsType<SalesScenarioItem> = [
+    {
+      title: t('item_col'),
+      dataIndex: 'menuItem',
+      key: 'item',
+      render: (menuItem: MenuItem) => (
+        <div>
+          <Text strong>{menuItem.name}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: '12px' }}>{menuItem.category}</Text>
+        </div>
+      )
+    },
+    {
+      title: t('daily_qty_col'),
+      key: 'quantity',
+      align: 'center',
+      width: 120,
+      render: (_, record, index) => (
+        <Input
+          type="number"
+          value={record.dailyQuantity}
+          onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 0)}
+          min={0}
+          style={{ width: 80, textAlign: 'center' }}
+        />
+      )
+    },
+    {
+      title: t('unit_price_col'),
+      key: 'price',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => <Text>{formatCurrency(record.menuItem.price)}</Text>
+    },
+    {
+      title: t('unit_cost_col'),
+      key: 'cost',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const unitCost = calculateItemCost(record.menuItem)
+        return <Text type="danger">{formatCurrency(unitCost)}</Text>
+      }
+    },
+    {
+      title: t('unit_profit_col'),
+      key: 'unitProfit',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const unitCost = calculateItemCost(record.menuItem)
+        const unitProfit = record.menuItem.price - unitCost
+        return (
+          <Text strong style={{ color: unitProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+            {formatCurrency(unitProfit)}
+          </Text>
+        )
+      }
+    },
+    {
+      title: t('daily_revenue_col'),
+      key: 'dailyRevenue',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const dailyRevenue = record.menuItem.price * record.dailyQuantity
+        return <Text strong>{formatCurrency(dailyRevenue)}</Text>
+      }
+    },
+    {
+      title: t('daily_profit_col'),
+      key: 'dailyProfit',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const unitCost = calculateItemCost(record.menuItem)
+        const unitProfit = record.menuItem.price - unitCost
+        const dailyProfit = unitProfit * record.dailyQuantity
+        return (
+          <Text strong style={{ color: dailyProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+            {formatCurrency(dailyProfit)}
+          </Text>
+        )
+      }
+    },
+    {
+      title: t('actions'),
+      key: 'actions',
+      align: 'center',
+      width: 80,
+      render: (_, record, index) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => removeItemFromScenario(index)}
+        />
+      )
+    }
+  ]
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-          <AnalyticsIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <Space size="middle">
+          <BarChartOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+          <Title level={2} style={{ margin: 0 }}>
             {t('break_even_analysis')}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-          <Button variant="contained" startIcon={<ImportIcon />} onClick={() => setShowImporter(true)}>
+          </Title>
+        </Space>
+        <Space>
+          <Button icon={<UploadOutlined />} onClick={() => setShowImporter(true)}>
             {t('import_sales_data')}
           </Button>
-          <Button variant="outlined" startIcon={<ResetIcon />} onClick={resetScenario} disabled={salesScenario.length === 0}>
+          <Button icon={<ReloadOutlined />} onClick={resetScenario} disabled={salesScenario.length === 0}>
             {t('reset_scenario')}
           </Button>
-        </Box>
-      </Box>
+        </Space>
+      </div>
 
-      <Grid container spacing={3}>
+      <Row gutter={[16, 16]}>
         {/* Settings Panel */}
-        <Grid item xs={12} md={4}>
+        <Col xs={24} md={8}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CalculateIcon />
-                {t('bea_settings')}
-              </Typography>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <Space>
+                <CalculatorOutlined />
+                <Title level={5} style={{ margin: 0 }}>{t('bea_settings')}</Title>
+              </Space>
 
-              <Stack spacing={2}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.useMonthlyView}
-                      onChange={e =>
-                        setSettings(prev => ({
-                          ...prev,
-                          useMonthlyView: e.target.checked
-                        }))
-                      }
-                    />
+              <div>
+                <Text>{t('monthly_view')}</Text>
+                <Switch
+                  checked={settings.useMonthlyView}
+                  onChange={(checked) =>
+                    setSettings(prev => ({
+                      ...prev,
+                      useMonthlyView: checked
+                    }))
                   }
-                  label={t('monthly_view')}
+                  style={{ marginLeft: 8 }}
                 />
+              </div>
 
-                {settings.useMonthlyView ? (
-                  <>
-                    <TextField
-                      fullWidth
-                      label={t('monthly_labor_cost_label')}
+              {settings.useMonthlyView ? (
+                <>
+                  <div>
+                    <Text>{t('monthly_labor_cost_label')}</Text>
+                    <Input
                       type="number"
                       value={settings.monthlyLaborCost}
-                      onChange={e =>
+                      onChange={(e) =>
                         setSettings(prev => ({
                           ...prev,
                           monthlyLaborCost: parseFloat(e.target.value) || 0
                         }))
                       }
-                      InputProps={isRtl ? { endAdornment: '$' } : { startAdornment: '$' }}
+                      prefix={!isRtl && '$'}
+                      suffix={isRtl && '$'}
+                      style={{ marginTop: 8 }}
                     />
-                    <TextField
-                      fullWidth
-                      label={t('working_days_per_week_label')}
+                  </div>
+                  <div>
+                    <Text>{t('working_days_per_week_label')}</Text>
+                    <Input
                       type="number"
                       value={settings.workingDaysPerWeek}
-                      onChange={e =>
+                      onChange={(e) =>
                         setSettings(prev => ({
                           ...prev,
                           workingDaysPerWeek: parseInt(e.target.value) || 3
                         }))
                       }
-                      inputProps={{ min: 1, max: 7 }}
+                      min={1}
+                      max={7}
+                      style={{ marginTop: 8 }}
                     />
-                    <TextField
-                      fullWidth
-                      label={t('weeks_per_month_label')}
+                  </div>
+                  <div>
+                    <Text>{t('weeks_per_month_label')}</Text>
+                    <Input
                       type="number"
                       value={settings.weeksPerMonth}
-                      onChange={e =>
+                      onChange={(e) =>
                         setSettings(prev => ({
                           ...prev,
                           weeksPerMonth: parseFloat(e.target.value) || 4.33
                         }))
                       }
-                      inputProps={{ min: 4, max: 5, step: 0.1 }}
+                      min={4}
+                      max={5}
+                      step={0.1}
+                      style={{ marginTop: 8 }}
                     />
-                    <Alert severity="info" sx={{ mt: 1 }}>
-                      <Typography variant="caption">{t('working_days_per_month_info', { days: Math.round(workingDaysPerMonth) })}</Typography>
-                    </Alert>
-                  </>
-                ) : (
-                  <TextField
-                    fullWidth
-                    label={t('daily_labor_cost_label')}
+                  </div>
+                  <Alert
+                    message={t('working_days_per_month_info', { days: Math.round(workingDaysPerMonth) })}
+                    type="info"
+                  />
+                </>
+              ) : (
+                <div>
+                  <Text>{t('daily_labor_cost_label')}</Text>
+                  <Input
                     type="number"
                     value={settings.dailyLaborCost}
-                    onChange={e =>
+                    onChange={(e) =>
                       setSettings(prev => ({
                         ...prev,
                         dailyLaborCost: parseFloat(e.target.value) || 0
                       }))
                     }
-                    InputProps={isRtl ? { endAdornment: '$' } : { startAdornment: '$' }}
+                    prefix={!isRtl && '$'}
+                    suffix={isRtl && '$'}
+                    style={{ marginTop: 8 }}
                   />
-                )}
-              </Stack>
-            </CardContent>
+                </div>
+              )}
+            </Space>
           </Card>
 
           {/* Add Items to Scenario */}
-          <Card sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
+          <Card style={{ marginTop: 16 }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <Title level={5} style={{ margin: 0 }}>
                 {t('add_items_to_scenario')}
-              </Typography>
+              </Title>
 
-              <Stack spacing={2}>
-                <Autocomplete
-                  options={menuItems}
-                  getOptionLabel={option => option.name}
-                  value={selectedMenuItem}
-                  onChange={(_, newValue) => setSelectedMenuItem(newValue)}
-                  renderInput={params => <TextField {...params} label={t('select_menu_item_label')} inputProps={{ ...params.inputProps, dir: isRtl ? 'rtl' : 'ltr' }} />}
-                  renderOption={(props, option) => (
-                    <li {...props}>
-                      <Box>
-                        <Typography variant="body1">{option.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatCurrency(option.price)} • {option.category}
-                        </Typography>
-                      </Box>
-                    </li>
-                  )}
-                />
+              <AutoComplete
+                style={{ width: '100%' }}
+                options={menuItemOptions}
+                value={selectedMenuItem?.name || ''}
+                onSelect={(value) => {
+                  const item = menuItems.find(m => m.id === value)
+                  setSelectedMenuItem(item || null)
+                }}
+                onChange={(value) => {
+                  if (!value) setSelectedMenuItem(null)
+                }}
+                placeholder={t('select_menu_item_label')}
+                filterOption={(inputValue, option) =>
+                  option!.label.toLowerCase().indexOf(inputValue.toLowerCase()) !== -1
+                }
+              >
+                {menuItems.map(option => (
+                  <Select.Option key={option.id} value={option.id}>
+                    <div>
+                      <div>{option.name}</div>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {formatCurrency(option.price)} • {option.category}
+                      </Text>
+                    </div>
+                  </Select.Option>
+                ))}
+              </AutoComplete>
 
-                <Button variant="contained" startIcon={<AddIcon />} onClick={addItemToScenario} disabled={!selectedMenuItem} fullWidth>
-                  {t('add_to_scenario')}
-                </Button>
-              </Stack>
-            </CardContent>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={addItemToScenario}
+                disabled={!selectedMenuItem}
+                block
+              >
+                {t('add_to_scenario')}
+              </Button>
+            </Space>
           </Card>
-        </Grid>
+        </Col>
 
         {/* Sales Scenario */}
-        <Grid item xs={12} md={8}>
+        <Col xs={24} md={16}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                {t('daily_sales_scenario')}
-              </Typography>
+            <Title level={5} style={{ marginBottom: 16 }}>
+              {t('daily_sales_scenario')}
+            </Title>
 
-              {/* Show imported sales info */}
-              {importedSalesInfo && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    📊 Imported Sales Data: {importedSalesInfo.businessName}
-                  </Typography>
-                  <Typography variant="caption" display="block">
-                    Period: {importedSalesInfo.dateRange} | Total Revenue: ₪{importedSalesInfo.totalRevenue.toFixed(2)} | Total Items: {importedSalesInfo.totalQuantity}
-                  </Typography>
-                </Alert>
-              )}
+            {/* Show imported sales info */}
+            {importedSalesInfo && (
+              <Alert
+                message={
+                  <>
+                    <Text strong>Imported Sales Data: {importedSalesInfo.businessName}</Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Period: {importedSalesInfo.dateRange} | Total Revenue: ₪{importedSalesInfo.totalRevenue.toFixed(2)} | Total Items: {importedSalesInfo.totalQuantity}
+                    </Text>
+                  </>
+                }
+                type="success"
+                style={{ marginBottom: 16 }}
+              />
+            )}
 
-              {salesScenario.length === 0 ? (
-                <Alert severity="info">{t('sales_scenario_hint')}</Alert>
-              ) : (
-                <TableContainer dir={isRtl ? 'rtl' : 'ltr'}>
-                  <Table size="small" dir={isRtl ? 'rtl' : 'ltr'}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>{t('item_col')}</TableCell>
-                        <TableCell align="center">{t('daily_qty_col')}</TableCell>
-                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_price_col')}</TableCell>
-                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_cost_col')}</TableCell>
-                        <TableCell align={isRtl ? 'left' : 'right'}>{t('unit_profit_col')}</TableCell>
-                        <TableCell align={isRtl ? 'left' : 'right'}>{t('daily_revenue_col')}</TableCell>
-                        <TableCell align={isRtl ? 'left' : 'right'}>{t('daily_profit_col')}</TableCell>
-                        <TableCell align="center">{t('actions')}</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {salesScenario.map((item, index) => {
-                        const unitCost = calculateItemCost(item.menuItem)
-                        const unitProfit = item.menuItem.price - unitCost
-                        const dailyRevenue = item.menuItem.price * item.dailyQuantity
-                        const dailyProfit = unitProfit * item.dailyQuantity
+            {salesScenario.length === 0 ? (
+              <Alert message={t('sales_scenario_hint')} type="info" />
+            ) : (
+              <Table
+                dataSource={salesScenario}
+                columns={scenarioColumns}
+                rowKey="menuItemId"
+                pagination={false}
+                size="small"
+                summary={() => {
+                  const totalQuantity = salesScenario.reduce((sum, item) => sum + item.dailyQuantity, 0)
+                  const totalCost = salesScenario.reduce((sum, item) => {
+                    const unitCost = calculateItemCost(item.menuItem)
+                    return sum + unitCost * item.dailyQuantity
+                  }, 0)
+                  const totalRevenue = salesScenario.reduce((sum, item) => {
+                    return sum + item.menuItem.price * item.dailyQuantity
+                  }, 0)
+                  const totalProfit = salesScenario.reduce((sum, item) => {
+                    const unitCost = calculateItemCost(item.menuItem)
+                    const unitProfit = item.menuItem.price - unitCost
+                    return sum + unitProfit * item.dailyQuantity
+                  }, 0)
 
-                        return (
-                          <TableRow key={item.menuItemId}>
-                            <TableCell>
-                              <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                  {item.menuItem.name}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {item.menuItem.category}
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <TextField type="number" size="small" value={item.dailyQuantity} onChange={e => updateItemQuantity(index, parseInt(e.target.value) || 0)} inputProps={{ min: 0, style: { textAlign: 'center' } }} sx={{ width: 80 }} />
-                            </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>
-                              <Typography variant="body2">{formatCurrency(item.menuItem.price)}</Typography>
-                            </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>
-                              <Typography variant="body2" color="error.main">
-                                {formatCurrency(unitCost)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>
-                              <Typography variant="body2" color={unitProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
-                                {formatCurrency(unitProfit)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                {formatCurrency(dailyRevenue)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align={isRtl ? 'left' : 'right'}>
-                              <Typography variant="body2" color={dailyProfit >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
-                                {formatCurrency(dailyProfit)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              <IconButton size="small" color="error" onClick={() => removeItemFromScenario(index)}>
-                                <DeleteIcon />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-
-                      {/* Totals Row */}
-                      {salesScenario.length > 0 && (
-                        <TableRow
-                          sx={theme => ({
-                            bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                            '& td': { fontWeight: 600 },
-                            border: '1px solid',
-                            borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                          })}
-                        >
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {t('totals')}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {salesScenario.reduce((sum, item) => sum + item.dailyQuantity, 0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align={isRtl ? 'left' : 'right'}>
-                            <Typography variant="body2" color="text.secondary">
-                              -
-                            </Typography>
-                          </TableCell>
-                          <TableCell align={isRtl ? 'left' : 'right'}>
-                            <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
-                              {formatCurrency(
-                                salesScenario.reduce((sum, item) => {
-                                  const unitCost = calculateItemCost(item.menuItem)
-                                  return sum + unitCost * item.dailyQuantity
-                                }, 0)
-                              )}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align={isRtl ? 'left' : 'right'}>
-                            <Typography variant="body2" color="text.secondary">
-                              -
-                            </Typography>
-                          </TableCell>
-                          <TableCell align={isRtl ? 'left' : 'right'}>
-                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {formatCurrency(
-                                salesScenario.reduce((sum, item) => {
-                                  return sum + item.menuItem.price * item.dailyQuantity
-                                }, 0)
-                              )}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align={isRtl ? 'left' : 'right'}>
-                            <Typography
-                              variant="body2"
-                              sx={{ fontWeight: 700 }}
-                              color={
-                                salesScenario.reduce((sum, item) => {
-                                  const unitCost = calculateItemCost(item.menuItem)
-                                  const unitProfit = item.menuItem.price - unitCost
-                                  return sum + unitProfit * item.dailyQuantity
-                                }, 0) >= 0
-                                  ? 'success.main'
-                                  : 'error.main'
-                              }
-                            >
-                              {formatCurrency(
-                                salesScenario.reduce((sum, item) => {
-                                  const unitCost = calculateItemCost(item.menuItem)
-                                  const unitProfit = item.menuItem.price - unitCost
-                                  return sum + unitProfit * item.dailyQuantity
-                                }, 0)
-                              )}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Typography variant="body2" color="text.secondary">
-                              -
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </CardContent>
+                  return (
+                    <Table.Summary.Row style={{ backgroundColor: '#fafafa' }}>
+                      <Table.Summary.Cell index={0}>
+                        <Text strong>{t('totals')}</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="center">
+                        <Text strong>{totalQuantity}</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={2} align={isRtl ? 'left' : 'right'}>
+                        <Text type="secondary">-</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={3} align={isRtl ? 'left' : 'right'}>
+                        <Text strong style={{ color: '#ff4d4f' }}>{formatCurrency(totalCost)}</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={4} align={isRtl ? 'left' : 'right'}>
+                        <Text type="secondary">-</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={5} align={isRtl ? 'left' : 'right'}>
+                        <Text strong>{formatCurrency(totalRevenue)}</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={6} align={isRtl ? 'left' : 'right'}>
+                        <Text strong style={{ color: totalProfit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                          {formatCurrency(totalProfit)}
+                        </Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={7} align="center">
+                        <Text type="secondary">-</Text>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  )
+                }}
+              />
+            )}
           </Card>
-        </Grid>
+        </Col>
 
         {/* Financial Analysis */}
         {salesScenario.length > 0 && (
           <>
-            <Grid item xs={12} md={6}>
+            <Col xs={24} md={12}>
               <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ProfitIcon />
-                    {t('daily_analysis')}
-                  </Typography>
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <Space>
+                    <RiseOutlined />
+                    <Title level={5} style={{ margin: 0 }}>{t('daily_analysis')}</Title>
+                  </Space>
 
-                  <Stack spacing={2}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">{t('revenue_label')}</Typography>
-                      <Typography sx={{ fontWeight: 600 }}>{formatCurrency(dailyFinancials.revenue)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">{t('food_cost_label')}</Typography>
-                      <Typography color="error.main">{formatCurrency(dailyFinancials.foodCost)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">{t('labor_cost_label')}</Typography>
-                      <Typography color="error.main">{formatCurrency(dailyFinancials.laborCost)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography color="text.secondary">{t('operating_expenses_label')}</Typography>
-                        <IconButton size="small" onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}>
-                          {showExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
-                      </Box>
-                      <Typography color="error.main">{formatCurrency(dailyFinancials.operatingExpenses)}</Typography>
-                    </Box>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('revenue_label')}</Text>
+                    <Text strong>{formatCurrency(dailyFinancials.revenue)}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('food_cost_label')}</Text>
+                    <Text style={{ color: '#ff4d4f' }}>{formatCurrency(dailyFinancials.foodCost)}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('labor_cost_label')}</Text>
+                    <Text style={{ color: '#ff4d4f' }}>{formatCurrency(dailyFinancials.laborCost)}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Space>
+                      <Text type="secondary">{t('operating_expenses_label')}</Text>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={showExpenseBreakdown ? <UpOutlined /> : <DownOutlined />}
+                        onClick={() => setShowExpenseBreakdown(!showExpenseBreakdown)}
+                      />
+                    </Space>
+                    <Text style={{ color: '#ff4d4f' }}>{formatCurrency(dailyFinancials.operatingExpenses)}</Text>
+                  </div>
 
-                    {/* Expense Breakdown */}
-                    {showExpenseBreakdown && (
-                      <Box
-                        sx={theme => ({
-                          ...(isRtl ? { mr: 2 } : { ml: 2 }),
-                          mt: 1,
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.2)' : 'grey.200'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                  {/* Expense Breakdown */}
+                  {showExpenseBreakdown && (
+                    <Card size="small" style={{ backgroundColor: '#fafafa', marginLeft: isRtl ? 0 : 16, marginRight: isRtl ? 16 : 0 }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Text type="secondary" strong style={{ fontSize: '12px' }}>
                           {t('daily_expense_breakdown_title', { days: Math.round(workingDaysPerMonth) })}
-                        </Typography>
+                        </Text>
                         {getExpenseBreakdown().map((expense, index) => {
                           let calculationNote = ''
                           switch (expense.frequency) {
@@ -646,305 +676,251 @@ export default function BreakEvenAnalysis() {
                           }
 
                           return (
-                            <Box key={expense.id || index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {expense.name}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-                                    {calculationNote}
-                                  </Typography>
-                                </Box>
-                                <Chip label={t(expense.frequency)} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
-                              </Box>
-                              <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                            <div key={expense.id || index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Space size="small">
+                                <DollarOutlined style={{ fontSize: 14, color: '#8c8c8c' }} />
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>{expense.name}</Text>
+                                  <br />
+                                  <Text type="secondary" style={{ fontSize: '10px' }}>{calculationNote}</Text>
+                                </div>
+                                <Tag style={{ fontSize: '10px' }}>{t(expense.frequency)}</Tag>
+                              </Space>
+                              <Text style={{ color: '#ff4d4f', fontSize: '12px' }} strong>
                                 {formatCurrency(expense.dailyAmount)}
-                              </Typography>
-                            </Box>
+                              </Text>
+                            </div>
                           )
                         })}
                         {getExpenseBreakdown().length === 0 && (
-                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          <Text type="secondary" italic style={{ fontSize: '12px' }}>
                             No active operating expenses found
-                          </Typography>
+                          </Text>
                         )}
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text strong style={{ fontSize: '12px' }}>
                             {t('total_daily_operating_expenses')}
-                          </Typography>
-                          <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
+                          </Text>
+                          <Text strong style={{ color: '#ff4d4f', fontSize: '12px' }}>
                             {formatCurrency(getExpenseBreakdown().reduce((sum, exp) => sum + exp.dailyAmount, 0))}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    )}
-                    <Divider />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>{t('total_cost_label')}</Typography>
-                      <Typography sx={{ fontWeight: 600 }} color="error.main">
-                        {formatCurrency(dailyFinancials.totalCost)}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>{t('daily_profit_label')}</Typography>
-                      <Typography sx={{ fontWeight: 600 }} color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
-                        {formatCurrency(dailyFinancials.profit)}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>{t('profit_margin_label')}</Typography>
-                      <Chip label={`${dailyFinancials.profitMargin.toFixed(1)}%`} color={dailyFinancials.profitMargin >= 0 ? 'success' : 'error'} size="small" />
-                    </Box>
-                  </Stack>
-                </CardContent>
+                          </Text>
+                        </div>
+                      </Space>
+                    </Card>
+                  )}
+
+                  <Divider />
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text strong>{t('total_cost_label')}</Text>
+                    <Text strong style={{ color: '#ff4d4f' }}>
+                      {formatCurrency(dailyFinancials.totalCost)}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text strong>{t('daily_profit_label')}</Text>
+                    <Text strong style={{ color: dailyFinancials.profit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                      {formatCurrency(dailyFinancials.profit)}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text strong>{t('profit_margin_label')}</Text>
+                    <Tag color={dailyFinancials.profitMargin >= 0 ? 'success' : 'error'}>
+                      {dailyFinancials.profitMargin.toFixed(1)}%
+                    </Tag>
+                  </div>
+                </Space>
               </Card>
-            </Grid>
+            </Col>
 
-            <Grid item xs={12} md={6}>
+            <Col xs={24} md={12}>
               <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AnalyticsIcon />
-                    {t('monthly_projection')}
-                  </Typography>
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <Space>
+                    <BarChartOutlined />
+                    <Title level={5} style={{ margin: 0 }}>{t('monthly_projection')}</Title>
+                  </Space>
 
-                  <Stack spacing={2}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography color="text.secondary">{t('monthly_revenue_label')}</Typography>
-                      <Typography sx={{ fontWeight: 600 }}>{formatCurrency(monthlyFinancials.revenue)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography color="text.secondary">{t('monthly_costs_label')}</Typography>
-                        <IconButton size="small" onClick={() => setShowMonthlyExpenseBreakdown(!showMonthlyExpenseBreakdown)}>
-                          {showMonthlyExpenseBreakdown ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
-                      </Box>
-                      <Typography color="error.main">{formatCurrency(monthlyFinancials.totalCost)}</Typography>
-                    </Box>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('monthly_revenue_label')}</Text>
+                    <Text strong>{formatCurrency(monthlyFinancials.revenue)}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Space>
+                      <Text type="secondary">{t('monthly_costs_label')}</Text>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={showMonthlyExpenseBreakdown ? <UpOutlined /> : <DownOutlined />}
+                        onClick={() => setShowMonthlyExpenseBreakdown(!showMonthlyExpenseBreakdown)}
+                      />
+                    </Space>
+                    <Text style={{ color: '#ff4d4f' }}>{formatCurrency(monthlyFinancials.totalCost)}</Text>
+                  </div>
 
-                    {/* Monthly Expense Breakdown */}
-                    {showMonthlyExpenseBreakdown && (
-                      <Box
-                        sx={theme => ({
-                          ...(isRtl ? { mr: 2 } : { ml: 2 }),
-                          mt: 1,
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.06)' : 'grey.25',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.2)' : 'grey.200'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                  {/* Monthly Expense Breakdown */}
+                  {showMonthlyExpenseBreakdown && (
+                    <Card size="small" style={{ backgroundColor: '#fafafa', marginLeft: isRtl ? 0 : 16, marginRight: isRtl ? 16 : 0 }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Text type="secondary" strong style={{ fontSize: '12px' }}>
                           {t('monthly_cost_breakdown')}
-                        </Typography>
+                        </Text>
 
                         {/* Food Costs */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {t('food_costs_label')}
-                            </Typography>
-                            <Chip label={t('variable_label')} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
-                          </Box>
-                          <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space size="small">
+                            <DollarOutlined style={{ fontSize: 14, color: '#8c8c8c' }} />
+                            <Text type="secondary" style={{ fontSize: '12px' }}>{t('food_costs_label')}</Text>
+                            <Tag style={{ fontSize: '10px' }}>{t('variable_label')}</Tag>
+                          </Space>
+                          <Text style={{ color: '#ff4d4f', fontSize: '12px' }} strong>
                             {formatCurrency(monthlyFinancials.foodCost)}
-                          </Typography>
-                        </Box>
+                          </Text>
+                        </div>
 
                         {/* Labor Costs */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {t('labor_costs_label')}
-                            </Typography>
-                            <Chip label={t('fixed_label')} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
-                          </Box>
-                          <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space size="small">
+                            <DollarOutlined style={{ fontSize: 14, color: '#8c8c8c' }} />
+                            <Text type="secondary" style={{ fontSize: '12px' }}>{t('labor_costs_label')}</Text>
+                            <Tag style={{ fontSize: '10px' }}>{t('fixed_label')}</Tag>
+                          </Space>
+                          <Text style={{ color: '#ff4d4f', fontSize: '12px' }} strong>
                             {formatCurrency(monthlyFinancials.laborCost)}
-                          </Typography>
-                        </Box>
+                          </Text>
+                        </div>
 
                         {/* Operating Expenses */}
                         {getExpenseBreakdown().map((expense, index) => (
-                          <Box key={expense.id || index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 0.5 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <ExpenseIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                              <Typography variant="caption" color="text.secondary">
-                                {expense.name}
-                              </Typography>
-                              <Chip label={expense.frequency} size="small" variant="outlined" sx={{ height: 16, fontSize: '0.6rem', '& .MuiChip-label': { px: 0.5 } }} />
-                            </Box>
-                            <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                          <div key={expense.id || index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Space size="small">
+                              <DollarOutlined style={{ fontSize: 14, color: '#8c8c8c' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>{expense.name}</Text>
+                              <Tag style={{ fontSize: '10px' }}>{expense.frequency}</Tag>
+                            </Space>
+                            <Text style={{ color: '#ff4d4f', fontSize: '12px' }} strong>
                               {formatCurrency(expense.dailyAmount * workingDaysPerMonth)}
-                            </Typography>
-                          </Box>
+                            </Text>
+                          </div>
                         ))}
 
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text strong style={{ fontSize: '12px' }}>
                             {t('total_monthly_costs_label')}
-                          </Typography>
-                          <Typography variant="caption" color="error.main" sx={{ fontWeight: 700 }}>
+                          </Text>
+                          <Text strong style={{ color: '#ff4d4f', fontSize: '12px' }}>
                             {formatCurrency(monthlyFinancials.totalCost)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    )}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 600 }}>{t('monthly_profit_label')}</Typography>
-                      <Typography sx={{ fontWeight: 600 }} color={monthlyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
-                        {formatCurrency(monthlyFinancials.profit)}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
+                          </Text>
+                        </div>
+                      </Space>
+                    </Card>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text strong>{t('monthly_profit_label')}</Text>
+                    <Text strong style={{ color: monthlyFinancials.profit >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                      {formatCurrency(monthlyFinancials.profit)}
+                    </Text>
+                  </div>
+                </Space>
               </Card>
-            </Grid>
+            </Col>
 
             {/* Break-Even Analysis */}
-            <Grid item xs={12}>
+            <Col xs={24}>
               <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CalculateIcon />
-                    {t('break_even_analysis')}
-                  </Typography>
+                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                  <Space>
+                    <CalculatorOutlined />
+                    <Title level={5} style={{ margin: 0 }}>{t('break_even_analysis')}</Title>
+                  </Space>
 
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="body2">{t('progress_to_breakeven')}</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {breakEven.percentage.toFixed(1)}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress variant="determinate" value={Math.min(breakEven.percentage, 100)} sx={{ height: 8, borderRadius: 4 }} color={breakEven.percentage >= 100 ? 'success' : 'primary'} />
-                  </Box>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text>{t('progress_to_breakeven')}</Text>
+                      <Text strong>{breakEven.percentage.toFixed(1)}%</Text>
+                    </div>
+                    <Progress
+                      percent={Math.min(breakEven.percentage, 100)}
+                      strokeColor={breakEven.percentage >= 100 ? '#52c41a' : '#1890ff'}
+                      showInfo={false}
+                    />
+                  </div>
 
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box
-                        sx={theme => ({
-                          textAlign: 'center',
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {t('current_status')}
-                        </Typography>
-                        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" style={{ textAlign: 'center', backgroundColor: '#fafafa' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('current_status')}</Text>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }}>
                           {breakEven.percentage >= 100 ? (
                             <>
-                              <ProfitIcon color="success" />
-                              {t('profitable')}
+                              <RiseOutlined style={{ color: '#52c41a' }} />
+                              <Title level={5} style={{ margin: 0, color: '#52c41a' }}>{t('profitable')}</Title>
                             </>
                           ) : (
                             <>
-                              <LossIcon color="error" />
-                              {t('below_breakeven')}
+                              <FallOutlined style={{ color: '#ff4d4f' }} />
+                              <Title level={5} style={{ margin: 0, color: '#ff4d4f' }}>{t('below_breakeven')}</Title>
                             </>
                           )}
-                        </Typography>
-                      </Box>
-                    </Grid>
+                        </div>
+                      </Card>
+                    </Col>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box
-                        sx={theme => ({
-                          textAlign: 'center',
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {t('revenue_needed')}
-                        </Typography>
-                        <Typography variant="h6">{formatCurrency(monthlyFinancials.totalCost)}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {t('per_month_short')}
-                        </Typography>
-                      </Box>
-                    </Grid>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" style={{ textAlign: 'center', backgroundColor: '#fafafa' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('revenue_needed')}</Text>
+                        <Title level={5} style={{ margin: '8px 0 0 0' }}>{formatCurrency(monthlyFinancials.totalCost)}</Title>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('per_month_short')}</Text>
+                      </Card>
+                    </Col>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box
-                        sx={theme => ({
-                          textAlign: 'center',
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {t('daily_revenue_gap')}
-                        </Typography>
-                        <Typography variant="h6" color={dailyFinancials.profit >= 0 ? 'success.main' : 'error.main'}>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" style={{ textAlign: 'center', backgroundColor: '#fafafa' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('daily_revenue_gap')}</Text>
+                        <Title level={5} style={{ margin: '8px 0 0 0', color: dailyFinancials.profit >= 0 ? '#52c41a' : '#ff4d4f' }}>
                           {formatCurrency(Math.abs((monthlyFinancials.totalCost - monthlyFinancials.revenue) / workingDaysPerMonth))}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        </Title>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
                           {dailyFinancials.profit >= 0 ? t('surplus') : t('shortage')}
-                        </Typography>
-                      </Box>
-                    </Grid>
+                        </Text>
+                      </Card>
+                    </Col>
 
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Box
-                        sx={theme => ({
-                          textAlign: 'center',
-                          p: 2,
-                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                        })}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {t('scale_factor_needed')}
-                        </Typography>
-                        <Typography variant="h6">{breakEven.percentage < 100 ? `${(100 / breakEven.percentage).toFixed(1)}x` : '1.0x'}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {t('current_volume')}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
+                    <Col xs={24} sm={12} md={6}>
+                      <Card size="small" style={{ textAlign: 'center', backgroundColor: '#fafafa' }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('scale_factor_needed')}</Text>
+                        <Title level={5} style={{ margin: '8px 0 0 0' }}>
+                          {breakEven.percentage < 100 ? `${(100 / breakEven.percentage).toFixed(1)}x` : '1.0x'}
+                        </Title>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>{t('current_volume')}</Text>
+                      </Card>
+                    </Col>
+                  </Row>
 
                   {breakEven.percentage < 100 && (
-                    <Alert severity="warning" sx={{ mt: 2 }}>
-                      <Typography variant="body2">{t('to_reach_breakeven_msg', { scale: (100 / breakEven.percentage).toFixed(1), amount: formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue) })}</Typography>
-                    </Alert>
+                    <Alert
+                      message={t('to_reach_breakeven_msg', { scale: (100 / breakEven.percentage).toFixed(1), amount: formatCurrency(monthlyFinancials.totalCost - monthlyFinancials.revenue) })}
+                      type="warning"
+                    />
                   )}
 
                   {breakEven.percentage >= 100 && (
-                    <Alert severity="success" sx={{ mt: 2 }}>
-                      <Typography variant="body2">{t('congratulations_profitable_msg', { amount: formatCurrency(monthlyFinancials.profit) })}</Typography>
-                    </Alert>
+                    <Alert
+                      message={t('congratulations_profitable_msg', { amount: formatCurrency(monthlyFinancials.profit) })}
+                      type="success"
+                    />
                   )}
-                </CardContent>
+                </Space>
               </Card>
-            </Grid>
+            </Col>
           </>
         )}
-      </Grid>
+      </Row>
 
       {/* AI Sales Importer Dialog */}
       <AISalesImporter open={showImporter} onClose={() => setShowImporter(false)} onSalesDataImported={handleSalesDataImported} title={t('import_sales_data_title')} description={t('import_sales_data_description')} />
-    </Box>
+    </div>
   )
 }

@@ -1,40 +1,27 @@
-import React, { useState, useEffect } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, LinearProgress, Alert, Grid, CircularProgress, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Autocomplete, useTheme, Tabs, Tab } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Warning as WarningIcon, Inventory as InventoryIcon, MoreVert as MoreVertIcon, Input as ImportIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as LeadTimeIcon, Visibility as ViewIcon, VisibilityOff as HideIcon, DeleteOutline as DisposeIcon, Analytics as AnalyticsIcon } from '@mui/icons-material'
-import { InventoryItem, Ingredient, Supplier, Order, MenuItem } from '../types'
-import { inventoryService, ingredientsService, suppliersService, subscriptions, ordersService, menuItemsService } from '../services/supabaseService'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, AutoComplete, Spin, message, Dropdown, Divider, Tabs, Progress, Statistic, Alert as AntAlert } from 'antd'
+import type { MenuProps } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, EditOutlined, DeleteOutlined, WarningOutlined, AppstoreOutlined, MoreOutlined, ImportOutlined, ShoppingCartOutlined, CarOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, DeleteOutlined as DisposeIcon, BarChartOutlined, SearchOutlined } from '@ant-design/icons'
+import { InventoryItem, Product, Supplier, Order, MenuItem } from '../types'
+import { inventoryService, productsService, suppliersService, subscriptions, ordersService, menuItemsService } from '../services/supabaseService'
 import WasteAnalyticsDashboard from '../components/WasteAnalyticsDashboard'
 import { wasteExpenseIntegration } from '../utils/wasteExpenseIntegration'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
-  return (
-    <div role="tabpanel" hidden={value !== index} id={`inventory-tabpanel-${index}`} aria-labelledby={`inventory-tab-${index}`} {...other}>
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  )
-}
+const { Title, Text } = Typography
+const { TabPane } = Tabs
 
 export default function Inventory() {
-  const theme = useTheme()
-  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
-  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
   const [openDialog, setOpenDialog] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'info' | 'warning' })
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
-  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [showAutoOrders, setShowAutoOrders] = useState(false)
   const [disposeDialog, setDisposeDialog] = useState({ open: false, item: null as InventoryItem | null, quantity: 0 })
@@ -42,12 +29,17 @@ export default function Inventory() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [currentTab, setCurrentTab] = useState(0)
+  const [currentTab, setCurrentTab] = useState('1')
+
+  // Search and sort state
+  type OrderBy = 'name' | 'category' | 'currentStock' | 'minThreshold' | 'costPerUnit' | 'supplier' | 'lastRestocked'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [orderBy, setOrderBy] = useState<OrderBy>('name')
+  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>('asc')
 
   // Load data on component mount
   useEffect(() => {
     loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Set up real-time subscriptions
@@ -57,19 +49,19 @@ export default function Inventory() {
       loadInventoryItems()
     })
 
-    const ingredientSubscription = subscriptions.ingredients(payload => {
-      console.log('Ingredients changed:', payload)
-      loadIngredients()
+    const productSubscription = subscriptions.products(payload => {
+      console.log('Products changed:', payload)
+      loadProducts()
     })
 
     return () => {
       inventorySubscription.unsubscribe()
-      ingredientSubscription.unsubscribe()
+      productSubscription.unsubscribe()
     }
   }, [])
 
   const loadData = async () => {
-    await Promise.all([loadInventoryItems(), loadIngredients(), loadSuppliers(), loadOrders(), loadMenuItems()])
+    await Promise.all([loadInventoryItems(), loadProducts(), loadSuppliers(), loadOrders(), loadMenuItems()])
   }
 
   const loadInventoryItems = async () => {
@@ -80,18 +72,18 @@ export default function Inventory() {
       setInventoryItems(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failed_to_load_data'))
-      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
+      message.error(t('failed_to_load_data'))
     } finally {
       setLoading(false)
     }
   }
 
-  const loadIngredients = async () => {
+  const loadProducts = async () => {
     try {
-      const data = await ingredientsService.getAll()
-      setAvailableIngredients(data)
+      const data = await productsService.getAll()
+      setAvailableProducts(data)
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
+      message.error(t('failed_to_load_data'))
     }
   }
 
@@ -100,7 +92,7 @@ export default function Inventory() {
       const data = await suppliersService.getAll()
       setSuppliers(data)
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_load_data'), severity: 'error' })
+      message.error(t('failed_to_load_data'))
     }
   }
 
@@ -109,7 +101,7 @@ export default function Inventory() {
       const data = await ordersService.getAll()
       setOrders(data)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load orders', severity: 'error' })
+      message.error('Failed to load orders')
     }
   }
 
@@ -118,33 +110,26 @@ export default function Inventory() {
       const data = await menuItemsService.getAll()
       setMenuItems(data)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load menu items', severity: 'error' })
+      message.error('Failed to load menu items')
     }
   }
 
-  const handleImportFromIngredients = async () => {
+  const handleImportFromProducts = async () => {
     try {
-      // Get ingredients that are not already in inventory
+      // Get products that are not already in inventory
       const existingNames = new Set(inventoryItems.map(item => item.name.toLowerCase()))
-      const missingIngredients = availableIngredients.filter(ing => !existingNames.has(ing.name.toLowerCase()))
+      const missingProducts = availableProducts.filter(p => !existingNames.has(p.name.toLowerCase()))
 
-      if (missingIngredients.length === 0) {
-        setSnackbar({ open: true, message: 'All ingredients are already in inventory', severity: 'info' })
-        setMenuAnchor(null)
+      if (missingProducts.length === 0) {
+        message.info('All products are already in inventory')
         return
       }
 
-      await inventoryService.createFromIngredients(missingIngredients.map(ing => ing.id))
-      setSnackbar({
-        open: true,
-        message: `Imported ${missingIngredients.length} ingredients to inventory`,
-        severity: 'success'
-      })
+      await inventoryService.createFromIngredients(missingProducts.map(p => p.id))
+      message.success(`Imported ${missingProducts.length} products to inventory`)
       await loadInventoryItems()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' })
-    } finally {
-      setMenuAnchor(null)
+      message.error('Failed to import products')
     }
   }
 
@@ -159,20 +144,21 @@ export default function Inventory() {
     lastRestocked: new Date()
   })
 
-  const handleIngredientSelect = (selectedIngredient: Ingredient | null) => {
-    if (selectedIngredient) {
+  const handleProductSelect = (selectedProductName: string) => {
+    const selectedProduct = availableProducts.find(p => p.name === selectedProductName)
+    if (selectedProduct) {
       setNewItem({
         ...newItem,
-        name: selectedIngredient.name,
-        category: selectedIngredient.category,
-        unit: selectedIngredient.unit,
-        costPerUnit: selectedIngredient.costPerUnit,
-        supplier: selectedIngredient.supplier
+        name: selectedProduct.name,
+        category: selectedProduct.category,
+        unit: selectedProduct.unit,
+        costPerUnit: selectedProduct.costPerUnit,
+        supplier: selectedProduct.supplier
       })
     } else {
       setNewItem({
         ...newItem,
-        name: '',
+        name: selectedProductName || '',
         category: '',
         unit: '',
         costPerUnit: 0,
@@ -185,10 +171,10 @@ export default function Inventory() {
     try {
       if (editingItem) {
         await inventoryService.update(editingItem.id, newItem)
-        setSnackbar({ open: true, message: 'Inventory item updated successfully', severity: 'success' })
+        message.success('Inventory item updated successfully')
       } else {
         await inventoryService.create(newItem as Omit<InventoryItem, 'id'>)
-        setSnackbar({ open: true, message: 'Inventory item created successfully', severity: 'success' })
+        message.success('Inventory item created successfully')
       }
 
       await loadInventoryItems()
@@ -206,7 +192,7 @@ export default function Inventory() {
       setEditingItem(null)
       setOpenDialog(false)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to save inventory item', severity: 'error' })
+      message.error('Failed to save inventory item')
     }
   }
 
@@ -219,10 +205,10 @@ export default function Inventory() {
   const handleDeleteItem = async (id: string) => {
     try {
       await inventoryService.delete(id)
-      setSnackbar({ open: true, message: 'Inventory item deleted successfully', severity: 'success' })
+      message.success('Inventory item deleted successfully')
       await loadInventoryItems()
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to delete inventory item', severity: 'error' })
+      message.error('Failed to delete inventory item')
     }
   }
 
@@ -241,15 +227,11 @@ export default function Inventory() {
       }
 
       await inventoryService.update(disposeDialog.item.id, updatedItem)
-      setSnackbar({
-        open: true,
-        message: `Marked ${disposeDialog.quantity} ${disposeDialog.item.unit} of ${disposeDialog.item.name} as disposed`,
-        severity: 'success'
-      })
+      message.success(`Marked ${disposeDialog.quantity} ${disposeDialog.item.unit} of ${disposeDialog.item.name} as disposed`)
       await loadInventoryItems()
       setDisposeDialog({ open: false, item: null, quantity: 0 })
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to mark item as disposed', severity: 'error' })
+      message.error('Failed to mark item as disposed')
     }
   }
 
@@ -270,17 +252,9 @@ export default function Inventory() {
       await Promise.all(updatePromises)
       await loadInventoryItems()
 
-      setSnackbar({
-        open: true,
-        message: 'Sample waste data added to demonstrate analytics features',
-        severity: 'success'
-      })
+      message.success('Sample waste data added to demonstrate analytics features')
     } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to add sample waste data',
-        severity: 'error'
-      })
+      message.error('Failed to add sample waste data')
     }
   }
 
@@ -324,437 +298,694 @@ export default function Inventory() {
   // Get existing categories from inventory items (for display)
   const categories = Array.from(new Set(inventoryItems.map(item => item.category))).sort()
 
-  // Get all ingredient categories for autocomplete
-  const allCategories = Array.from(new Set([...availableIngredients.map(ing => ing.category), ...inventoryItems.map(item => item.category)])).sort()
+  // Get all product categories for autocomplete
+  const allCategories = Array.from(new Set([...availableProducts.map(p => p.category), ...inventoryItems.map(item => item.category)])).sort()
 
   const totalAutoOrderValue = autoOrderSuggestions.reduce((sum, order) => sum + (order?.totalCost || 0), 0)
 
+  // Sorting logic
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && orderDirection === 'asc'
+    setOrderDirection(isAsc ? 'desc' : 'asc')
+    setOrderBy(property)
+  }
+
+  const sortedInventoryItems = useMemo(() => {
+    const comparator = (a: InventoryItem, b: InventoryItem) => {
+      let aValue: any
+      let bValue: any
+
+      switch (orderBy) {
+        case 'name':
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
+          break
+        case 'category':
+          aValue = a.category.toLowerCase()
+          bValue = b.category.toLowerCase()
+          break
+        case 'currentStock':
+          aValue = a.currentStock
+          bValue = b.currentStock
+          break
+        case 'minThreshold':
+          aValue = a.minThreshold
+          bValue = b.minThreshold
+          break
+        case 'costPerUnit':
+          aValue = a.costPerUnit
+          bValue = b.costPerUnit
+          break
+        case 'supplier':
+          aValue = (a.supplier || '').toLowerCase()
+          bValue = (b.supplier || '').toLowerCase()
+          break
+        case 'lastRestocked':
+          aValue = a.lastRestocked.getTime()
+          bValue = b.lastRestocked.getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (bValue < aValue) {
+        return orderDirection === 'desc' ? -1 : 1
+      }
+      if (bValue > aValue) {
+        return orderDirection === 'desc' ? 1 : -1
+      }
+      return 0
+    }
+
+    return [...inventoryItems].sort(comparator)
+  }, [inventoryItems, orderBy, orderDirection])
+
+  // Filter inventory items based on search query
+  const filteredInventoryItems = useMemo(() => {
+    if (!searchQuery.trim()) return sortedInventoryItems
+
+    const query = searchQuery.toLowerCase()
+    return sortedInventoryItems.filter(item => {
+      return (
+        item.name.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query) ||
+        (item.supplier && item.supplier.toLowerCase().includes(query)) ||
+        item.unit.toLowerCase().includes(query)
+      )
+    })
+  }, [sortedInventoryItems, searchQuery])
+
+  // Auto-order suggestions table columns
+  const autoOrderColumns: ColumnsType<any> = [
+    {
+      title: 'Item',
+      dataIndex: 'item',
+      key: 'item',
+      render: (item: InventoryItem) => (
+        <div>
+          <Text strong>{item.name}</Text>
+          <br />
+          <Text type="danger" style={{ fontSize: 12 }}>
+            {item.currentStock} / {item.minThreshold} {item.unit}
+          </Text>
+        </div>
+      )
+    },
+    {
+      title: 'Supplier',
+      dataIndex: 'supplier',
+      key: 'supplier',
+      render: (supplier: Supplier) => (
+        <div>
+          <Text>{supplier.name}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 12 }}>{supplier.contactPerson}</Text>
+        </div>
+      )
+    },
+    {
+      title: 'Current Stock',
+      dataIndex: 'item',
+      key: 'currentStock',
+      render: (item: InventoryItem) => (
+        <Tag color="red">{item.currentStock} {item.unit}</Tag>
+      )
+    },
+    {
+      title: 'Suggested Qty',
+      dataIndex: 'suggestedQuantity',
+      key: 'suggestedQuantity',
+      render: (qty: number, record: any) => (
+        <Text style={{ color: '#1890ff' }}>{qty} {record.item.unit}</Text>
+      )
+    },
+    {
+      title: 'Unit Cost',
+      dataIndex: 'item',
+      key: 'unitCost',
+      align: isRtl ? 'left' : 'right',
+      render: (item: InventoryItem) => formatCurrency(item.costPerUnit)
+    },
+    {
+      title: 'Total Cost',
+      dataIndex: 'totalCost',
+      key: 'totalCost',
+      align: isRtl ? 'left' : 'right',
+      render: (cost: number) => <Text strong>{formatCurrency(cost)}</Text>
+    },
+    {
+      title: 'Delivery',
+      dataIndex: 'deliveryDays',
+      key: 'delivery',
+      render: (deliveryDays: string[], record: any) => (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <CarOutlined style={{ fontSize: 12 }} />
+            <Text style={{ fontSize: 12 }}>{deliveryDays.join(', ')}</Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <ClockCircleOutlined style={{ fontSize: 12 }} />
+            <Text style={{ fontSize: 12 }}>{record.leadTime} days lead time</Text>
+          </div>
+        </div>
+      )
+    }
+  ]
+
+  const menuDropdownItems: MenuProps['items'] = [
+    {
+      key: 'import',
+      icon: <ImportOutlined />,
+      label: 'Import from Products',
+      onClick: handleImportFromProducts
+    }
+  ]
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={loadData}>
+      <div style={{ padding: 24 }}>
+        <div style={{ marginBottom: 16, padding: 16, background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 8 }}>
+          <Text type="danger">{error}</Text>
+        </div>
+        <Button type="primary" onClick={loadData}>
           Retry
         </Button>
-      </Box>
+      </div>
     )
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2} style={{ margin: 0 }}>
           {t('inventory_management')}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={e => setMenuAnchor(e.currentTarget)}>
-            {t('import')}
-          </Button>
-          {inventoryItems.length > 0 && !inventoryItems.some(item => (item.disposedQuantity || 0) > 0) && currentTab === 1 && (
-            <Button variant="outlined" color="warning" onClick={addSampleWasteData} size="small">
-              Add Sample Waste Data
+        </Title>
+        <Space>
+          <Dropdown menu={{ items: menuDropdownItems }} placement="bottomRight">
+            <Button icon={<MoreOutlined />}>
+              {t('import')}
+            </Button>
+          </Dropdown>
+          {inventoryItems.length > 0 && !inventoryItems.some(item => (item.disposedQuantity || 0) > 0) && currentTab === '2' && (
+            <Button onClick={addSampleWasteData} type="default">
+              {t('add_sample_waste_data')}
             </Button>
           )}
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenDialog(true)}>
             {t('add_item')}
           </Button>
-        </Box>
-      </Box>
+        </Space>
+      </div>
 
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, direction: isRtl ? 'rtl' : 'ltr' }}>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newValue) => setCurrentTab(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            '& .MuiTabs-flexContainer': {
-              flexDirection: isRtl ? 'row-reverse' : 'row'
-            },
-            '& .MuiTab-root': {
-              textAlign: isRtl ? 'right' : 'left'
-            }
-          }}
+      <Tabs activeKey={currentTab} onChange={setCurrentTab} style={{ marginBottom: 24 }}>
+        <TabPane
+          tab={
+            <span>
+              <AppstoreOutlined />
+              {t('inventory_items')}
+            </span>
+          }
+          key="1"
         >
-          <Tab label={t('inventory_items')} icon={<InventoryIcon />} iconPosition="start" />
-          <Tab label={t('waste_analytics')} icon={<AnalyticsIcon />} iconPosition="start" />
-        </Tabs>
-      </Box>
+          {lowStockItems.length > 0 && (
+            <AntAlert
+              message={<Text strong>{t('low_stock_alert')}</Text>}
+              description={
+                <Text>
+                  {t('items_below_min_threshold', { count: lowStockItems.length })}: {lowStockItems.map(item => item.name).join(', ')}
+                </Text>
+              }
+              type="warning"
+              showIcon
+              icon={<WarningOutlined />}
+              style={{ marginBottom: 24 }}
+            />
+          )}
 
-      {/* Inventory Items Tab */}
-      <TabPanel value={currentTab} index={0}>
-        {lowStockItems.length > 0 && (
-          <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
-            <Typography variant="h6">{t('low_stock_alert')}</Typography>
-            <Typography>
-              {t('items_below_min_threshold', { count: lowStockItems.length })}: {lowStockItems.map(item => item.name).join(', ')}
-            </Typography>
-          </Alert>
-        )}
-
-        {/* Auto-Order Suggestions */}
-        {autoOrderSuggestions.length > 0 && (
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <OrderIcon sx={{ marginInlineEnd: 1 }} />
+          {/* Auto-Order Suggestions */}
+          {autoOrderSuggestions.length > 0 && (
+            <Card style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShoppingCartOutlined />
                   {t('auto_order_suggestions')} ({autoOrderSuggestions.length})
-                </Typography>
-                <Button variant="outlined" size="small" startIcon={showAutoOrders ? <HideIcon /> : <ViewIcon />} onClick={() => setShowAutoOrders(!showAutoOrders)}>
+                </Title>
+                <Button
+                  size="small"
+                  icon={showAutoOrders ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                  onClick={() => setShowAutoOrders(!showAutoOrders)}
+                >
                   {showAutoOrders ? t('hide') : t('view')} {t('suggestions')}
                 </Button>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
-                {t('total_estimated_cost')}: <strong>{formatCurrency(totalAutoOrderValue)}</strong>
-              </Typography>
+              </div>
+              <Text type="secondary">
+                {t('total_estimated_cost')}: <Text strong>{formatCurrency(totalAutoOrderValue)}</Text>
+              </Text>
 
               {showAutoOrders && (
-                <TableContainer component={Paper} sx={{ mt: 2 }} dir={isRtl ? 'rtl' : 'ltr'}>
-                  <Table size="small" dir={isRtl ? 'rtl' : 'ltr'}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Item</TableCell>
-                        <TableCell>Supplier</TableCell>
-                        <TableCell>Current Stock</TableCell>
-                        <TableCell>Suggested Qty</TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Unit Cost</TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>Total Cost</TableCell>
-                        <TableCell>Delivery</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {autoOrderSuggestions.map((suggestion, index) => (
-                        <TableRow key={`${suggestion?.item.id}-${index}`}>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {suggestion?.item.name}
-                            </Typography>
-                            <Typography variant="caption" color="error">
-                              {suggestion?.item.currentStock} / {suggestion?.item.minThreshold} {suggestion?.item.unit}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">{suggestion?.supplier.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {suggestion?.supplier.contactPerson}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={`${suggestion?.item.currentStock} ${suggestion?.item.unit}`} size="small" color="error" variant="outlined" />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" color="primary">
-                              {suggestion?.suggestedQuantity} {suggestion?.item.unit}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                            <Typography variant="body2">{formatCurrency(suggestion?.item.costPerUnit || 0)}</Typography>
-                          </TableCell>
-                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {formatCurrency(suggestion?.totalCost || 0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                              <DeliveryIcon sx={{ fontSize: 14 }} />
-                              <Typography variant="caption">{suggestion?.deliveryDays.join(', ')}</Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <LeadTimeIcon sx={{ fontSize: 14 }} />
-                              <Typography variant="caption">{suggestion?.leadTime} days lead time</Typography>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <Grid container spacing={3} sx={{ mb: 3 }} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
-          <Grid item xs={12} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-                <Typography variant="h6" color="primary">
-                  {t('total_items')}
-                </Typography>
-                <Typography variant="h4">{inventoryItems.length}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-                <Typography variant="h6" color="warning.main">
-                  {t('low_stock_items')}
-                </Typography>
-                <Typography variant="h4">{lowStockItems.length}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-                <Typography variant="h6" color="success.main">
-                  {t('total_value')}
-                </Typography>
-                <Typography variant="h4">{formatCurrency(totalInventoryValue)}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-                <Typography variant="h6" color="info.main">
-                  {t('categories_text')}
-                </Typography>
-                <Typography variant="h4">{categories.length}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {categories.map(category => (
-          <Box key={category} sx={{ mb: 4 }}>
-            <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-              <InventoryIcon sx={{ marginInlineEnd: 1 }} />
-              {category}
-            </Typography>
-
-            <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-              <Table dir={isRtl ? 'rtl' : 'ltr'}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('item_name')}</TableCell>
-                    <TableCell>{t('current_stock')}</TableCell>
-                    <TableCell>{t('unit')}</TableCell>
-                    <TableCell>{t('min_threshold')}</TableCell>
-                    <TableCell>{t('stock_level')}</TableCell>
-                    <TableCell>{t('disposed')}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('total_value')}</TableCell>
-                    <TableCell>{t('supplier_label')}</TableCell>
-                    <TableCell>{t('last_restocked')}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {inventoryItems
-                    .filter(item => item.category === category)
-                    .map(item => {
-                      const stockStatus = getStockStatus(item)
-                      const stockPercentage = getStockPercentage(item)
-
-                      return (
-                        <TableRow
-                          key={item.id}
-                          sx={{
-                            backgroundColor: stockStatus.status === 'critical' ? 'error.light' : stockStatus.status === 'low' ? 'warning.light' : 'inherit',
-                            opacity: stockStatus.status === 'critical' ? 0.8 : 1
-                          }}
-                        >
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                              {item.name}
-                              {item.currentStock <= item.minThreshold && <WarningIcon sx={{ marginInlineStart: 1, color: 'warning.main' }} fontSize="small" />}
-                            </Box>
-                          </TableCell>
-                          <TableCell>{item.currentStock}</TableCell>
-                          <TableCell>{item.unit}</TableCell>
-                          <TableCell>{item.minThreshold}</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
-                              <LinearProgress variant="determinate" value={stockPercentage} color={stockStatus.color as any} sx={{ flexGrow: 1, mr: 1 }} />
-                              <Chip label={stockStatus.status} color={stockStatus.color as any} size="small" />
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            {item.disposedQuantity ? (
-                              <Chip label={`${item.disposedQuantity} ${item.unit}`} size="small" color="warning" variant="outlined" />
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                -
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(item.costPerUnit)}</TableCell>
-                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(item.currentStock * item.costPerUnit)}</TableCell>
-                          <TableCell>{item.supplier}</TableCell>
-                          <TableCell>{item.lastRestocked.toLocaleDateString()}</TableCell>
-                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                            <IconButton size="small" onClick={() => handleEditItem(item)} title="Edit item">
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => handleMarkAsDisposed(item)} title="Mark as disposed" color="warning">
-                              <DisposeIcon />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => handleDeleteItem(item.id)} title="Delete item">
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        ))}
-      </TabPanel>
-
-      {/* Waste Analytics Tab */}
-      <TabPanel value={currentTab} index={1}>
-        {/* Quick guide */}
-        {inventoryItems.length > 0 && !inventoryItems.some(item => (item.disposedQuantity || 0) > 0) && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="subtitle2">{t('waste_analytics_dashboard')}</Typography>
-            <Typography variant="body2">{t('start_tracking_waste_help')}</Typography>
-          </Alert>
-        )}
-
-        <WasteAnalyticsDashboard
-          inventoryItems={inventoryItems}
-          orders={orders}
-          menuItems={menuItems}
-          ingredients={availableIngredients}
-          onWasteExpenseCalculated={async expense => {
-            try {
-              await wasteExpenseIntegration.createOrUpdateWasteExpense(expense)
-              setSnackbar({ open: true, message: t('waste_expense_added', { amount: formatCurrency(expense.amount) }), severity: 'success' })
-            } catch (error) {
-              console.error('Failed to integrate waste expense:', error)
-              setSnackbar({ open: true, message: t('failed_to_update_waste_expense'), severity: 'error' })
-            }
-          }}
-        />
-      </TabPanel>
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingItem ? t('edit_inventory_item') : t('add_new_inventory_item')}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <Autocomplete
-                options={availableIngredients.filter(ing => !inventoryItems.some(item => item.name.toLowerCase() === ing.name.toLowerCase()))}
-                getOptionLabel={option => option.name}
-                value={availableIngredients.find(ing => ing.name === newItem.name) || null}
-                onChange={(_, value) => handleIngredientSelect(value)}
-                renderInput={params => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    label={t('select_ingredient_label')}
-                    placeholder={t('select_ingredient_placeholder')}
-                    disabled={editingItem !== null} // Disable when editing
+                <div style={{ marginTop: 16 }}>
+                  <Table
+                    columns={autoOrderColumns}
+                    dataSource={autoOrderSuggestions}
+                    rowKey={(record: any) => record?.item?.id || record.id}
+                    pagination={false}
+                    size="small"
                   />
-                )}
-                renderOption={(props, option) => (
-                  <li {...props}>
-                    <Box>
-                      <Typography variant="body1">{option.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {option.category} • {option.supplier} • {formatCurrency(option.costPerUnit)}/{option.unit}
-                      </Typography>
-                    </Box>
-                  </li>
-                )}
-                disabled={editingItem !== null} // Disable when editing existing items
+                </div>
+              )}
+            </Card>
+          )}
+
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title={t('total_items')}
+                  value={inventoryItems.length}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title={t('low_stock_items')}
+                  value={lowStockItems.length}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title={t('total_value')}
+                  value={formatCurrency(totalInventoryValue)}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false}>
+                <Statistic
+                  title={t('categories_text')}
+                  value={categories.length}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Search Bar */}
+          <div style={{ marginBottom: 16 }}>
+            <Input
+              size="large"
+              placeholder={t('search_inventory')}
+              prefix={<SearchOutlined />}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {categories.map(category => {
+            const categoryItems = filteredInventoryItems.filter(item => item.category === category)
+            if (categoryItems.length === 0) return null
+
+            const columns: ColumnsType<InventoryItem> = [
+              {
+                title: t('item_name'),
+                dataIndex: 'name',
+                key: 'name',
+                sorter: (a: InventoryItem, b: InventoryItem) => a.name.localeCompare(b.name),
+                render: (name: string, record: InventoryItem) => (
+                  <Space>
+                    <Text strong>{name}</Text>
+                    {record.currentStock <= record.minThreshold && <WarningOutlined style={{ color: '#faad14' }} />}
+                  </Space>
+                )
+              },
+              {
+                title: t('current_stock'),
+                dataIndex: 'currentStock',
+                key: 'currentStock',
+                sorter: (a: InventoryItem, b: InventoryItem) => a.currentStock - b.currentStock
+              },
+              {
+                title: t('unit'),
+                dataIndex: 'unit',
+                key: 'unit'
+              },
+              {
+                title: t('min_threshold'),
+                dataIndex: 'minThreshold',
+                key: 'minThreshold',
+                sorter: (a: InventoryItem, b: InventoryItem) => a.minThreshold - b.minThreshold
+              },
+              {
+                title: t('stock_level'),
+                key: 'stockLevel',
+                render: (_, record: InventoryItem) => {
+                  const stockStatus = getStockStatus(record)
+                  const stockPercentage = getStockPercentage(record)
+                  return (
+                    <Space direction="vertical" style={{ width: 120 }}>
+                      <Progress
+                        percent={stockPercentage}
+                        status={stockStatus.color === 'error' ? 'exception' : stockStatus.color === 'warning' ? 'normal' : 'success'}
+                        size="small"
+                      />
+                      <Tag color={stockStatus.color === 'error' ? 'red' : stockStatus.color === 'warning' ? 'orange' : 'green'}>
+                        {stockStatus.status}
+                      </Tag>
+                    </Space>
+                  )
+                }
+              },
+              {
+                title: t('disposed'),
+                dataIndex: 'disposedQuantity',
+                key: 'disposedQuantity',
+                render: (qty: number, record: InventoryItem) =>
+                  qty ? <Tag color="orange">{qty} {record.unit}</Tag> : <Text type="secondary">-</Text>
+              },
+              {
+                title: t('cost_per_unit'),
+                dataIndex: 'costPerUnit',
+                key: 'costPerUnit',
+                align: isRtl ? 'left' : 'right',
+                sorter: (a: InventoryItem, b: InventoryItem) => a.costPerUnit - b.costPerUnit,
+                render: (cost: number) => formatCurrency(cost)
+              },
+              {
+                title: t('total_value'),
+                key: 'totalValue',
+                align: isRtl ? 'left' : 'right',
+                render: (_, record: InventoryItem) => formatCurrency(record.currentStock * record.costPerUnit)
+              },
+              {
+                title: t('supplier_label'),
+                dataIndex: 'supplier',
+                key: 'supplier',
+                sorter: (a: InventoryItem, b: InventoryItem) => (a.supplier || '').localeCompare(b.supplier || '')
+              },
+              {
+                title: t('last_restocked'),
+                dataIndex: 'lastRestocked',
+                key: 'lastRestocked',
+                render: (date: Date) => new Date(date).toLocaleDateString(),
+                sorter: (a: InventoryItem, b: InventoryItem) => new Date(a.lastRestocked).getTime() - new Date(b.lastRestocked).getTime()
+              },
+              {
+                title: t('actions'),
+                key: 'actions',
+                align: isRtl ? 'left' : 'right',
+                render: (_, record: InventoryItem) => (
+                  <Space size="small">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => handleEditItem(record)}
+                      title="Edit item"
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DisposeIcon />}
+                      onClick={() => handleMarkAsDisposed(record)}
+                      title="Mark as disposed"
+                      style={{ color: '#faad14' }}
+                    />
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteItem(record.id)}
+                      title="Delete item"
+                    />
+                  </Space>
+                )
+              }
+            ]
+
+            return (
+              <div key={category} style={{ marginBottom: 32 }}>
+                <Title level={4} style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AppstoreOutlined />
+                  {category} ({categoryItems.length})
+                </Title>
+                <Card bordered={false}>
+                  <Table
+                    columns={columns}
+                    dataSource={categoryItems}
+                    rowKey="id"
+                    pagination={false}
+                    rowClassName={(record) => {
+                      const stockStatus = getStockStatus(record)
+                      return stockStatus.status === 'critical' ? 'ant-table-row-critical' : stockStatus.status === 'low' ? 'ant-table-row-warning' : ''
+                    }}
+                  />
+                </Card>
+              </div>
+            )
+          })}
+
+          {filteredInventoryItems.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32 }}>
+              <Text type="secondary">
+                {searchQuery ? t('no_items_match_search') : t('no_items_found')}
+              </Text>
+            </div>
+          )}
+        </TabPane>
+
+        <TabPane
+          tab={
+            <span>
+              <BarChartOutlined />
+              {t('waste_analytics')}
+            </span>
+          }
+          key="2"
+        >
+          {/* Quick guide */}
+          {inventoryItems.length > 0 && !inventoryItems.some(item => (item.disposedQuantity || 0) > 0) && (
+            <AntAlert
+              message={t('waste_analytics_dashboard')}
+              description={t('start_tracking_waste_help')}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
+
+          <WasteAnalyticsDashboard
+            inventoryItems={inventoryItems}
+            orders={orders}
+            menuItems={menuItems}
+            ingredients={availableProducts}
+            onWasteExpenseCalculated={async expense => {
+              try {
+                await wasteExpenseIntegration.createOrUpdateWasteExpense(expense)
+                message.success(t('waste_expense_added', { amount: formatCurrency(expense.amount) }))
+              } catch (error) {
+                console.error('Failed to integrate waste expense:', error)
+                message.error(t('failed_to_update_waste_expense'))
+              }
+            }}
+          />
+        </TabPane>
+      </Tabs>
+
+      <Modal
+        title={editingItem ? t('edit_inventory_item') : t('add_new_inventory_item')}
+        open={openDialog}
+        onOk={handleSaveItem}
+        onCancel={() => {
+          setOpenDialog(false)
+          setEditingItem(null)
+          setNewItem({
+            name: '',
+            category: '',
+            currentStock: 0,
+            unit: '',
+            minThreshold: 5,
+            costPerUnit: 0,
+            supplier: '',
+            lastRestocked: new Date()
+          })
+        }}
+        okText={editingItem ? t('update_item') : t('add_item')}
+        cancelText={t('cancel')}
+        width={800}
+      >
+        <div style={{ marginTop: 16 }}>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Text>{t('select_product_label')}</Text>
+              <AutoComplete
+                style={{ marginTop: 8, width: '100%' }}
+                options={availableProducts
+                  .filter(p => !inventoryItems.some(item => item.name.toLowerCase() === p.name.toLowerCase()))
+                  .map(p => ({
+                    value: p.name,
+                    label: (
+                      <div>
+                        <div>{p.name}</div>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {p.category} • {p.supplier} • {formatCurrency(p.costPerUnit)}/{p.unit}
+                        </Text>
+                      </div>
+                    )
+                  }))}
+                value={newItem.name}
+                onChange={handleProductSelect}
+                placeholder={t('select_product_placeholder')}
+                disabled={editingItem !== null}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Autocomplete freeSolo options={allCategories} value={newItem.category} onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label="Category" placeholder="e.g., Meat, Vegetables, Dairy" />} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Current Stock" type="number" value={newItem.currentStock} onChange={e => setNewItem({ ...newItem, currentStock: parseFloat(e.target.value) })} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label={t('unit')} value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} placeholder="e.g., lbs, dozen, pieces" InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth label={t('min_threshold')} type="number" value={newItem.minThreshold} onChange={e => setNewItem({ ...newItem, minThreshold: parseFloat(e.target.value) })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('cost_per_unit')} type="number" inputProps={{ step: '0.01' }} value={newItem.costPerUnit} onChange={e => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) })} InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('supplier_label')} value={newItem.supplier} onChange={e => setNewItem({ ...newItem, supplier: e.target.value })} InputProps={{ readOnly: !editingItem && !newItem.name }} helperText={!editingItem && !newItem.name ? t('auto_filled_from_ingredient') : ''} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth label={t('last_restocked')} type="date" value={newItem.lastRestocked?.toISOString().split('T')[0]} onChange={e => setNewItem({ ...newItem, lastRestocked: new Date(e.target.value) })} InputLabelProps={{ shrink: true }} />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>{t('cancel')}</Button>
-          <Button onClick={handleSaveItem} variant="contained">
-            {editingItem ? t('update_item') : t('add_item')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </Col>
+            <Col span={12}>
+              <Text>Category</Text>
+              <AutoComplete
+                style={{ marginTop: 8, width: '100%' }}
+                options={allCategories.map(cat => ({ value: cat }))}
+                value={newItem.category}
+                onChange={value => setNewItem({ ...newItem, category: value })}
+                placeholder="e.g., Meat, Vegetables, Dairy"
+              />
+            </Col>
+            <Col span={8}>
+              <Text>Current Stock</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                type="number"
+                value={newItem.currentStock}
+                onChange={e => setNewItem({ ...newItem, currentStock: parseFloat(e.target.value) })}
+              />
+            </Col>
+            <Col span={8}>
+              <Text>{t('unit')}</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                value={newItem.unit}
+                onChange={e => setNewItem({ ...newItem, unit: e.target.value })}
+                placeholder="e.g., lbs, dozen, pieces"
+                disabled={!editingItem && !newItem.name}
+              />
+              {!editingItem && !newItem.name && (
+                <Text type="secondary" style={{ fontSize: 11 }}>{t('auto_filled_from_product')}</Text>
+              )}
+            </Col>
+            <Col span={8}>
+              <Text>{t('min_threshold')}</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                type="number"
+                value={newItem.minThreshold}
+                onChange={e => setNewItem({ ...newItem, minThreshold: parseFloat(e.target.value) })}
+              />
+            </Col>
+            <Col span={12}>
+              <Text>{t('cost_per_unit')}</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                type="number"
+                step="0.01"
+                value={newItem.costPerUnit}
+                onChange={e => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) })}
+                disabled={!editingItem && !newItem.name}
+              />
+              {!editingItem && !newItem.name && (
+                <Text type="secondary" style={{ fontSize: 11 }}>{t('auto_filled_from_product')}</Text>
+              )}
+            </Col>
+            <Col span={12}>
+              <Text>{t('supplier_label')}</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                value={newItem.supplier}
+                onChange={e => setNewItem({ ...newItem, supplier: e.target.value })}
+                disabled={!editingItem && !newItem.name}
+              />
+              {!editingItem && !newItem.name && (
+                <Text type="secondary" style={{ fontSize: 11 }}>{t('auto_filled_from_product')}</Text>
+              )}
+            </Col>
+            <Col span={24}>
+              <Text>{t('last_restocked')}</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                type="date"
+                value={newItem.lastRestocked?.toISOString().split('T')[0]}
+                onChange={e => setNewItem({ ...newItem, lastRestocked: new Date(e.target.value) })}
+              />
+            </Col>
+          </Row>
+        </div>
+      </Modal>
 
-      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-        <MuiMenuItem onClick={handleImportFromIngredients}>
-          <ListItemIcon>
-            <ImportIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Import from Ingredients</ListItemText>
-        </MuiMenuItem>
-      </Menu>
-
-      <Dialog open={disposeDialog.open} onClose={() => setDisposeDialog({ open: false, item: null, quantity: 0 })} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
-          <DisposeIcon sx={{ mr: 1, color: 'warning.main' }} />
-          {t('mark_as_disposed_title')}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {t('mark_quantity_disposed_for')} <strong>{disposeDialog.item?.name}</strong>
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {t('current_stock')}: {disposeDialog.item?.currentStock} {disposeDialog.item?.unit}
-            {disposeDialog.item?.disposedQuantity && (
-              <>
-                <br />
-                {t('previously_disposed')}: {disposeDialog.item.disposedQuantity} {disposeDialog.item.unit}
-              </>
-            )}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
-            <TextField fullWidth label={t('quantity_to_dispose')} type="number" value={disposeDialog.quantity} onChange={e => setDisposeDialog({ ...disposeDialog, quantity: parseFloat(e.target.value) || 0 })} inputProps={{ min: 0, max: disposeDialog.item?.currentStock || 0, step: 0.01 }} helperText={t('quantity_enter_between', { max: disposeDialog.item?.currentStock || 0, unit: disposeDialog.item?.unit || '' })} />
-            <Button variant="outlined" color="warning" onClick={() => setDisposeDialog({ ...disposeDialog, quantity: disposeDialog.item?.currentStock || 0 })} sx={{ mb: 2.5, minWidth: 'auto', px: 2 }}>
+      <Modal
+        title={
+          <Space>
+            <DisposeIcon style={{ color: '#faad14' }} />
+            {t('mark_as_disposed_title')}
+          </Space>
+        }
+        open={disposeDialog.open}
+        onOk={handleConfirmDisposal}
+        onCancel={() => setDisposeDialog({ open: false, item: null, quantity: 0 })}
+        okText={t('mark_as_disposed_title')}
+        cancelText={t('cancel')}
+        okButtonProps={{
+          disabled: disposeDialog.quantity <= 0 || disposeDialog.quantity > (disposeDialog.item?.currentStock || 0),
+          danger: true
+        }}
+      >
+        <div style={{ marginTop: 16 }}>
+          <Text>
+            {t('mark_quantity_disposed_for')} <Text strong>{disposeDialog.item?.name}</Text>
+          </Text>
+          <div style={{ marginTop: 8, marginBottom: 16 }}>
+            <Text type="secondary">
+              {t('current_stock')}: {disposeDialog.item?.currentStock} {disposeDialog.item?.unit}
+              {disposeDialog.item?.disposedQuantity && (
+                <>
+                  <br />
+                  {t('previously_disposed')}: {disposeDialog.item.disposedQuantity} {disposeDialog.item.unit}
+                </>
+              )}
+            </Text>
+          </div>
+          <Space.Compact style={{ width: '100%' }}>
+            <Input
+              type="number"
+              placeholder={t('quantity_to_dispose')}
+              value={disposeDialog.quantity}
+              onChange={e => setDisposeDialog({ ...disposeDialog, quantity: parseFloat(e.target.value) || 0 })}
+              min={0}
+              max={disposeDialog.item?.currentStock || 0}
+              step={0.01}
+            />
+            <Button
+              onClick={() => setDisposeDialog({ ...disposeDialog, quantity: disposeDialog.item?.currentStock || 0 })}
+            >
               {t('all_button')}
             </Button>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDisposeDialog({ open: false, item: null, quantity: 0 })}>{t('cancel')}</Button>
-          <Button onClick={handleConfirmDisposal} variant="contained" color="warning" disabled={disposeDialog.quantity <= 0 || disposeDialog.quantity > (disposeDialog.item?.currentStock || 0)}>
-            {t('mark_as_disposed_title')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          </Space.Compact>
+          <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
+            {t('quantity_enter_between', { max: disposeDialog.item?.currentStock || 0, unit: disposeDialog.item?.unit || '' })}
+          </Text>
+        </div>
+      </Modal>
+    </div>
   )
 }

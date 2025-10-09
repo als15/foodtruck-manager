@@ -274,7 +274,7 @@ export default function WasteAnalyticsDashboard({ inventoryItems, orders, menuIt
                     secondary={
                       <Box>
                         <Typography variant="body2" color="text.secondary">
-                          {rec.description}
+                          {rec.descriptionKey ? t(rec.descriptionKey, rec.descriptionArgs) : rec.description}
                         </Typography>
                         {rec.currentWasteRate > 0 && (
                           <Typography variant="caption" color="warning.main">

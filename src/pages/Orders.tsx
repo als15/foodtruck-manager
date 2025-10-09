@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Alert, Tabs, Tab, Snackbar, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, useTheme, Accordion, AccordionSummary, AccordionDetails, TableSortLabel, Toolbar } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Receipt as ReceiptIcon, Upload as UploadIcon, Kitchen as KitchenIcon, CheckCircle as CompleteIcon, Cancel as CancelIcon, AttachMoney as MoneyIcon, Schedule as TimeIcon, Person as CustomerIcon, TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon, TrendingFlat as TrendingFlatIcon, LocationOn as LocationIcon, AccessTime as PeakIcon, Psychology as AIIcon, ExpandMore as ExpandMoreIcon, ViewList as ViewListIcon } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, message, Select, Tabs, Divider, Statistic, Collapse, Spin } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, UploadOutlined, ShoppingCartOutlined, CheckCircleOutlined, CloseCircleOutlined, DollarOutlined, ClockCircleOutlined, UserOutlined, RiseOutlined, FallOutlined, LineOutlined, EnvironmentOutlined, BulbOutlined, ExpandAltOutlined } from '@ant-design/icons'
 import { Order, OrderItem, MenuItem, Employee, Customer } from '../types'
 import { ordersService, menuItemsService, employeesService, customersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
@@ -8,36 +9,22 @@ import { formatCurrency } from '../utils/currency'
 import AIOrderImporter from '../components/Orders/AIOrderImporter'
 import { ingredientsService } from '../services/supabaseService'
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
-  return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  )
-}
+const { Title, Text, Paragraph } = Typography
+const { TextArea } = Input
+const { Option } = Select
+const { TabPane } = Tabs
+const { Panel } = Collapse
 
 export default function Orders() {
-  const { t } = useTranslation()
-  const theme = useTheme()
-  const [tabValue, setTabValue] = useState(0)
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
+  const [tabValue, setTabValue] = useState('all')
   const [orders, setOrders] = useState<Order[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [ingredients, setIngredients] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error'
-  })
 
   // Dialog states
   const [openOrderDialog, setOpenOrderDialog] = useState(false)
@@ -102,7 +89,7 @@ export default function Orders() {
     try {
       await Promise.all([loadOrders(), loadMenuItems(), loadEmployees(), loadCustomers(), loadIngredients()])
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to load data', severity: 'error' })
+      message.error(t('failed_to_load_data'))
     } finally {
       setLoading(false)
     }
@@ -174,27 +161,23 @@ export default function Orders() {
     return totalFoodCost
   }
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue)
-  }
-
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
       await ordersService.updateStatus(orderId, status)
-      setSnackbar({ open: true, message: `Order ${status}`, severity: 'success' })
+      message.success(t('order_status_updated', { status }))
       await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to update order status', severity: 'error' })
+      message.error(t('failed_to_update_order_status'))
     }
   }
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
       await ordersService.delete(orderId)
-      setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' })
+      message.success(t('order_deleted_successfully'))
       await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to delete order', severity: 'error' })
+      message.error(t('failed_to_delete_order'))
     }
   }
 
@@ -291,7 +274,7 @@ export default function Orders() {
       }
 
       await ordersService.create(orderData)
-      setSnackbar({ open: true, message: 'Order created successfully', severity: 'success' })
+      message.success(t('order_created_successfully'))
       setOpenOrderDialog(false)
       resetOrderForm()
       await loadOrders()
@@ -299,7 +282,7 @@ export default function Orders() {
         await loadCustomers()
       }
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to create order', severity: 'error' })
+      message.error(t('failed_to_create_order'))
     }
   }
 
@@ -309,26 +292,18 @@ export default function Orders() {
       const externalOrders = JSON.parse(importData)
       const importedOrders = await ordersService.importFromExternal(externalOrders)
 
-      setSnackbar({
-        open: true,
-        message: `Successfully imported ${importedOrders.length} orders`,
-        severity: 'success'
-      })
+      message.success(t('successfully_imported_orders', { count: importedOrders.length }))
 
       setImportData('')
       setOpenImportDialog(false)
       await loadOrders()
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to import orders. Check JSON format.', severity: 'error' })
+      message.error(t('failed_to_import_orders'))
     }
   }
 
   const handleAIOrdersImported = async (orders: Order[]) => {
-    setSnackbar({
-      open: true,
-      message: `Successfully imported ${orders.length} orders using AI`,
-      severity: 'success'
-    })
+    message.success(t('successfully_imported_orders_ai', { count: orders.length }))
     await loadOrders()
   }
 
@@ -337,7 +312,7 @@ export default function Orders() {
       case 'pending':
         return 'warning'
       case 'preparing':
-        return 'info'
+        return 'processing'
       case 'ready':
         return 'success'
       case 'completed':
@@ -527,7 +502,7 @@ export default function Orders() {
     }
 
     if (groupBy === 'none') {
-      return [{ group: 'All Orders', orders: sortedOrders, key: 'all' }]
+      return [{ group: t('all_orders_text'), orders: sortedOrders, key: 'all' }]
     }
 
     // Group orders
@@ -541,7 +516,7 @@ export default function Orders() {
         case 'week':
           const weekStart = new Date(order.orderTime)
           weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-          groupKey = `Week of ${weekStart.toLocaleDateString()}`
+          groupKey = t('week_of_date', { date: weekStart.toLocaleDateString() })
           break
         case 'month':
           groupKey = new Date(order.orderTime).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
@@ -550,10 +525,10 @@ export default function Orders() {
           groupKey = order.status.charAt(0).toUpperCase() + order.status.slice(1)
           break
         case 'location':
-          groupKey = order.location || 'Unknown Location'
+          groupKey = order.location || t('unknown_location')
           break
         default:
-          groupKey = 'All Orders'
+          groupKey = t('all_orders_text')
       }
 
       if (!groups[groupKey]) {
@@ -598,695 +573,399 @@ export default function Orders() {
 
   const groupedOrders = getGroupedOrders()
 
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">{t('order_management')}</Typography>
-        <Box>
-          <Button variant="outlined" startIcon={<UploadIcon />} onClick={() => setOpenImportDialog(true)} sx={{ marginInlineEnd: 1 }}>
-            {t('import_orders')}
-          </Button>
-          <Button variant="outlined" startIcon={<AIIcon />} onClick={() => setOpenAIImportDialog(true)} sx={{ marginInlineEnd: 1 }}>
-            AI Import
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenOrderDialog(true)}>
-            {t('add_order_record')}
-          </Button>
-        </Box>
-      </Box>
+  const getTrendIcon = (value: number) => {
+    if (value > 0) return <RiseOutlined style={{ color: '#52c41a' }} />
+    if (value < 0) return <FallOutlined style={{ color: '#ff4d4f' }} />
+    return <LineOutlined style={{ color: '#d9d9d9' }} />
+  }
 
-      {/* Enhanced Business Analytics Dashboard */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {/* Today's Performance */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" color="text.primary">
-                    {t('todays_performance')}
-                  </Typography>
-                  <Typography variant="h4" className="number-ltr" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {formatCurrency(stats.todayRevenue)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('orders_count', { count: stats.todayOrders })}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.dailyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.dailyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
-                  <Typography variant="body2" color={stats.dailyGrowth > 0 ? 'success.main' : stats.dailyGrowth < 0 ? 'error.main' : 'text.secondary'}>
-                    {stats.dailyGrowth > 0 ? '+' : ''}
-                    {stats.dailyGrowth.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* This Week */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" color="info.main">
-                    {t('this_week')}
-                  </Typography>
-                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {formatCurrency(stats.thisWeekRevenue)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {stats.thisWeekOrders} orders
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.weeklyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.weeklyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
-                  <Typography variant="body2" color={stats.weeklyGrowth > 0 ? 'success.main' : stats.weeklyGrowth < 0 ? 'error.main' : 'text.secondary'}>
-                    {stats.weeklyGrowth > 0 ? '+' : ''}
-                    {stats.weeklyGrowth.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* This Month */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" color="secondary.main">
-                    {t('this_month')}
-                  </Typography>
-                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {formatCurrency(stats.thisMonthRevenue)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {stats.thisMonthOrders} orders
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {stats.monthlyGrowth > 0 ? <TrendingUpIcon color="success" className="trend-icon" /> : stats.monthlyGrowth < 0 ? <TrendingDownIcon color="error" className="trend-icon" /> : <TrendingFlatIcon color="disabled" className="trend-icon" />}
-                  <Typography variant="body2" color={stats.monthlyGrowth > 0 ? 'success.main' : stats.monthlyGrowth < 0 ? 'error.main' : 'text.secondary'}>
-                    {stats.monthlyGrowth > 0 ? '+' : ''}
-                    {stats.monthlyGrowth.toFixed(1)}%
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Average Order Value */}
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" color="success.main">
-                    Avg Order Value
-                  </Typography>
-                  <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {formatCurrency(stats.averageOrderValue)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {stats.totalOrders} total orders
-                  </Typography>
-                </Box>
-                <MoneyIcon color="success" sx={{ fontSize: 32 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Average Profit Margin */}
-        <Grid item xs={12} sm={6} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
-                    Avg Profit Margin
-                  </Typography>
-                  <Typography variant="h4" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
-                    {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {stats.ordersWithCostData}/{stats.totalOrders} with cost data
-                  </Typography>
-                </Box>
-                <TrendingUpIcon color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} sx={{ fontSize: 32 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Top Selling Items */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                🏆 {t('top_selling_items')}
-              </Typography>
-              <List dense>
-                {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
-                  <ListItem key={itemName} sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">
-                            #{index + 1} {itemName}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {data.quantity} sold
-                          </Typography>
-                        </Box>
-                      }
-                      secondary={`${formatCurrency(data.revenue)} revenue`}
-                    />
-                  </ListItem>
-                ))}
-                {stats.topItems.length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                    No sales data available
-                  </Typography>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Key Metrics */}
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                📊 {t('key_metrics')}
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Box
-                    sx={theme => ({
-                      textAlign: 'center',
-                      p: 1,
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                    })}
-                  >
-                    <MoneyIcon color="success" />
-                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                      {formatCurrency(stats.averageOrderValue)}
-                    </Typography>
-                    <Typography variant="caption">{t('avg_order_value')}</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6}>
-                  <Box
-                    sx={theme => ({
-                      textAlign: 'center',
-                      p: 1,
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                    })}
-                  >
-                    <TrendingUpIcon color={stats.averageProfitMargin > 30 ? 'success' : stats.averageProfitMargin > 0 ? 'warning' : 'error'} />
-                    <Typography variant="h6" color={stats.averageProfitMargin > 30 ? 'success.main' : stats.averageProfitMargin > 0 ? 'warning.main' : 'error.main'}>
-                      {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : 'No data'}
-                    </Typography>
-                    <Typography variant="caption">Avg Profit Margin</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6}>
-                  <Box
-                    sx={theme => ({
-                      textAlign: 'center',
-                      p: 1,
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                    })}
-                  >
-                    <ReceiptIcon color="primary" />
-                    <Typography variant="h6">{stats.totalOrders}</Typography>
-                    <Typography variant="caption">{t('total_orders')}</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6}>
-                  <Box
-                    sx={theme => ({
-                      textAlign: 'center',
-                      p: 1,
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                    })}
-                  >
-                    <MoneyIcon color="info" />
-                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                      {formatCurrency(stats.totalProfit)}
-                    </Typography>
-                    <Typography variant="caption">Total Profit</Typography>
-                  </Box>
-                </Grid>
-                {stats.peakHour && (
-                  <Grid item xs={6}>
-                    <Box
-                      sx={theme => ({
-                        textAlign: 'center',
-                        p: 1,
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                      })}
-                    >
-                      <PeakIcon color="warning" />
-                      <Typography variant="h6">{stats.peakHour.hour}:00</Typography>
-                      <Typography variant="caption">{t('peak_hour')}</Typography>
-                    </Box>
-                  </Grid>
-                )}
-                <Grid item xs={6}>
-                  <Box
-                    sx={theme => ({
-                      textAlign: 'center',
-                      p: 1,
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                    })}
-                  >
-                    <MoneyIcon color="info" />
-                    <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                      {formatCurrency(stats.totalRevenue)}
-                    </Typography>
-                    <Typography variant="caption">{t('total_revenue')}</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Payment Methods Breakdown */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                💳 {t('payment_methods')}
-              </Typography>
-              <List dense>
-                {Object.entries(stats.paymentMethods).map(([method, count]) => (
-                  <ListItem key={method} sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">
-                            {getPaymentMethodIcon(method)} {method.charAt(0).toUpperCase() + method.slice(1)}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {count} orders ({((count / stats.totalOrders) * 100).toFixed(1)}%)
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-                {Object.keys(stats.paymentMethods).length === 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                    No payment data available
-                  </Typography>
-                )}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Paper>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label={t('all_orders')} />
-          <Tab label={t('analytics')} />
-        </Tabs>
-
-        {/* All Orders Tab */}
-        <TabPanel value={tabValue} index={0}>
-          {/* Table Toolbar with Grouping Control */}
-          <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
-            <Typography sx={{ flex: '1 1 100%' }} variant="h6" id="tableTitle" component="div">
-              Orders ({orders.length})
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel>Group by</InputLabel>
-                <Select value={groupBy} label="Group by" onChange={e => setGroupBy(e.target.value as any)}>
-                  <MuiMenuItem value="none">No grouping</MuiMenuItem>
-                  <MuiMenuItem value="day">Day</MuiMenuItem>
-                  <MuiMenuItem value="week">Week</MuiMenuItem>
-                  <MuiMenuItem value="month">Month</MuiMenuItem>
-                  <MuiMenuItem value="status">Status</MuiMenuItem>
-                  <MuiMenuItem value="location">Location</MuiMenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </Toolbar>
-
-          {groupBy === 'none' ? (
-            // Standard table view with native sorting
-            <TableContainer>
-              <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('order_number')}</TableCell>
-                    <TableCell>
-                      <TableSortLabel
-                        active={sortBy === 'time'}
-                        direction={sortBy === 'time' ? sortOrder : 'asc'}
-                        onClick={() => {
-                          if (sortBy === 'time') {
-                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                          } else {
-                            setSortBy('time')
-                            setSortOrder('desc')
-                          }
-                        }}
-                      >
-                        {t('time')}
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell>{t('customer')}</TableCell>
-                    <TableCell>{t('items')}</TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                      <TableSortLabel
-                        active={sortBy === 'total'}
-                        direction={sortBy === 'total' ? sortOrder : 'asc'}
-                        onClick={() => {
-                          if (sortBy === 'total') {
-                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                          } else {
-                            setSortBy('total')
-                            setSortOrder('desc')
-                          }
-                        }}
-                      >
-                        {t('total')}
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Food Cost</TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>Profit</TableCell>
-                    <TableCell>{t('payment')}</TableCell>
-                    <TableCell>
-                      <TableSortLabel
-                        active={sortBy === 'status'}
-                        direction={sortBy === 'status' ? sortOrder : 'asc'}
-                        onClick={() => {
-                          if (sortBy === 'status') {
-                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-                          } else {
-                            setSortBy('status')
-                            setSortOrder('asc')
-                          }
-                        }}
-                      >
-                        {t('status')}
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell>{t('source')}</TableCell>
-                    <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {groupedOrders[0]?.orders.map(order => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {order.orderNumber || order.id.slice(0, 8)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{order.orderTime.toLocaleString()}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        {order.customer ? (
-                          <Box>
-                            <Typography variant="body2">
-                              {order.customer.firstName} {order.customer.lastName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {order.customer.phone}
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Walk-in
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{order.items.length} item(s)</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {order.items.map(item => `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`).join(', ')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {formatCurrency(order.total)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Sub: {formatCurrency(order.subtotal)}
-                          {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
-                          {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                        {(() => {
-                          const foodCost = calculateOrderFoodCost(order)
-                          return (
-                            <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
-                              {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
-                            </Typography>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                        {(() => {
-                          const foodCost = calculateOrderFoodCost(order)
-                          const profit = order.subtotal - foodCost
-                          const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0
-                          return (
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: 'bold' }} color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}>
-                                {foodCost > 0 ? formatCurrency(profit) : 'No data'}
-                              </Typography>
-                              {foodCost > 0 && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {profitMargin.toFixed(1)}% margin
-                                </Typography>
-                              )}
-                            </Box>
-                          )
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <span>{getPaymentMethodIcon(order.paymentMethod)}</span>
-                          <Typography variant="body2">{order.paymentMethod}</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{order.externalSource || 'manual'}</Typography>
-                        {order.externalOrderId && (
-                          <Typography variant="caption" color="text.secondary">
-                            ID: {order.externalOrderId}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
-                          <IconButton size="small" onClick={() => handleDeleteOrder(order.id)} title="Delete Order">
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            // Grouped view with accordions
+  const columns: ColumnsType<Order> = [
+    {
+      title: t('order_number'),
+      dataIndex: 'orderNumber',
+      key: 'orderNumber',
+      render: (_, record) => <Text strong>{record.orderNumber || record.id.slice(0, 8)}</Text>
+    },
+    {
+      title: t('time'),
+      dataIndex: 'orderTime',
+      key: 'orderTime',
+      sorter: true,
+      render: (time: Date) => time.toLocaleString()
+    },
+    {
+      title: t('customer'),
+      key: 'customer',
+      render: (_, record) =>
+        record.customer ? (
+          <div>
+            <Text>
+              {record.customer.firstName} {record.customer.lastName}
+            </Text>
+            <br />
+            <Text type="secondary">{record.customer.phone}</Text>
+          </div>
+        ) : (
+          <Text type="secondary">{t('walk_in')}</Text>
+        )
+    },
+    {
+      title: t('items'),
+      key: 'items',
+      render: (_, record) => (
+        <div>
+          <Text>{t('items_count', { count: record.items.length })}</Text>
+          <br />
+          <Text type="secondary">{record.items.map(item => `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`).join(', ')}</Text>
+        </div>
+      )
+    },
+    {
+      title: t('total'),
+      dataIndex: 'total',
+      key: 'total',
+      sorter: true,
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => (
+        <div>
+          <Text strong>{formatCurrency(record.total)}</Text>
+          <br />
+          <Text type="secondary">
+            {t('sub_label')}: {formatCurrency(record.subtotal)}
+            {record.taxAmount && record.taxAmount > 0 && ` | ${t('tax_label')}: ${formatCurrency(record.taxAmount)}`}
+            {record.tipAmount && record.tipAmount > 0 && ` | ${t('tip_label')}: ${formatCurrency(record.tipAmount)}`}
+          </Text>
+        </div>
+      )
+    },
+    {
+      title: t('food_cost'),
+      key: 'foodCost',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const foodCost = calculateOrderFoodCost(record)
+        return <Text type={foodCost > 0 ? undefined : 'secondary'}>{foodCost > 0 ? formatCurrency(foodCost) : t('no_data')}</Text>
+      }
+    },
+    {
+      title: t('profit'),
+      key: 'profit',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => {
+        const foodCost = calculateOrderFoodCost(record)
+        const profit = record.subtotal - foodCost
+        const profitMargin = record.subtotal > 0 ? (profit / record.subtotal) * 100 : 0
+        return (
+          <div>
+            <Text strong style={{ color: profit > 0 ? '#52c41a' : profit < 0 ? '#ff4d4f' : undefined }}>
+              {foodCost > 0 ? formatCurrency(profit) : t('no_data')}
+            </Text>
+            {foodCost > 0 && (
+              <>
+                <br />
+                <Text type="secondary">{t('margin_percent', { margin: profitMargin.toFixed(1) })}</Text>
+              </>
+            )}
+          </div>
+        )
+      }
+    },
+    {
+      title: t('payment'),
+      key: 'payment',
+      render: (_, record) => (
+        <Space>
+          <span>{getPaymentMethodIcon(record.paymentMethod)}</span>
+          <Text>{record.paymentMethod}</Text>
+        </Space>
+      )
+    },
+    {
+      title: t('status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: Order['status']) => <Tag color={getStatusColor(status)}>{status}</Tag>
+    },
+    {
+      title: t('source'),
+      key: 'source',
+      render: (_, record) => (
+        <div>
+          <Text>{record.externalSource || t('manual')}</Text>
+          {record.externalOrderId && (
             <>
-              {groupedOrders.map(group => (
-                <Accordion key={group.key} expanded={expandedGroups.has(group.key)} onChange={() => toggleGroupExpansion(group.key)} sx={{ mb: 1 }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mr: 2 }}>
-                      <Typography variant="h6">{group.group}</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {group.orders.length} orders
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatCurrency(group.orders.reduce((sum, order) => sum + order.total, 0))}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ px: 0 }}>
-                    <TableContainer>
-                      <Table sx={{ direction: theme.direction === 'rtl' ? 'rtl' : 'ltr' }}>
-                        <TableBody>
-                          {group.orders.map(order => (
-                            <TableRow key={order.id}>
-                              <TableCell>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                  {order.orderNumber || order.id.slice(0, 8)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2">{order.orderTime.toLocaleString()}</Typography>
-                              </TableCell>
-                              <TableCell>
-                                {order.customer ? (
-                                  <Box>
-                                    <Typography variant="body2">
-                                      {order.customer.firstName} {order.customer.lastName}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {order.customer.phone}
-                                    </Typography>
-                                  </Box>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Walk-in
-                                  </Typography>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2">{order.items.length} item(s)</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {order.items.map(item => `${item.quantity}x ${item.menuItem?.name || 'Unknown'}`).join(', ')}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                  {formatCurrency(order.total)}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Sub: {formatCurrency(order.subtotal)}
-                                  {order.taxAmount && order.taxAmount > 0 && ` | Tax: ${formatCurrency(order.taxAmount)}`}
-                                  {order.tipAmount && order.tipAmount > 0 && ` | Tip: ${formatCurrency(order.tipAmount)}`}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                                {(() => {
-                                  const foodCost = calculateOrderFoodCost(order)
-                                  return (
-                                    <Typography variant="body2" color={foodCost > 0 ? 'text.primary' : 'text.secondary'}>
-                                      {foodCost > 0 ? formatCurrency(foodCost) : 'No data'}
-                                    </Typography>
-                                  )
-                                })()}
-                              </TableCell>
-                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                                {(() => {
-                                  const foodCost = calculateOrderFoodCost(order)
-                                  const profit = order.subtotal - foodCost
-                                  const profitMargin = order.subtotal > 0 ? (profit / order.subtotal) * 100 : 0
-                                  return (
-                                    <Box>
-                                      <Typography variant="body2" sx={{ fontWeight: 'bold' }} color={profit > 0 ? 'success.main' : profit < 0 ? 'error.main' : 'text.secondary'}>
-                                        {foodCost > 0 ? formatCurrency(profit) : 'No data'}
-                                      </Typography>
-                                      {foodCost > 0 && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          {profitMargin.toFixed(1)}% margin
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  )
-                                })()}
-                              </TableCell>
-                              <TableCell>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <span>{getPaymentMethodIcon(order.paymentMethod)}</span>
-                                  <Typography variant="body2">{order.paymentMethod}</Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell>
-                                <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2">{order.externalSource || 'manual'}</Typography>
-                                {order.externalOrderId && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    ID: {order.externalOrderId}
-                                  </Typography>
-                                )}
-                              </TableCell>
-                              <TableCell sx={{ textAlign: theme.direction === 'rtl' ? 'start' : 'end' }}>
-                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: theme.direction === 'rtl' ? 'flex-start' : 'flex-end' }}>
-                                  <IconButton size="small" onClick={() => handleDeleteOrder(order.id)} title="Delete Order">
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Box>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
+              <br />
+              <Text type="secondary">ID: {record.externalOrderId}</Text>
             </>
           )}
+        </div>
+      )
+    },
+    {
+      title: t('actions'),
+      key: 'actions',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => (
+        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteOrder(record.id)} title={t('delete_order')} />
+      )
+    }
+  ]
 
-          {groupedOrders.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="h6" color="text.secondary">
-                No orders found
-              </Typography>
-            </Box>
-          )}
-        </TabPanel>
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={4}>{t('order_management')}</Title>
+        <Space>
+          <Button icon={<UploadOutlined />} onClick={() => setOpenImportDialog(true)}>
+            {t('import_orders')}
+          </Button>
+          <Button icon={<BulbOutlined />} onClick={() => setOpenAIImportDialog(true)}>
+            {t('ai_import')}
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenOrderDialog(true)}>
+            {t('add_order_record')}
+          </Button>
+        </Space>
+      </div>
 
-        {/* Analytics Tab */}
-        <TabPanel value={tabValue} index={1}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Detailed analytics will be implemented here, including daily/weekly/monthly sales reports, popular items, peak hours, customer analytics, and revenue trends.
-          </Alert>
-        </TabPanel>
-      </Paper>
+      {/* Enhanced Business Analytics Dashboard */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* Today's Performance */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title={t('todays_performance')} value={formatCurrency(stats.todayRevenue)} suffix={getTrendIcon(stats.dailyGrowth)} />
+            <Text type="secondary">{t('orders_count', { count: stats.todayOrders })}</Text>
+            <div style={{ marginTop: 8 }}>
+              <Text type={stats.dailyGrowth > 0 ? 'success' : stats.dailyGrowth < 0 ? 'danger' : 'secondary'}>
+                {stats.dailyGrowth > 0 ? '+' : ''}
+                {stats.dailyGrowth.toFixed(1)}%
+              </Text>
+            </div>
+          </Card>
+        </Col>
+
+        {/* This Week */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title={t('this_week')} value={formatCurrency(stats.thisWeekRevenue)} suffix={getTrendIcon(stats.weeklyGrowth)} />
+            <Text type="secondary">{t('orders_group_count', { count: stats.thisWeekOrders })}</Text>
+            <div style={{ marginTop: 8 }}>
+              <Text type={stats.weeklyGrowth > 0 ? 'success' : stats.weeklyGrowth < 0 ? 'danger' : 'secondary'}>
+                {stats.weeklyGrowth > 0 ? '+' : ''}
+                {stats.weeklyGrowth.toFixed(1)}%
+              </Text>
+            </div>
+          </Card>
+        </Col>
+
+        {/* This Month */}
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title={t('this_month')} value={formatCurrency(stats.thisMonthRevenue)} suffix={getTrendIcon(stats.monthlyGrowth)} />
+            <Text type="secondary">{t('orders_group_count', { count: stats.thisMonthOrders })}</Text>
+            <div style={{ marginTop: 8 }}>
+              <Text type={stats.monthlyGrowth > 0 ? 'success' : stats.monthlyGrowth < 0 ? 'danger' : 'secondary'}>
+                {stats.monthlyGrowth > 0 ? '+' : ''}
+                {stats.monthlyGrowth.toFixed(1)}%
+              </Text>
+            </div>
+          </Card>
+        </Col>
+
+        {/* Average Order Value */}
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title={t('avg_order_value_short')} value={formatCurrency(stats.averageOrderValue)} prefix={<DollarOutlined />} valueStyle={{ color: '#3f8600' }} />
+            <Text type="secondary">{t('total_orders_text', { count: stats.totalOrders })}</Text>
+          </Card>
+        </Col>
+
+        {/* Average Profit Margin */}
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title={t('avg_profit_margin')}
+              value={stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : t('no_data')}
+              prefix={<RiseOutlined />}
+              valueStyle={{ color: stats.averageProfitMargin > 30 ? '#3f8600' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }}
+            />
+            <Text type="secondary">{t('with_cost_data', { ordersWithCostData: stats.ordersWithCostData, totalOrders: stats.totalOrders })}</Text>
+          </Card>
+        </Col>
+
+        {/* Top Selling Items */}
+        <Col xs={24} md={6}>
+          <Card title={<span>🏆 {t('top_selling_items')}</span>} bordered={false}>
+            {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
+              <div key={itemName} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text>
+                    #{index + 1} {itemName}
+                  </Text>
+                  <Text type="secondary">
+                    {data.quantity} {t('sold')}
+                  </Text>
+                </div>
+                <Text type="secondary">
+                  {formatCurrency(data.revenue)} {t('revenue')}
+                </Text>
+              </div>
+            ))}
+            {stats.topItems.length === 0 && <Text type="secondary">{t('no_sales_data')}</Text>}
+          </Card>
+        </Col>
+
+        {/* Key Metrics */}
+        <Col xs={24} md={6}>
+          <Card title={<span>📊 {t('key_metrics')}</span>} bordered={false}>
+            <Row gutter={[8, 8]}>
+              <Col span={12}>
+                <Card bordered style={{ textAlign: 'center' }}>
+                  <DollarOutlined style={{ fontSize: 24, color: '#52c41a' }} />
+                  <Title level={5} style={{ margin: '8px 0' }}>
+                    {formatCurrency(stats.averageOrderValue)}
+                  </Title>
+                  <Text type="secondary">{t('avg_order_value')}</Text>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card bordered style={{ textAlign: 'center' }}>
+                  <RiseOutlined style={{ fontSize: 24, color: stats.averageProfitMargin > 30 ? '#52c41a' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }} />
+                  <Title level={5} style={{ margin: '8px 0', color: stats.averageProfitMargin > 30 ? '#52c41a' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }}>
+                    {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : t('no_data')}
+                  </Title>
+                  <Text type="secondary">{t('avg_profit_margin')}</Text>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card bordered style={{ textAlign: 'center' }}>
+                  <FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                  <Title level={5} style={{ margin: '8px 0' }}>
+                    {stats.totalOrders}
+                  </Title>
+                  <Text type="secondary">{t('total_orders')}</Text>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card bordered style={{ textAlign: 'center' }}>
+                  <DollarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                  <Title level={5} style={{ margin: '8px 0' }}>
+                    {formatCurrency(stats.totalProfit)}
+                  </Title>
+                  <Text type="secondary">{t('total_profit')}</Text>
+                </Card>
+              </Col>
+              {stats.peakHour && (
+                <Col span={12}>
+                  <Card bordered style={{ textAlign: 'center' }}>
+                    <ClockCircleOutlined style={{ fontSize: 24, color: '#faad14' }} />
+                    <Title level={5} style={{ margin: '8px 0' }}>
+                      {stats.peakHour.hour}:00
+                    </Title>
+                    <Text type="secondary">{t('peak_hour')}</Text>
+                  </Card>
+                </Col>
+              )}
+              <Col span={12}>
+                <Card bordered style={{ textAlign: 'center' }}>
+                  <DollarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+                  <Title level={5} style={{ margin: '8px 0' }}>
+                    {formatCurrency(stats.totalRevenue)}
+                  </Title>
+                  <Text type="secondary">{t('total_revenue')}</Text>
+                </Card>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Payment Methods Breakdown */}
+        <Col xs={24} md={6}>
+          <Card title={<span>💳 {t('payment_methods')}</span>} bordered={false}>
+            {Object.entries(stats.paymentMethods).map(([method, count]) => (
+              <div key={method} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text>
+                    {getPaymentMethodIcon(method)} {method.charAt(0).toUpperCase() + method.slice(1)}
+                  </Text>
+                  <Text type="secondary">
+                    {t('orders_group_count', { count })} ({((count / stats.totalOrders) * 100).toFixed(1)}%)
+                  </Text>
+                </div>
+              </div>
+            ))}
+            {Object.keys(stats.paymentMethods).length === 0 && <Text type="secondary">{t('no_payment_data')}</Text>}
+          </Card>
+        </Col>
+      </Row>
+
+      <Card>
+        <Tabs activeKey={tabValue} onChange={setTabValue}>
+          <TabPane tab={t('all_orders')} key="all">
+            {/* Table Toolbar with Grouping Control */}
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Title level={5}>{t('orders_count_label', { count: orders.length })}</Title>
+              <Space>
+                <Select value={groupBy} onChange={setGroupBy} style={{ width: 150 }}>
+                  <Option value="none">{t('no_grouping')}</Option>
+                  <Option value="day">{t('day_label')}</Option>
+                  <Option value="week">{t('week_label')}</Option>
+                  <Option value="month">{t('month_label')}</Option>
+                  <Option value="status">{t('status_label')}</Option>
+                  <Option value="location">{t('location_label')}</Option>
+                </Select>
+              </Space>
+            </div>
+
+            {groupBy === 'none' ? (
+              <Table columns={columns} dataSource={groupedOrders[0]?.orders || []} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+            ) : (
+              <Collapse>
+                {groupedOrders.map(group => (
+                  <Panel
+                    header={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Title level={5} style={{ margin: 0 }}>
+                          {group.group}
+                        </Title>
+                        <Space>
+                          <Text type="secondary">{t('orders_group_count', { count: group.orders.length })}</Text>
+                          <Text type="secondary">{formatCurrency(group.orders.reduce((sum, order) => sum + order.total, 0))}</Text>
+                        </Space>
+                      </div>
+                    }
+                    key={group.key}
+                  >
+                    <Table columns={columns} dataSource={group.orders} rowKey="id" pagination={false} />
+                  </Panel>
+                ))}
+              </Collapse>
+            )}
+
+            {groupedOrders.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <Title level={5} type="secondary">
+                  {t('no_orders_found')}
+                </Title>
+              </div>
+            )}
+          </TabPane>
+          <TabPane tab={t('analytics')} key="analytics">
+            <div style={{ marginBottom: 24 }}>
+              <Text>{t('detailed_analytics_message')}</Text>
+            </div>
+          </TabPane>
+        </Tabs>
+      </Card>
 
       {/* Import Dialog */}
-      <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Import Orders from Clearing Device</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Paste the export data from your clearing device below (JSON or CSV format). The system will automatically process and import the orders into your database.
-          </Alert>
-          <TextField
-            fullWidth
-            multiline
-            rows={10}
-            label="Clearing Device Export Data"
-            value={importData}
-            onChange={e => setImportData(e.target.value)}
-            placeholder={`[
+      <Modal title={t('import_orders_clearing_device')} open={openImportDialog} onCancel={() => setOpenImportDialog(false)} onOk={handleImportOrders} width={800}>
+        <div style={{ marginBottom: 16 }}>
+          <Text>{t('clearing_device_import_instructions')}</Text>
+        </div>
+        <TextArea
+          rows={10}
+          placeholder={`[
   {
     "externalId": "DEF001",
     "total": 15.50,
@@ -1303,241 +982,13 @@ export default function Orders() {
     ]
   }
 ]`}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-          <Button onClick={handleImportOrders} variant="contained">
-            Import Orders
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* New Order Dialog */}
-      <Dialog open={openOrderDialog} onClose={() => setOpenOrderDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Add Order Record</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3}>
-            {/* Customer Selection */}
-            <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Customer Information
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Select Customer</InputLabel>
-                    <Select
-                      value={selectedCustomerId}
-                      onChange={e => {
-                        setSelectedCustomerId(e.target.value)
-                        setShowNewCustomerForm(false)
-                      }}
-                      disabled={showNewCustomerForm}
-                    >
-                      <MuiMenuItem value="">Walk-in Customer</MuiMenuItem>
-                      {customers.map(customer => (
-                        <MuiMenuItem key={customer.id} value={customer.id}>
-                          {customer.firstName} {customer.lastName}
-                          {customer.phone && ` - ${customer.phone}`}
-                        </MuiMenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Button
-                    variant={showNewCustomerForm ? 'contained' : 'outlined'}
-                    onClick={() => {
-                      setShowNewCustomerForm(!showNewCustomerForm)
-                      setSelectedCustomerId('')
-                    }}
-                    startIcon={<CustomerIcon />}
-                  >
-                    {showNewCustomerForm ? 'Cancel New Customer' : 'Add New Customer'}
-                  </Button>
-                </Grid>
-              </Grid>
-
-              {/* New Customer Form */}
-              {showNewCustomerForm && (
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={6}>
-                    <TextField fullWidth label="First Name" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField fullWidth label="Last Name" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField fullWidth label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField fullWidth label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
-                  </Grid>
-                </Grid>
-              )}
-            </Grid>
-
-            <Divider sx={{ width: '100%', my: 2 }} />
-
-            {/* Menu Items Selection */}
-            <Grid item xs={12} md={7}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Select Menu Items
-              </Typography>
-              <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {(() => {
-                  // Group menu items by category
-                  const availableItems = menuItems.filter(item => item.isAvailable)
-                  const groupedItems = availableItems.reduce((groups, item) => {
-                    const category = item.category || 'Other'
-                    if (!groups[category]) {
-                      groups[category] = []
-                    }
-                    groups[category].push(item)
-                    return groups
-                  }, {} as Record<string, MenuItem[]>)
-
-                  const categories = Object.keys(groupedItems).sort()
-
-                  return categories.map(category => (
-                    <Box key={category} sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: 'primary.main' }}>
-                        {category}
-                      </Typography>
-                      <Grid container spacing={1}>
-                        {groupedItems[category].map(item => (
-                          <Grid item xs={12} sm={6} key={item.id}>
-                            <Card variant="outlined" sx={{ cursor: 'pointer' }} onClick={() => addMenuItem(item)}>
-                              <CardContent sx={{ p: 2 }}>
-                                <Typography variant="subtitle2">{item.name}</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                                  {item.description}
-                                </Typography>
-                                <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                                  {formatCurrency(item.price)}
-                                </Typography>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Box>
-                  ))
-                })()}
-              </Box>
-            </Grid>
-
-            {/* Order Summary */}
-            <Grid item xs={12} md={5}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Order Summary
-              </Typography>
-
-              {/* Selected Items */}
-              <List sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                {orderItems.length === 0 ? (
-                  <ListItem>
-                    <ListItemText primary="No items selected" />
-                  </ListItem>
-                ) : (
-                  orderItems.map(item => (
-                    <ListItem key={item.menuItemId} divider>
-                      <ListItemText primary={item.menuItem?.name} secondary={`${formatCurrency(item.unitPrice)} each`} />
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <IconButton size="small" onClick={() => updateItemQuantity(item.menuItemId, item.quantity - 1)}>
-                          <DeleteIcon />
-                        </IconButton>
-                        <Typography>{item.quantity}</Typography>
-                        <IconButton size="small" onClick={() => updateItemQuantity(item.menuItemId, item.quantity + 1)}>
-                          <AddIcon />
-                        </IconButton>
-                        <Typography sx={{ ml: 1, minWidth: 60, textAlign: 'right' }}>{formatCurrency(item.totalPrice)}</Typography>
-                      </Box>
-                    </ListItem>
-                  ))
-                )}
-              </List>
-
-              {/* Order Totals */}
-              {orderItems.length > 0 && (
-                <Box
-                  sx={theme => ({
-                    mt: 2,
-                    p: 2,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                  })}
-                >
-                  {(() => {
-                    const totals = calculateTotals()
-                    return (
-                      <>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography>Subtotal:</Typography>
-                          <Typography>{formatCurrency(totals.subtotal)}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography>Tax ({(taxRate * 100).toFixed(0)}%):</Typography>
-                          <Typography>{formatCurrency(totals.taxAmount)}</Typography>
-                        </Box>
-                        <TextField fullWidth label="Tip Amount" type="number" size="small" value={newOrder.tipAmount || 0} onChange={e => setNewOrder({ ...newOrder, tipAmount: parseFloat(e.target.value) || 0 })} sx={{ mt: 1 }} />
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                          <Typography variant="h6">Total:</Typography>
-                          <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                            {formatCurrency(totals.total)}
-                          </Typography>
-                        </Box>
-                      </>
-                    )
-                  })()}
-                </Box>
-              )}
-
-              {/* Order Details */}
-              <Box sx={{ mt: 2 }}>
-                <TextField fullWidth label="Order Date & Time" type="datetime-local" value={newOrder.orderTime ? newOrder.orderTime.toISOString().slice(0, 16) : ''} onChange={e => setNewOrder({ ...newOrder, orderTime: new Date(e.target.value) })} sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} />
-
-                <TextField fullWidth label="Location" value={newOrder.location || 'Main Location'} onChange={e => setNewOrder({ ...newOrder, location: e.target.value })} sx={{ mb: 2 }} />
-
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Payment Method</InputLabel>
-                  <Select value={newOrder.paymentMethod || 'card'} onChange={e => setNewOrder({ ...newOrder, paymentMethod: e.target.value as any })}>
-                    <MuiMenuItem value="cash">Cash 💵</MuiMenuItem>
-                    <MuiMenuItem value="card">Card 💳</MuiMenuItem>
-                    <MuiMenuItem value="mobile">Mobile 📱</MuiMenuItem>
-                    <MuiMenuItem value="online">Online 🌐</MuiMenuItem>
-                    <MuiMenuItem value="other">Other 💰</MuiMenuItem>
-                  </Select>
-                </FormControl>
-
-                <TextField fullWidth label="Special Instructions" multiline rows={2} value={newOrder.specialInstructions || ''} onChange={e => setNewOrder({ ...newOrder, specialInstructions: e.target.value })} />
-              </Box>
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setOpenOrderDialog(false)
-              resetOrderForm()
-            }}
-          >
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleCreateOrder} disabled={orderItems.length === 0}>
-            Add Order Record ({formatCurrency(calculateTotals().total)})
-          </Button>
-        </DialogActions>
-      </Dialog>
+          value={importData}
+          onChange={e => setImportData(e.target.value)}
+        />
+      </Modal>
 
       {/* AI Order Importer Dialog */}
       <AIOrderImporter open={openAIImportDialog} onClose={() => setOpenAIImportDialog(false)} onOrdersImported={handleAIOrdersImported} />
-
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })} message={snackbar.message} />
-    </Box>
+    </div>
   )
 }

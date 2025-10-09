@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Paper,
+  Card,
   Typography,
   Button,
-  CircularProgress,
-  Alert
-} from '@mui/material';
-import { Check as CheckIcon } from '@mui/icons-material';
+  Spin,
+  Alert,
+} from 'antd';
+import { CheckCircleOutlined } from '@ant-design/icons';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useBusiness } from '../contexts/BusinessContext';
+
+const { Title, Text } = Typography;
 
 const InviteAccept: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -105,87 +106,90 @@ const InviteAccept: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Paper sx={{ p: 4, maxWidth: 400 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-          <Button 
-            fullWidth 
-            variant="contained" 
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Card style={{ padding: 24, maxWidth: 400 }}>
+          <Alert
+            message={error}
+            type="error"
+            style={{ marginBottom: 16 }}
+          />
+          <Button
+            block
+            type="primary"
             onClick={() => navigate('/auth')}
           >
             Go to Login
           </Button>
-        </Paper>
-      </Box>
+        </Card>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Paper sx={{ p: 4, maxWidth: 400, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>
-            Business Invitation
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            You've been invited to join <strong>{businessName}</strong> as a <strong>{invitation?.role}</strong>.
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Please sign in or create an account with email: <strong>{invitation?.email}</strong>
-          </Typography>
-          <Button 
-            fullWidth 
-            variant="contained" 
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Card style={{ padding: 24, maxWidth: 400, textAlign: 'center' }}>
+          <Title level={3}>Business Invitation</Title>
+          <div style={{ marginBottom: 24 }}>
+            <Text>
+              You've been invited to join <Text strong>{businessName}</Text> as a <Text strong>{invitation?.role}</Text>.
+            </Text>
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <Text type="secondary">
+              Please sign in or create an account with email: <Text strong>{invitation?.email}</Text>
+            </Text>
+          </div>
+          <Button
+            block
+            type="primary"
             onClick={() => navigate('/auth', { state: { email: invitation?.email } })}
           >
             Sign In / Sign Up
           </Button>
-        </Paper>
-      </Box>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-      <Paper sx={{ p: 4, maxWidth: 400, textAlign: 'center' }}>
-        <Box sx={{ 
-          width: 80, 
-          height: 80, 
-          borderRadius: '50%', 
-          backgroundColor: 'success.light',
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <Card style={{ padding: 24, maxWidth: 400, textAlign: 'center' }}>
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: '50%',
+          backgroundColor: '#f6ffed',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          mx: 'auto',
-          mb: 3
+          margin: '0 auto 24px'
         }}>
-          <CheckIcon sx={{ fontSize: 40, color: 'success.main' }} />
-        </Box>
-        <Typography variant="h5" gutterBottom>
-          Invitation Accepted!
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          You've successfully joined <strong>{businessName}</strong> as a <strong>{invitation?.role}</strong>.
-        </Typography>
-        <Button 
-          fullWidth 
-          variant="contained" 
+          <CheckCircleOutlined style={{ fontSize: 40, color: '#52c41a' }} />
+        </div>
+        <Title level={3}>Invitation Accepted!</Title>
+        <div style={{ marginBottom: 24 }}>
+          <Text>
+            You've successfully joined <Text strong>{businessName}</Text> as a <Text strong>{invitation?.role}</Text>.
+          </Text>
+        </div>
+        <Button
+          block
+          type="primary"
           onClick={() => navigate('/')}
         >
           Go to Dashboard
         </Button>
-      </Paper>
-    </Box>
+      </Card>
+    </div>
   );
 };
 

@@ -1,31 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
-  Container,
+  Row,
+  Col,
   Typography,
-  Paper,
-  Box,
-  Avatar,
-  Grid,
   Card,
-  CardContent,
+  Avatar,
   Button,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Modal,
   Alert,
-  Chip,
-  CircularProgress
-} from '@mui/material'
-import { Person, Email, VpnKey, Edit } from '@mui/icons-material'
+  Tag,
+  Spin,
+  Space,
+} from 'antd'
+import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 import { useTranslation } from 'react-i18next'
+
+const { Title, Text } = Typography
 
 export const UserManagement: React.FC = () => {
   const { user, signOut, resetPassword } = useAuth()
   const { t } = useTranslation()
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [passwordResetDialogOpen, setPasswordResetDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -40,7 +35,7 @@ export const UserManagement: React.FC = () => {
 
   const handlePasswordReset = async () => {
     if (!user?.email) return
-    
+
     setLoading(true)
     try {
       const { error } = await resetPassword(user.email)
@@ -63,170 +58,142 @@ export const UserManagement: React.FC = () => {
 
   if (!user) {
     return (
-      <Container>
-        <Typography variant="h4">{t('user_management')}</Typography>
-        <Alert severity="error">
-          {t('no_user_data')}
-        </Alert>
-      </Container>
+      <div style={{ padding: 24 }}>
+        <Title level={2}>{t('user_management')}</Title>
+        <Alert
+          message={t('no_user_data')}
+          type="error"
+        />
+      </div>
     )
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
+    <div style={{ padding: 24 }}>
+      <Title level={2} style={{ marginBottom: 24 }}>
         {t('user_management')}
-      </Typography>
+      </Title>
 
       {message && (
-        <Alert 
-          severity={message.type} 
-          sx={{ mb: 3 }}
+        <Alert
+          message={message.text}
+          type={message.type}
+          closable
           onClose={() => setMessage(null)}
-        >
-          {message.text}
-        </Alert>
+          style={{ marginBottom: 24 }}
+        />
       )}
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={12}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                  <Person />
-                </Avatar>
-                <Typography variant="h6">
-                  {t('profile_information')}
-                </Typography>
-              </Box>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+              <Avatar size={40} style={{ backgroundColor: '#1890ff', marginRight: 16 }}>
+                <UserOutlined />
+              </Avatar>
+              <Title level={4} style={{ margin: 0 }}>
+                {t('profile_information')}
+              </Title>
+            </div>
 
-              <Box mb={2}>
-                <Typography variant="body2" color="textSecondary">
-                  {t('email')}
-                </Typography>
-                <Typography variant="body1">
-                  {user.email}
-                </Typography>
-              </Box>
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                {t('email')}
+              </Text>
+              <Text>{user.email}</Text>
+            </div>
 
-              {user.user_metadata?.first_name && (
-                <Box mb={2}>
-                  <Typography variant="body2" color="textSecondary">
-                    {t('first_name')}
-                  </Typography>
-                  <Typography variant="body1">
-                    {user.user_metadata.first_name}
-                  </Typography>
-                </Box>
-              )}
+            {user.user_metadata?.first_name && (
+              <div style={{ marginBottom: 16 }}>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                  {t('first_name')}
+                </Text>
+                <Text>{user.user_metadata.first_name}</Text>
+              </div>
+            )}
 
-              {user.user_metadata?.last_name && (
-                <Box mb={2}>
-                  <Typography variant="body2" color="textSecondary">
-                    {t('last_name')}
-                  </Typography>
-                  <Typography variant="body1">
-                    {user.user_metadata.last_name}
-                  </Typography>
-                </Box>
-              )}
+            {user.user_metadata?.last_name && (
+              <div style={{ marginBottom: 16 }}>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                  {t('last_name')}
+                </Text>
+                <Text>{user.user_metadata.last_name}</Text>
+              </div>
+            )}
 
-              <Box mb={2}>
-                <Typography variant="body2" color="textSecondary">
-                  {t('account_created')}
-                </Typography>
-                <Typography variant="body1">
-                  {formatDate(user.created_at)}
-                </Typography>
-              </Box>
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                {t('account_created')}
+              </Text>
+              <Text>{formatDate(user.created_at)}</Text>
+            </div>
 
-              <Box mb={2}>
-                <Typography variant="body2" color="textSecondary">
-                  {t('last_sign_in')}
-                </Typography>
-                <Typography variant="body1">
-                  {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : t('never')}
-                </Typography>
-              </Box>
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                {t('last_sign_in')}
+              </Text>
+              <Text>{user.last_sign_in_at ? formatDate(user.last_sign_in_at) : t('never')}</Text>
+            </div>
 
-              <Box mb={2}>
-                <Typography variant="body2" color="textSecondary">
-                  {t('email_verified')}
-                </Typography>
-                <Chip 
-                  label={user.email_confirmed_at ? t('verified') : t('not_verified')}
-                  color={user.email_confirmed_at ? 'success' : 'warning'}
-                  size="small"
-                />
-              </Box>
-            </CardContent>
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                {t('email_verified')}
+              </Text>
+              <Tag color={user.email_confirmed_at ? 'success' : 'warning'}>
+                {user.email_confirmed_at ? t('verified') : t('not_verified')}
+              </Tag>
+            </div>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} md={6}>
+        <Col xs={24} md={12}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t('account_actions')}
-              </Typography>
+            <Title level={4} style={{ marginBottom: 16 }}>
+              {t('account_actions')}
+            </Title>
 
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Button
-                  variant="outlined"
-                  startIcon={<VpnKey />}
-                  onClick={() => setPasswordResetDialogOpen(true)}
-                  fullWidth
-                >
-                  {t('reset_password')}
-                </Button>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Button
+                block
+                icon={<LockOutlined />}
+                onClick={() => setPasswordResetDialogOpen(true)}
+              >
+                {t('reset_password')}
+              </Button>
 
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={handleSignOut}
-                  fullWidth
-                >
-                  {t('sign_out')}
-                </Button>
-              </Box>
-            </CardContent>
+              <Button
+                block
+                danger
+                onClick={handleSignOut}
+              >
+                {t('sign_out')}
+              </Button>
+            </Space>
           </Card>
 
-          <Card sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t('user_id')}
-              </Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                {user.id}
-              </Typography>
-            </CardContent>
+          <Card style={{ marginTop: 16 }}>
+            <Title level={4} style={{ marginBottom: 16 }}>
+              {t('user_id')}
+            </Title>
+            <Text code style={{ wordBreak: 'break-all' }}>
+              {user.id}
+            </Text>
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
       {/* Password Reset Dialog */}
-      <Dialog open={passwordResetDialogOpen} onClose={() => setPasswordResetDialogOpen(false)}>
-        <DialogTitle>{t('reset_password')}</DialogTitle>
-        <DialogContent>
-          <Typography>
-            {t('password_reset_confirmation')}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPasswordResetDialogOpen(false)}>
-            {t('cancel')}
-          </Button>
-          <Button 
-            onClick={handlePasswordReset} 
-            variant="contained"
-            disabled={loading}
-          >
-            {loading ? <CircularProgress size={20} /> : t('send_reset_email')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+      <Modal
+        open={passwordResetDialogOpen}
+        onCancel={() => setPasswordResetDialogOpen(false)}
+        onOk={handlePasswordReset}
+        title={t('reset_password')}
+        confirmLoading={loading}
+      >
+        <Text>
+          {t('password_reset_confirmation')}
+        </Text>
+      </Modal>
+    </div>
   )
 }

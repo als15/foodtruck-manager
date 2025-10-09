@@ -1,58 +1,35 @@
 import React, { useState } from 'react';
 import {
-  Box,
-  Typography,
+  Row,
+  Col,
   Card,
-  CardContent,
+  Typography,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
+  Modal,
+  Input,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  Tab,
+  Tag,
+  Space,
   Tabs,
-  IconButton,
   List,
-  ListItem,
-  ListItemText,
-  Grid,
-} from '@mui/material';
+  DatePicker
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  LocationOn as LocationIcon,
-  Route as RouteIcon,
-  Event as EventIcon,
-} from '@mui/icons-material';
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EnvironmentOutlined,
+  CarOutlined,
+  CalendarOutlined,
+} from '@ant-design/icons';
 import { Location, Route } from '../types';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 export default function Logistics() {
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState('0');
   const [openLocationDialog, setOpenLocationDialog] = useState(false);
   const [openRouteDialog, setOpenRouteDialog] = useState(false);
 
@@ -122,17 +99,13 @@ export default function Logistics() {
     status: 'planned'
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
   const handleSaveLocation = () => {
     const location: Location = {
       ...newLocation as Location,
       id: Date.now().toString()
     };
     setLocations([...locations, location]);
-    
+
     setNewLocation({
       name: '',
       address: '',
@@ -147,12 +120,12 @@ export default function Logistics() {
     const route: Route = {
       ...newRoute as Route,
       id: Date.now().toString(),
-      locations: locations.filter(loc => 
+      locations: locations.filter(loc =>
         newRoute.locations?.some(routeLoc => routeLoc.id === loc.id)
       )
     };
     setRoutes([...routes, route]);
-    
+
     setNewRoute({
       name: '',
       date: new Date(),
@@ -174,18 +147,18 @@ export default function Logistics() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'planned': return 'primary';
-      case 'active': return 'warning';
-      case 'completed': return 'success';
+      case 'planned': return 'blue';
+      case 'active': return 'orange';
+      case 'completed': return 'green';
       default: return 'default';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'regular': return 'primary';
-      case 'event': return 'secondary';
-      case 'special': return 'warning';
+      case 'regular': return 'blue';
+      case 'event': return 'purple';
+      case 'special': return 'orange';
       default: return 'default';
     }
   };
@@ -195,303 +168,310 @@ export default function Logistics() {
     setNewLocation({ ...newLocation, permitsRequired: permits });
   };
 
+  const routeColumns: ColumnsType<Route> = [
+    {
+      title: 'Route Name',
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date: Date) => date.toLocaleDateString(),
+    },
+    {
+      title: 'Locations',
+      dataIndex: 'locations',
+      key: 'locations',
+      render: (locations: Location[]) => (
+        <Space size={[0, 4]} wrap>
+          {locations.map(loc => (
+            <Tag key={loc.id}>{loc.name}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: 'Est. Revenue',
+      dataIndex: 'estimatedRevenue',
+      key: 'estimatedRevenue',
+      render: (value: number) => `$${value}`,
+    },
+    {
+      title: 'Actual Revenue',
+      dataIndex: 'actualRevenue',
+      key: 'actualRevenue',
+      render: (value?: number) => value ? `$${value}` : '-',
+    },
+    {
+      title: 'Expenses',
+      dataIndex: 'expenses',
+      key: 'expenses',
+      render: (value: number) => `$${value}`,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>{status}</Tag>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_: any, record: Route) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => handleDeleteRoute(record.id)}
+        />
+      ),
+    },
+  ];
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Logistics Management</Typography>
-        <Box>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={4}>Logistics Management</Title>
+        <Space>
           <Button
-            variant="outlined"
-            startIcon={<RouteIcon />}
+            icon={<CarOutlined />}
             onClick={() => setOpenRouteDialog(true)}
-            sx={{ mr: 1 }}
           >
             Plan Route
           </Button>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={() => setOpenLocationDialog(true)}
           >
             Add Location
           </Button>
-        </Box>
-      </Box>
+        </Space>
+      </div>
 
-      <Paper>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Locations" />
-          <Tab label="Routes" />
-          <Tab label="Schedule" />
-        </Tabs>
-
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={2}>
-            {locations.map((location) => (
-              <Grid item xs={12} sm={6} md={4} key={location.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <LocationIcon sx={{ mr: 1 }} />
-                        <Typography variant="h6">
-                          {location.name}
-                        </Typography>
-                      </Box>
-                      <IconButton size="small" onClick={() => handleDeleteLocation(location.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      {location.address}
-                    </Typography>
-                    
-                    <Chip
-                      label={location.type}
-                      color={getTypeColor(location.type)}
-                      size="small"
-                      sx={{ mb: 1 }}
-                    />
-                    
-                    <Typography variant="caption" display="block" sx={{ mb: 1 }}>
-                      Coordinates: {location.coordinates.lat}, {location.coordinates.lng}
-                    </Typography>
-                    
-                    {location.permitsRequired.length > 0 && (
-                      <Box>
-                        <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                          Required Permits:
-                        </Typography>
-                        {location.permitsRequired.map((permit, index) => (
-                          <Chip
-                            key={index}
-                            label={permit}
+      <Card>
+        <Tabs
+          activeKey={tabValue}
+          onChange={setTabValue}
+          items={[
+            {
+              key: '0',
+              label: 'Locations',
+              children: (
+                <Row gutter={[16, 16]}>
+                  {locations.map((location) => (
+                    <Col xs={24} sm={12} md={8} key={location.id}>
+                      <Card>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                          <Space>
+                            <EnvironmentOutlined />
+                            <Title level={5} style={{ margin: 0 }}>
+                              {location.name}
+                            </Title>
+                          </Space>
+                          <Button
+                            type="text"
+                            danger
                             size="small"
-                            variant="outlined"
-                            sx={{ mr: 0.5, mb: 0.5 }}
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDeleteLocation(location.id)}
                           />
-                        ))}
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </TabPanel>
+                        </div>
 
-        <TabPanel value={tabValue} index={1}>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Route Name</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Locations</TableCell>
-                  <TableCell>Est. Revenue</TableCell>
-                  <TableCell>Actual Revenue</TableCell>
-                  <TableCell>Expenses</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {routes.map((route) => (
-                  <TableRow key={route.id}>
-                    <TableCell>{route.name}</TableCell>
-                    <TableCell>{route.date.toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      {route.locations.map((loc, index) => (
-                        <Chip
-                          key={loc.id}
-                          label={loc.name}
-                          size="small"
-                          sx={{ mr: 0.5 }}
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                          {location.address}
+                        </Text>
+
+                        <Tag color={getTypeColor(location.type)} style={{ marginBottom: 8 }}>
+                          {location.type}
+                        </Tag>
+
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
+                          Coordinates: {location.coordinates.lat}, {location.coordinates.lng}
+                        </Text>
+
+                        {location.permitsRequired.length > 0 && (
+                          <div>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 4, fontSize: 12 }}>
+                              Required Permits:
+                            </Text>
+                            <Space size={[0, 4]} wrap>
+                              {location.permitsRequired.map((permit, index) => (
+                                <Tag key={index} style={{ fontSize: 11 }}>
+                                  {permit}
+                                </Tag>
+                              ))}
+                            </Space>
+                          </div>
+                        )}
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              ),
+            },
+            {
+              key: '1',
+              label: 'Routes',
+              children: (
+                <Table
+                  columns={routeColumns}
+                  dataSource={routes}
+                  rowKey="id"
+                  pagination={false}
+                />
+              ),
+            },
+            {
+              key: '2',
+              label: 'Schedule',
+              children: (
+                <div>
+                  <Title level={5} style={{ marginBottom: 16 }}>
+                    Upcoming Schedule
+                  </Title>
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={routes
+                      .filter(route => route.date >= new Date())
+                      .sort((a, b) => a.date.getTime() - b.date.getTime())}
+                    renderItem={(route) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={<CalendarOutlined style={{ fontSize: 20 }} />}
+                          title={route.name}
+                          description={`${route.date.toLocaleDateString()} - ${route.locations.map(l => l.name).join(', ')}`}
                         />
-                      ))}
-                    </TableCell>
-                    <TableCell>${route.estimatedRevenue}</TableCell>
-                    <TableCell>
-                      {route.actualRevenue ? `$${route.actualRevenue}` : '-'}
-                    </TableCell>
-                    <TableCell>${route.expenses}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={route.status}
-                        color={getStatusColor(route.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton size="small" onClick={() => handleDeleteRoute(route.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Upcoming Schedule
-          </Typography>
-          <List>
-            {routes
-              .filter(route => route.date >= new Date())
-              .sort((a, b) => a.date.getTime() - b.date.getTime())
-              .map((route) => (
-                <ListItem key={route.id} divider>
-                  <EventIcon sx={{ mr: 2 }} />
-                  <ListItemText
-                    primary={route.name}
-                    secondary={`${route.date.toLocaleDateString()} - ${route.locations.map(l => l.name).join(', ')}`}
+                        <Tag color={getStatusColor(route.status)}>{route.status}</Tag>
+                      </List.Item>
+                    )}
                   />
-                  <Chip
-                    label={route.status}
-                    color={getStatusColor(route.status)}
-                    size="small"
-                  />
-                </ListItem>
-              ))}
-          </List>
-        </TabPanel>
-      </Paper>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
 
       {/* Location Dialog */}
-      <Dialog open={openLocationDialog} onClose={() => setOpenLocationDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Location</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Location Name"
-                value={newLocation.name}
-                onChange={(e) => setNewLocation({ ...newLocation, name: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Address"
-                value={newLocation.address}
-                onChange={(e) => setNewLocation({ ...newLocation, address: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Latitude"
+      <Modal
+        title="Add New Location"
+        open={openLocationDialog}
+        onCancel={() => setOpenLocationDialog(false)}
+        onOk={handleSaveLocation}
+        okText="Add Location"
+        width={600}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+          <Input
+            placeholder="Location Name"
+            value={newLocation.name}
+            onChange={(e) => setNewLocation({ ...newLocation, name: e.target.value })}
+          />
+
+          <Input
+            placeholder="Address"
+            value={newLocation.address}
+            onChange={(e) => setNewLocation({ ...newLocation, address: e.target.value })}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Input
+                placeholder="Latitude"
                 type="number"
-                inputProps={{ step: "0.000001" }}
+                step="0.000001"
                 value={newLocation.coordinates?.lat}
-                onChange={(e) => setNewLocation({ 
-                  ...newLocation, 
-                  coordinates: { 
-                    ...newLocation.coordinates!, 
-                    lat: parseFloat(e.target.value) 
-                  } 
+                onChange={(e) => setNewLocation({
+                  ...newLocation,
+                  coordinates: {
+                    ...newLocation.coordinates!,
+                    lat: parseFloat(e.target.value)
+                  }
                 })}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Longitude"
+            </Col>
+            <Col span={12}>
+              <Input
+                placeholder="Longitude"
                 type="number"
-                inputProps={{ step: "0.000001" }}
+                step="0.000001"
                 value={newLocation.coordinates?.lng}
-                onChange={(e) => setNewLocation({ 
-                  ...newLocation, 
-                  coordinates: { 
-                    ...newLocation.coordinates!, 
-                    lng: parseFloat(e.target.value) 
-                  } 
+                onChange={(e) => setNewLocation({
+                  ...newLocation,
+                  coordinates: {
+                    ...newLocation.coordinates!,
+                    lng: parseFloat(e.target.value)
+                  }
                 })}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                select
-                label="Type"
-                value={newLocation.type}
-                onChange={(e) => setNewLocation({ ...newLocation, type: e.target.value as any })}
-                SelectProps={{ native: true }}
-              >
-                <option value="regular">Regular</option>
-                <option value="event">Event</option>
-                <option value="special">Special</option>
-              </TextField>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Required Permits (comma separated)"
-                value={newLocation.permitsRequired?.join(', ') || ''}
-                onChange={(e) => handlePermitsChange(e.target.value)}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenLocationDialog(false)}>Cancel</Button>
-          <Button onClick={handleSaveLocation} variant="contained">Add Location</Button>
-        </DialogActions>
-      </Dialog>
+            </Col>
+          </Row>
+
+          <select
+            style={{ padding: '4px 11px', borderRadius: 6, border: '1px solid #d9d9d9', height: 32 }}
+            value={newLocation.type}
+            onChange={(e) => setNewLocation({ ...newLocation, type: e.target.value as any })}
+          >
+            <option value="regular">Regular</option>
+            <option value="event">Event</option>
+            <option value="special">Special</option>
+          </select>
+
+          <Input
+            placeholder="Required Permits (comma separated)"
+            value={newLocation.permitsRequired?.join(', ') || ''}
+            onChange={(e) => handlePermitsChange(e.target.value)}
+          />
+        </div>
+      </Modal>
 
       {/* Route Dialog */}
-      <Dialog open={openRouteDialog} onClose={() => setOpenRouteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Plan New Route</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Route Name"
-                value={newRoute.name}
-                onChange={(e) => setNewRoute({ ...newRoute, name: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={newRoute.date?.toISOString().split('T')[0]}
-                onChange={(e) => setNewRoute({ ...newRoute, date: new Date(e.target.value) })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Estimated Revenue"
+      <Modal
+        title="Plan New Route"
+        open={openRouteDialog}
+        onCancel={() => setOpenRouteDialog(false)}
+        onOk={handleSaveRoute}
+        okText="Create Route"
+        width={600}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+          <Input
+            placeholder="Route Name"
+            value={newRoute.name}
+            onChange={(e) => setNewRoute({ ...newRoute, name: e.target.value })}
+          />
+
+          <Input
+            type="date"
+            value={newRoute.date?.toISOString().split('T')[0]}
+            onChange={(e) => setNewRoute({ ...newRoute, date: new Date(e.target.value) })}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Input
+                placeholder="Estimated Revenue"
                 type="number"
                 value={newRoute.estimatedRevenue}
                 onChange={(e) => setNewRoute({ ...newRoute, estimatedRevenue: parseFloat(e.target.value) })}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Estimated Expenses"
+            </Col>
+            <Col span={12}>
+              <Input
+                placeholder="Estimated Expenses"
                 type="number"
                 value={newRoute.expenses}
                 onChange={(e) => setNewRoute({ ...newRoute, expenses: parseFloat(e.target.value) })}
               />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRouteDialog(false)}>Cancel</Button>
-          <Button onClick={handleSaveRoute} variant="contained">Create Route</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            </Col>
+          </Row>
+        </div>
+      </Modal>
+    </div>
   );
 }

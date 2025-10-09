@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Switch, FormControlLabel, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, OutlinedInput, SelectChangeEvent, useTheme } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Business as BusinessIcon, Phone as PhoneIcon, Email as EmailIcon, LocalShipping as DeliveryIcon, AutoMode as AutoOrderIcon, DriveEta as PickupIcon } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Switch, Space, Spin, Alert, message, AutoComplete, Select } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, PhoneOutlined, MailOutlined, CarOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
 import { WEEKDAYS_ORDERED, sortDaysChronologically } from '../utils/weekdayUtils'
 
+const { Title, Text } = Typography
+const { TextArea } = Input
+const { Option } = Select
+
 const PAYMENT_TERMS = ['Net 30', 'Net 15', 'COD', 'Prepaid', 'Net 60', 'Due on Receipt']
 const DELIVERY_METHODS = ['pickup', 'delivery'] as const
 
 export default function Suppliers() {
-  const theme = useTheme()
-  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
-  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
   const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
   const [openDialog, setOpenDialog] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
 
   // Persist modal state and form data across tab switches
   const [isModalPersisted, setIsModalPersisted] = useState(false)
@@ -111,7 +113,7 @@ export default function Suppliers() {
       setSuppliers(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failed_to_load_suppliers'))
-      setSnackbar({ open: true, message: t('failed_to_load_suppliers'), severity: 'error' })
+      message.error(t('failed_to_load_suppliers'))
     } finally {
       setLoading(false)
     }
@@ -121,16 +123,16 @@ export default function Suppliers() {
     try {
       if (editingSupplier) {
         await suppliersService.update(editingSupplier.id, newSupplier)
-        setSnackbar({ open: true, message: t('supplier_updated_successfully'), severity: 'success' })
+        message.success(t('supplier_updated_successfully'))
       } else {
         await suppliersService.create(newSupplier as Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>)
-        setSnackbar({ open: true, message: t('supplier_created_successfully'), severity: 'success' })
+        message.success(t('supplier_created_successfully'))
       }
 
       await loadSuppliers()
       closeModalAndClearData()
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_save_supplier'), severity: 'error' })
+      message.error(t('failed_to_save_supplier'))
     }
   }
 
@@ -169,83 +171,194 @@ export default function Suppliers() {
   const handleDeleteSupplier = async (id: string) => {
     try {
       await suppliersService.delete(id)
-      setSnackbar({ open: true, message: t('supplier_deleted_successfully'), severity: 'success' })
+      message.success(t('supplier_deleted_successfully'))
       await loadSuppliers()
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_delete_supplier'), severity: 'error' })
+      message.error(t('failed_to_delete_supplier'))
     }
   }
 
-  const toggleActiveStatus = async (id: string) => {
+  const toggleActiveStatus = async (id: string, checked: boolean) => {
     try {
-      const supplier = suppliers.find(sup => sup.id === id)
-      if (supplier) {
-        await suppliersService.update(id, { isActive: !supplier.isActive })
-        setSnackbar({ open: true, message: t('supplier_status_updated_successfully'), severity: 'success' })
-        await loadSuppliers()
-      }
+      await suppliersService.update(id, { isActive: checked })
+      message.success(t('supplier_status_updated_successfully'))
+      await loadSuppliers()
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_update_supplier_status'), severity: 'error' })
+      message.error(t('failed_to_update_supplier_status'))
     }
-  }
-
-  const handleDeliveryDaysChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value
-    setNewSupplier({
-      ...newSupplier,
-      deliveryDays: typeof value === 'string' ? value.split(',') : value
-    })
-  }
-
-  const handleOrderSubmissionDaysChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value
-    setNewSupplier({
-      ...newSupplier,
-      orderSubmissionDays: typeof value === 'string' ? value.split(',') : value
-    })
-  }
-
-  const handleDeliveryMethodsChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value
-    setNewSupplier({
-      ...newSupplier,
-      deliveryMethods: (typeof value === 'string' ? value.split(',') : value) as ('pickup' | 'delivery')[]
-    })
   }
 
   const activeSuppliers = suppliers.filter(sup => sup.isActive)
   const autoOrderSuppliers = suppliers.filter(sup => sup.autoOrderEnabled && sup.isActive)
 
+  const columns: ColumnsType<Supplier> = [
+    {
+      title: t('supplier'),
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => (
+        <div>
+          <Text strong>{text}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 12 }}>{record.contactPerson}</Text>
+        </div>
+      ),
+    },
+    {
+      title: t('contact'),
+      key: 'contact',
+      render: (_, record) => (
+        <Space direction="vertical" size={4}>
+          <Space size={4}>
+            <PhoneOutlined style={{ fontSize: 12 }} />
+            <Text style={{ fontSize: 12 }}>{record.phone}</Text>
+          </Space>
+          <Space size={4}>
+            <MailOutlined style={{ fontSize: 12 }} />
+            <Text style={{ fontSize: 12 }}>{record.email}</Text>
+          </Space>
+        </Space>
+      ),
+    },
+    {
+      title: t('delivery_days'),
+      dataIndex: 'deliveryDays',
+      key: 'deliveryDays',
+      render: (days: string[]) => (
+        <Space wrap size={4}>
+          {sortDaysChronologically(days).map(day => (
+            <Tag key={day}>{day.slice(0, 3)}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: t('order_days'),
+      dataIndex: 'orderSubmissionDays',
+      key: 'orderSubmissionDays',
+      render: (days: string[]) => (
+        <Space wrap size={4}>
+          {sortDaysChronologically(days || []).map(day => (
+            <Tag key={day} color="blue">{day.slice(0, 3)}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: t('delivery_methods'),
+      dataIndex: 'deliveryMethods',
+      key: 'deliveryMethods',
+      render: (methods: ('pickup' | 'delivery')[]) => (
+        <Space wrap size={4}>
+          {methods?.map(method => (
+            <Tag
+              key={method}
+              icon={method === 'pickup' ? <CarOutlined /> : <CarOutlined />}
+              color={method === 'pickup' ? 'orange' : 'blue'}
+            >
+              {t(method === 'delivery' ? 'delivery_method' : method)}
+            </Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: t('lead_time'),
+      dataIndex: 'leadTime',
+      key: 'leadTime',
+      render: (leadTime) => (
+        <Space size={4}>
+          <CarOutlined style={{ fontSize: 12 }} />
+          <Text>{leadTime} {t('days_word')}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: t('min_order'),
+      dataIndex: 'minimumOrderAmount',
+      key: 'minimumOrderAmount',
+      align: isRtl ? 'left' : 'right',
+      render: (amount) => <Text>{formatCurrency(amount)}</Text>,
+    },
+    {
+      title: t('auto_order'),
+      dataIndex: 'autoOrderEnabled',
+      key: 'autoOrderEnabled',
+      render: (enabled) => enabled ? (
+        <Tag icon={<ThunderboltOutlined />} color="success">
+          {t('enabled')}
+        </Tag>
+      ) : null,
+    },
+    {
+      title: t('status_text'),
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive, record) => (
+        <Space>
+          <Switch
+            checked={isActive}
+            onChange={(checked) => toggleActiveStatus(record.id, checked)}
+            size="small"
+          />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {isActive ? t('active') : t('inactive')}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: t('actions'),
+      key: 'actions',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEditSupplier(record)}
+            size="small"
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteSupplier(record.id)}
+            size="small"
+          />
+        </Space>
+      ),
+    },
+  ]
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={loadSuppliers}>
+      <div style={{ padding: 24 }}>
+        <Alert type="error" message={error} style={{ marginBottom: 16 }} />
+        <Button type="primary" onClick={loadSuppliers}>
           Retry
         </Button>
-      </Box>
+      </div>
     )
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-        <Typography variant="h4" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={4} style={{ margin: 0 }}>
           {t('supplier_management')}
-        </Typography>
+        </Title>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
+          type="primary"
+          icon={<PlusOutlined />}
           onClick={() => {
             // Clear any existing form data when starting fresh
             sessionStorage.removeItem('supplierFormData')
@@ -255,305 +368,241 @@ export default function Suppliers() {
         >
           {t('add_supplier')}
         </Button>
-      </Box>
+      </div>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'} alignItems="stretch">
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Typography variant="h6" color="primary">
-                {t('total_suppliers')}
-              </Typography>
-              <Typography variant="h4" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Text type="secondary">{t('total_suppliers')}</Text>
+            <div>
+              <Title level={3} style={{ margin: '8px 0 0 0', color: '#1890ff' }}>
                 {suppliers.length}
-              </Typography>
-            </CardContent>
+              </Title>
+            </div>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Typography variant="h6" color="success.main">
-                {t('active_suppliers')}
-              </Typography>
-              <Typography variant="h4">{activeSuppliers.length}</Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Text type="secondary">{t('active_suppliers')}</Text>
+            <div>
+              <Title level={3} style={{ margin: '8px 0 0 0', color: '#52c41a' }}>
+                {activeSuppliers.length}
+              </Title>
+            </div>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Typography variant="h6" color="info.main">
-                {t('auto_order_enabled')}
-              </Typography>
-              <Typography variant="h4">{autoOrderSuppliers.length}</Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Text type="secondary">{t('auto_order_enabled')}</Text>
+            <div>
+              <Title level={3} style={{ margin: '8px 0 0 0', color: '#1890ff' }}>
+                {autoOrderSuppliers.length}
+              </Title>
+            </div>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Typography variant="h6" color="warning.main">
-                {t('avg_lead_time')}
-              </Typography>
-              <Typography variant="h4">
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Text type="secondary">{t('avg_lead_time')}</Text>
+            <div>
+              <Title level={3} style={{ margin: '8px 0 0 0', color: '#faad14' }}>
                 {suppliers.length > 0 ? Math.round(suppliers.reduce((sum, sup) => sum + sup.leadTime, 0) / suppliers.length) : 0} {t('days_word')}
-              </Typography>
-            </CardContent>
+              </Title>
+            </div>
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
       {/* Suppliers Table */}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row', textAlign: isRtl ? 'right' : 'left' }}>
-            <BusinessIcon sx={{ marginInlineEnd: 1 }} />
-            {t('suppliers_directory')}
-          </Typography>
+      <Card bordered={false}>
+        <Space style={{ marginBottom: 16 }} align="center">
+          <ShopOutlined />
+          <Text strong style={{ fontSize: 16 }}>{t('suppliers_directory')}</Text>
+        </Space>
 
-          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-            <Table dir={isRtl ? 'rtl' : 'ltr'}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('supplier')}</TableCell>
-                  <TableCell>{t('contact')}</TableCell>
-                  <TableCell>{t('delivery_days')}</TableCell>
-                  <TableCell>{t('order_days')}</TableCell>
-                  <TableCell>{t('delivery_methods')}</TableCell>
-                  <TableCell>{t('lead_time')}</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('min_order')}</TableCell>
-                  <TableCell>{t('auto_order')}</TableCell>
-                  <TableCell>{t('status_text')}</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {suppliers.map(supplier => (
-                  <TableRow key={supplier.id} sx={{ opacity: supplier.isActive ? 1 : 0.6 }}>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          {supplier.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {supplier.contactPerson}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                          <PhoneIcon sx={{ fontSize: 14 }} />
-                          <Typography variant="caption">{supplier.phone}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                          <EmailIcon sx={{ fontSize: 14 }} />
-                          <Typography variant="caption">{supplier.email}</Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {sortDaysChronologically(supplier.deliveryDays).map(day => (
-                          <Chip key={day} label={day.slice(0, 3)} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {sortDaysChronologically(supplier.orderSubmissionDays || []).map(day => (
-                          <Chip key={day} label={day.slice(0, 3)} size="small" variant="filled" color="primary" />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {supplier.deliveryMethods?.map(method => (
-                          <Chip key={method} icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />} label={t(method === 'delivery' ? 'delivery_method' : method)} size="small" variant="outlined" color={method === 'pickup' ? 'secondary' : 'primary'} />
-                        ))}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                        <DeliveryIcon sx={{ fontSize: 14 }} />
-                        <Typography variant="body2">
-                          {supplier.leadTime} {t('days_word')}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <Typography variant="body2">{formatCurrency(supplier.minimumOrderAmount)}</Typography>
-                    </TableCell>
-                    <TableCell>{supplier.autoOrderEnabled && <Chip icon={<AutoOrderIcon />} label={t('enabled')} size="small" color="success" variant="outlined" />}</TableCell>
-                    <TableCell>
-                      <FormControlLabel control={<Switch checked={supplier.isActive} onChange={() => toggleActiveStatus(supplier.id)} size="small" />} label={supplier.isActive ? t('active') : t('inactive')} />
-                    </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <IconButton size="small" onClick={() => handleEditSupplier(supplier)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleDeleteSupplier(supplier.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
+        <Table
+          columns={columns}
+          dataSource={suppliers}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          rowClassName={(record) => !record.isActive ? 'opacity-60' : ''}
+        />
       </Card>
 
-      {/* Add/Edit Supplier Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={(event, reason) => {
-          // Prevent closing on backdrop click or escape key to avoid accidental closure
-          if (reason !== 'backdropClick' && reason !== 'escapeKeyDown') {
-            closeModalAndClearData()
-          }
-        }}
-        maxWidth="md"
-        fullWidth
-        disableEscapeKeyDown
-      >
-        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-            <Typography variant="h6">{editingSupplier ? t('edit_supplier') : t('add_new_supplier')}</Typography>
+      {/* Add/Edit Supplier Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text strong>{editingSupplier ? t('edit_supplier') : t('add_new_supplier')}</Text>
             {lastSaved && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 ✓ {t('auto_saved')}
-              </Typography>
+              </Text>
             )}
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('supplier_name')} value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('contact_person')} value={newSupplier.contactPerson} onChange={e => setNewSupplier({ ...newSupplier, contactPerson: e.target.value })} required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('email')} type="email" value={newSupplier.email} onChange={e => setNewSupplier({ ...newSupplier, email: e.target.value })} required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('phone')} value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} required />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth label={t('address')} multiline rows={2} value={newSupplier.address} onChange={e => setNewSupplier({ ...newSupplier, address: e.target.value })} required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('delivery_days_label')}</InputLabel>
-                <Select
-                  multiple
-                  value={newSupplier.deliveryDays || []}
-                  onChange={handleDeliveryDaysChange}
-                  input={<OutlinedInput label={t('delivery_days_label')} />}
-                  renderValue={selected => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {sortDaysChronologically(selected).map(value => (
-                        <Chip key={value} label={value} size="small" />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {WEEKDAYS_ORDERED.map(day => (
-                    <MuiMenuItem key={day} value={day}>
-                      {t(day.toLowerCase() as any)}
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('order_submission_days')}</InputLabel>
-                <Select
-                  multiple
-                  value={newSupplier.orderSubmissionDays || []}
-                  onChange={handleOrderSubmissionDaysChange}
-                  input={<OutlinedInput label={t('order_submission_days')} />}
-                  renderValue={selected => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {sortDaysChronologically(selected).map(value => (
-                        <Chip key={value} label={value} size="small" />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {WEEKDAYS_ORDERED.map(day => (
-                    <MuiMenuItem key={day} value={day}>
-                      {t(day.toLowerCase() as any)}
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('lead_time_days')} type="number" value={newSupplier.leadTime} onChange={e => setNewSupplier({ ...newSupplier, leadTime: parseInt(e.target.value) || 1 })} inputProps={{ min: 1 }} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('minimum_order_amount')} type="number" inputProps={{ step: '0.01' }} value={newSupplier.minimumOrderAmount} onChange={e => setNewSupplier({ ...newSupplier, minimumOrderAmount: parseFloat(e.target.value) || 0 })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('delivery_methods')}</InputLabel>
-                <Select
-                  multiple
-                  value={newSupplier.deliveryMethods || []}
-                  onChange={handleDeliveryMethodsChange}
-                  input={<OutlinedInput label={t('delivery_methods')} />}
-                  renderValue={selected => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map(method => (
-                        <Chip key={method} icon={method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />} label={t(method === 'delivery' ? 'delivery_method' : method)} size="small" color={method === 'pickup' ? 'secondary' : 'primary'} />
-                      ))}
-                    </Box>
-                  )}
-                >
-                  {DELIVERY_METHODS.map(method => (
-                    <MuiMenuItem key={method} value={method}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {method === 'pickup' ? <PickupIcon /> : <DeliveryIcon />}
-                        {t(method === 'delivery' ? 'delivery_method' : method)}
-                      </Box>
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Autocomplete freeSolo options={PAYMENT_TERMS} value={newSupplier.paymentTerms} onChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} onInputChange={(_, value) => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })} renderInput={params => <TextField {...params} fullWidth label={t('payment_terms')} />} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth label={t('notes')} multiline rows={3} value={newSupplier.notes} onChange={e => setNewSupplier({ ...newSupplier, notes: e.target.value })} placeholder={t('notes_placeholder')} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel control={<Switch checked={newSupplier.autoOrderEnabled} onChange={e => setNewSupplier({ ...newSupplier, autoOrderEnabled: e.target.checked })} />} label={t('enable_auto_order_for_low_stock')} sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0 }} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControlLabel control={<Switch checked={newSupplier.isActive} onChange={e => setNewSupplier({ ...newSupplier, isActive: e.target.checked })} />} label={t('active_supplier')} sx={{ ml: isRtl ? 0 : 1, mr: isRtl ? 1 : 0 }} />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeModalAndClearData}>{t('cancel')}</Button>
-          <Button onClick={handleSaveSupplier} variant="contained">
-            {editingSupplier ? t('update_supplier_button') : t('add_supplier_button')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          </div>
+        }
+        open={openDialog}
+        onOk={handleSaveSupplier}
+        onCancel={closeModalAndClearData}
+        okText={editingSupplier ? t('update_supplier_button') : t('add_supplier_button')}
+        cancelText={t('cancel')}
+        width={800}
+        maskClosable={false}
+      >
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12}>
+            <Text>{t('supplier_name')} *</Text>
+            <Input
+              value={newSupplier.name}
+              onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })}
+              placeholder={t('supplier_name')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('contact_person')} *</Text>
+            <Input
+              value={newSupplier.contactPerson}
+              onChange={e => setNewSupplier({ ...newSupplier, contactPerson: e.target.value })}
+              placeholder={t('contact_person')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('email')} *</Text>
+            <Input
+              type="email"
+              value={newSupplier.email}
+              onChange={e => setNewSupplier({ ...newSupplier, email: e.target.value })}
+              placeholder={t('email')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('phone')} *</Text>
+            <Input
+              value={newSupplier.phone}
+              onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })}
+              placeholder={t('phone')}
+            />
+          </Col>
+          <Col xs={24}>
+            <Text>{t('address')} *</Text>
+            <TextArea
+              rows={2}
+              value={newSupplier.address}
+              onChange={e => setNewSupplier({ ...newSupplier, address: e.target.value })}
+              placeholder={t('address')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('delivery_days_label')}</Text>
+            <Select
+              mode="multiple"
+              style={{ width: '100%' }}
+              value={newSupplier.deliveryDays || []}
+              onChange={value => setNewSupplier({ ...newSupplier, deliveryDays: value })}
+              placeholder={t('delivery_days_label')}
+            >
+              {WEEKDAYS_ORDERED.map(day => (
+                <Option key={day} value={day}>
+                  {t(day.toLowerCase() as any)}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('order_submission_days')}</Text>
+            <Select
+              mode="multiple"
+              style={{ width: '100%' }}
+              value={newSupplier.orderSubmissionDays || []}
+              onChange={value => setNewSupplier({ ...newSupplier, orderSubmissionDays: value })}
+              placeholder={t('order_submission_days')}
+            >
+              {WEEKDAYS_ORDERED.map(day => (
+                <Option key={day} value={day}>
+                  {t(day.toLowerCase() as any)}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('lead_time_days')}</Text>
+            <Input
+              type="number"
+              min={1}
+              value={newSupplier.leadTime}
+              onChange={e => setNewSupplier({ ...newSupplier, leadTime: parseInt(e.target.value) || 1 })}
+              placeholder={t('lead_time_days')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('minimum_order_amount')}</Text>
+            <Input
+              type="number"
+              step={0.01}
+              value={newSupplier.minimumOrderAmount}
+              onChange={e => setNewSupplier({ ...newSupplier, minimumOrderAmount: parseFloat(e.target.value) || 0 })}
+              placeholder={t('minimum_order_amount')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('delivery_methods')}</Text>
+            <Select
+              mode="multiple"
+              style={{ width: '100%' }}
+              value={newSupplier.deliveryMethods || []}
+              onChange={value => setNewSupplier({ ...newSupplier, deliveryMethods: value as ('pickup' | 'delivery')[] })}
+              placeholder={t('delivery_methods')}
+            >
+              {DELIVERY_METHODS.map(method => (
+                <Option key={method} value={method}>
+                  <Space>
+                    <CarOutlined />
+                    {t(method === 'delivery' ? 'delivery_method' : method)}
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('payment_terms')}</Text>
+            <AutoComplete
+              options={PAYMENT_TERMS.map(term => ({ value: term }))}
+              value={newSupplier.paymentTerms}
+              onChange={value => setNewSupplier({ ...newSupplier, paymentTerms: value || 'Net 30' })}
+              placeholder={t('payment_terms')}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col xs={24}>
+            <Text>{t('notes')}</Text>
+            <TextArea
+              rows={3}
+              value={newSupplier.notes}
+              onChange={e => setNewSupplier({ ...newSupplier, notes: e.target.value })}
+              placeholder={t('notes_placeholder')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Space>
+              <Switch
+                checked={newSupplier.autoOrderEnabled}
+                onChange={checked => setNewSupplier({ ...newSupplier, autoOrderEnabled: checked })}
+              />
+              <Text>{t('enable_auto_order_for_low_stock')}</Text>
+            </Space>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Space>
+              <Switch
+                checked={newSupplier.isActive}
+                onChange={checked => setNewSupplier({ ...newSupplier, isActive: checked })}
+              />
+              <Text>{t('active_supplier')}</Text>
+            </Space>
+          </Col>
+        </Row>
+      </Modal>
+    </div>
   )
 }

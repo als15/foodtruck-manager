@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Grid, CircularProgress, Alert, Snackbar, Autocomplete, FormControl, InputLabel, Select, MenuItem as MuiMenuItem, Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Fab, Stack, useTheme, TableSortLabel, Collapse, CardActionArea } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ShoppingCart as OrderIcon, LocalShipping as DeliveryIcon, Schedule as ScheduleIcon, AutoMode as AutoOrderIcon, Warning as WarningIcon, Check as CheckIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Search as SearchIcon, Upload as UploadIcon } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, Spin, Alert, message, Select, Divider, AutoComplete, DatePicker, Menu, Dropdown } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, CarOutlined, ClockCircleOutlined, ThunderboltOutlined, WarningOutlined, CheckOutlined, DownOutlined, UpOutlined, SearchOutlined, UploadOutlined, DownloadOutlined, MoreOutlined } from '@ant-design/icons'
 import { format } from 'date-fns'
 import { SupplierOrder, SupplierOrderItem, Supplier, Ingredient } from '../types'
 import { supplierOrdersService, suppliersService, ingredientsService, subscriptions } from '../services/supabaseService'
@@ -8,6 +9,10 @@ import { nomNomColors } from '../theme/nomnom-theme'
 import { useTranslation } from 'react-i18next'
 import Papa from 'papaparse'
 import { formatCurrency } from '../utils/currency'
+import dayjs from 'dayjs'
+
+const { Title, Text } = Typography
+const { Option } = Select
 
 const ORDER_STATUSES = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const
 const ORDER_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const
@@ -17,9 +22,9 @@ const getStatusColor = (status: SupplierOrder['status']) => {
     case 'draft':
       return 'default'
     case 'submitted':
-      return 'info'
+      return 'processing'
     case 'confirmed':
-      return 'primary'
+      return 'blue'
     case 'shipped':
       return 'warning'
     case 'delivered':
@@ -36,7 +41,7 @@ const getPriorityColor = (priority: SupplierOrder['priority']) => {
     case 'low':
       return 'default'
     case 'medium':
-      return 'info'
+      return 'processing'
     case 'high':
       return 'warning'
     case 'urgent':
@@ -47,10 +52,9 @@ const getPriorityColor = (priority: SupplierOrder['priority']) => {
 }
 
 export default function SupplierOrders() {
-  const theme = useTheme()
   const docDir = typeof document !== 'undefined' ? document.documentElement.dir : undefined
-  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
-  const { t } = useTranslation()
+  const isRtl = docDir === 'rtl'
+  const { t, i18n } = useTranslation()
   const [openDialog, setOpenDialog] = useState(false)
   const [editingOrder, setEditingOrder] = useState<SupplierOrder | null>(null)
   const [orders, setOrders] = useState<SupplierOrder[]>([])
@@ -58,7 +62,6 @@ export default function SupplierOrders() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' })
 
   const [newOrder, setNewOrder] = useState<Partial<SupplierOrder>>({
     supplierId: '',
@@ -189,6 +192,55 @@ export default function SupplierOrders() {
     fileInputRef.current?.click()
   }
 
+  const downloadTemplate = () => {
+    const template = [
+      {
+        supplier: 'Meat Supplier Co.',
+        itemName: 'Ground Beef',
+        quantity: 10,
+        unitPrice: 8.99,
+        totalPrice: 89.90,
+        status: 'draft',
+        priority: 'medium',
+        orderDate: format(new Date(), 'yyyy-MM-dd'),
+        expectedDeliveryDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+        notes: 'Regular weekly order'
+      },
+      {
+        supplier: 'Meat Supplier Co.',
+        itemName: 'Chicken Breast',
+        quantity: 15,
+        unitPrice: 6.50,
+        totalPrice: 97.50,
+        status: 'draft',
+        priority: 'medium',
+        orderDate: format(new Date(), 'yyyy-MM-dd'),
+        expectedDeliveryDate: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+        notes: ''
+      },
+      {
+        supplier: 'Fresh Produce Inc.',
+        itemName: 'Tomatoes',
+        quantity: 20,
+        unitPrice: 2.50,
+        totalPrice: 50.00,
+        status: 'draft',
+        priority: 'high',
+        orderDate: format(new Date(), 'yyyy-MM-dd'),
+        expectedDeliveryDate: format(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+        notes: 'Fresh delivery required'
+      }
+    ]
+
+    const csv = Papa.unparse(template)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'supplier-order-template.csv'
+    link.click()
+    message.success(t('template_downloaded_success'))
+  }
+
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -201,11 +253,7 @@ export default function SupplierOrders() {
         setOpenImportDialog(true)
       },
       error: error => {
-        setSnackbar({
-          open: true,
-          message: t('failed_to_parse_file') + ': ' + error.message,
-          severity: 'error'
-        })
+        message.error(t('failed_to_parse_file') + ': ' + error.message)
       }
     })
 
@@ -215,7 +263,7 @@ export default function SupplierOrders() {
 
   const handleImportMapping = async () => {
     if (!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn) {
-      setSnackbar({ open: true, message: t('please_map_all_required_fields'), severity: 'warning' })
+      message.warning(t('please_map_all_required_fields'))
       return
     }
 
@@ -245,7 +293,7 @@ export default function SupplierOrders() {
       }
 
       if (mappedItems.length === 0) {
-        setSnackbar({ open: true, message: t('no_matching_ingredients_found'), severity: 'warning' })
+        message.warning(t('no_matching_ingredients_found'))
         return
       }
 
@@ -264,17 +312,9 @@ export default function SupplierOrders() {
       setOpenImportDialog(false)
       setOpenDialog(true)
 
-      setSnackbar({
-        open: true,
-        message: t('successfully_imported_items', { count: mappedItems.length }),
-        severity: 'success'
-      })
+      message.success(t('successfully_imported_items', { count: mappedItems.length }))
     } catch (error) {
-      setSnackbar({
-        open: true,
-        message: t('import_failed'),
-        severity: 'error'
-      })
+      message.error(t('import_failed'))
     }
   }
 
@@ -345,33 +385,25 @@ export default function SupplierOrders() {
 
       if (editingOrder) {
         await supplierOrdersService.update(editingOrder.id, orderData)
-        setSnackbar({ open: true, message: 'Supplier order updated successfully', severity: 'success' })
+        message.success('Supplier order updated successfully')
       } else {
         await supplierOrdersService.create(orderData as Omit<SupplierOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>)
-        setSnackbar({ open: true, message: 'Supplier order created successfully', severity: 'success' })
+        message.success('Supplier order created successfully')
       }
       handleCloseDialog()
       loadOrders()
     } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : 'Failed to save supplier order',
-        severity: 'error'
-      })
+      message.error(err instanceof Error ? err.message : 'Failed to save supplier order')
     }
   }
 
   const handleUpdateStatus = async (orderId: string, status: SupplierOrder['status']) => {
     try {
       await supplierOrdersService.updateStatus(orderId, status)
-      setSnackbar({ open: true, message: 'Order status updated successfully', severity: 'success' })
+      message.success('Order status updated successfully')
       loadOrders()
     } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : 'Failed to update order status',
-        severity: 'error'
-      })
+      message.error(err instanceof Error ? err.message : 'Failed to update order status')
     }
   }
 
@@ -379,14 +411,10 @@ export default function SupplierOrders() {
     if (window.confirm('Are you sure you want to delete this order?')) {
       try {
         await supplierOrdersService.delete(orderId)
-        setSnackbar({ open: true, message: 'Order deleted successfully', severity: 'success' })
+        message.success('Order deleted successfully')
         loadOrders()
       } catch (err) {
-        setSnackbar({
-          open: true,
-          message: err instanceof Error ? err.message : 'Failed to delete order',
-          severity: 'error'
-        })
+        message.error(err instanceof Error ? err.message : 'Failed to delete order')
       }
     }
   }
@@ -395,18 +423,10 @@ export default function SupplierOrders() {
     try {
       setLoading(true)
       const autoOrders = await supplierOrdersService.generateAutoOrders()
-      setSnackbar({
-        open: true,
-        message: `Generated ${autoOrders.length} automatic orders based on low stock`,
-        severity: 'success'
-      })
+      message.success(`Generated ${autoOrders.length} automatic orders based on low stock`)
       loadOrders()
     } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : 'Failed to generate auto orders',
-        severity: 'error'
-      })
+      message.error(err instanceof Error ? err.message : 'Failed to generate auto orders')
     } finally {
       setLoading(false)
     }
@@ -497,593 +517,561 @@ export default function SupplierOrders() {
     return suppliers.filter(supplier => !suppliersWithOpenOrders.has(supplier.id))
   }, [suppliers, orders])
 
+  const importExportMenuItems = [
+    {
+      key: 'download',
+      icon: <DownloadOutlined />,
+      label: t('download_template'),
+      onClick: downloadTemplate
+    },
+    {
+      key: 'import',
+      icon: <UploadOutlined />,
+      label: t('import_from_file'),
+      onClick: handleImportClick
+    }
+  ]
+
+  // Table columns
+  const columns: ColumnsType<SupplierOrder> = [
+    {
+      title: t('order_number'),
+      dataIndex: 'orderNumber',
+      key: 'orderNumber',
+      sorter: true,
+      render: (text, record) => (
+        <Space direction="horizontal">
+          {record.autoGenerated && <ThunderboltOutlined style={{ color: '#1890ff', fontSize: 16 }} />}
+          <span>{text}</span>
+        </Space>
+      )
+    },
+    {
+      title: t('supplier_label'),
+      dataIndex: ['supplier', 'name'],
+      key: 'supplier',
+      sorter: true,
+      render: (text) => text || t('unknown')
+    },
+    {
+      title: t('items'),
+      dataIndex: 'items',
+      key: 'items',
+      render: (items: SupplierOrderItem[]) => `${items.length} ${t('items')}`
+    },
+    {
+      title: t('total_amount'),
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      sorter: true,
+      align: isRtl ? 'left' : 'right',
+      render: (amount) => formatCurrency(amount)
+    },
+    {
+      title: t('status'),
+      dataIndex: 'status',
+      key: 'status',
+      sorter: true,
+      render: (status, record) => (
+        <Select
+          size="small"
+          value={status}
+          onChange={(value) => handleUpdateStatus(record.id, value)}
+          style={{ minWidth: 120 }}
+        >
+          {ORDER_STATUSES.map(s => (
+            <Option key={s} value={s}>
+              <Tag color={getStatusColor(s)}>{t(s)}</Tag>
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: t('priority'),
+      dataIndex: 'priority',
+      key: 'priority',
+      sorter: true,
+      render: (priority) => <Tag color={getPriorityColor(priority)}>{priority}</Tag>
+    },
+    {
+      title: t('order_date'),
+      dataIndex: 'orderDate',
+      key: 'orderDate',
+      sorter: true,
+      render: (date) => format(new Date(date), 'MMM dd, yyyy')
+    },
+    {
+      title: t('expected_delivery'),
+      dataIndex: 'expectedDeliveryDate',
+      key: 'expectedDeliveryDate',
+      sorter: true,
+      render: (date) => date ? format(new Date(date), 'MMM dd, yyyy') : '-'
+    },
+    {
+      title: t('actions'),
+      key: 'actions',
+      align: isRtl ? 'left' : 'right',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenDialog(record)}
+            title={t('edit_order')}
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteOrder(record.id)}
+            title={t('delete_order')}
+          />
+        </Space>
+      )
+    }
+  ]
+
   if (loading && orders.length === 0) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
   return (
-    <Box>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexDirection={isRtl ? 'row-reverse' : 'row'}>
-        <Typography variant="h4" component="h1" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+        <Title level={4} style={{ margin: 0, textAlign: isRtl ? 'right' : 'left' }}>
           {t('supplier_orders')}
-        </Typography>
-        <Stack direction={isRtl ? 'row-reverse' : 'row'} spacing={2}>
-          <Button variant="outlined" startIcon={<UploadIcon />} onClick={handleImportClick}>
-            {t('import_from_file')}
-          </Button>
-          <Button variant="outlined" startIcon={<AutoOrderIcon />} onClick={handleGenerateAutoOrders} disabled={loading}>
+        </Title>
+        <Space direction="horizontal">
+          <Dropdown menu={{ items: importExportMenuItems }}>
+            <Button icon={<MoreOutlined />}>
+              {t('import_export')}
+            </Button>
+          </Dropdown>
+          <Button icon={<ThunderboltOutlined />} onClick={handleGenerateAutoOrders} loading={loading}>
             {t('generate_auto_orders')}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenDialog()}>
             {t('new_order')}
           </Button>
-        </Stack>
-      </Box>
+        </Space>
+      </div>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} mb={3} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
           <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                <OrderIcon color="primary" sx={{ marginInlineEnd: 1 }} />
-                <Box>
-                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {orders.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('total_orders')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+            <Space direction="horizontal">
+              <ShoppingCartOutlined style={{ fontSize: 24, color: '#1890ff' }} />
+              <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Title level={4} style={{ margin: 0, color: '#1890ff', fontWeight: 700 }}>
+                  {orders.length}
+                </Title>
+                <Text type="secondary">{t('total_orders')}</Text>
+              </div>
+            </Space>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} md={6}>
           <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                <ScheduleIcon color="warning" sx={{ marginInlineEnd: 1 }} />
-                <Box>
-                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('pending_orders')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+            <Space direction="horizontal">
+              <ClockCircleOutlined style={{ fontSize: 24, color: '#faad14' }} />
+              <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Title level={4} style={{ margin: 0, color: '#faad14', fontWeight: 700 }}>
+                  {orders.filter(o => o.status === 'submitted' || o.status === 'confirmed').length}
+                </Title>
+                <Text type="secondary">{t('pending_orders')}</Text>
+              </div>
+            </Space>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} md={6}>
           <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                <WarningIcon color="error" sx={{ marginInlineEnd: 1 }} />
-                <Box>
-                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {ordersNeedingAttention.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('need_attention')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+            <Space direction="horizontal">
+              <WarningOutlined style={{ fontSize: 24, color: '#ff4d4f' }} />
+              <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Title level={4} style={{ margin: 0, color: '#ff4d4f', fontWeight: 700 }}>
+                  {ordersNeedingAttention.length}
+                </Title>
+                <Text type="secondary">{t('need_attention')}</Text>
+              </div>
+            </Space>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} md={6}>
           <Card>
-            <CardContent sx={{ textAlign: isRtl ? 'right' : 'left', display: 'flex', flexDirection: 'column', alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                <CheckIcon color="success" sx={{ marginInlineEnd: 1 }} />
-                <Box>
-                  <Typography variant="h6" sx={theme => ({ color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary, fontWeight: 700 })}>
-                    {orders.filter(o => o.status === 'delivered').length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('delivered_text')}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
+            <Space direction="horizontal">
+              <CheckOutlined style={{ fontSize: 24, color: '#52c41a' }} />
+              <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                <Title level={4} style={{ margin: 0, color: '#52c41a', fontWeight: 700 }}>
+                  {orders.filter(o => o.status === 'delivered').length}
+                </Title>
+                <Text type="secondary">{t('delivered_text')}</Text>
+              </div>
+            </Space>
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
       {/* Orders that need attention */}
       {ordersNeedingAttention.length > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="error">
-              {t('orders_needing_attention')}
-            </Typography>
-            <List>
-              {ordersNeedingAttention.map(order => (
-                <ListItem key={order.id}>
-                  <ListItemText primary={`${order.orderNumber} - ${order.supplier?.name}`} secondary={order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? t('overdue_delivery_expected', { date: format(order.expectedDeliveryDate, 'MMM dd, yyyy') }) : order.status === 'submitted' && order.submittedDate ? t('submitted_days_ago', { count: Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24)) }) : t('needs_attention')} />
-                  <ListItemSecondaryAction>
-                    <IconButton onClick={() => handleOpenDialog(order)}>
-                      <EditIcon />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          </CardContent>
+        <Card style={{ marginBottom: 24 }}>
+          <Title level={5} style={{ color: '#ff4d4f' }}>
+            {t('orders_needing_attention')}
+          </Title>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {ordersNeedingAttention.map(order => (
+              <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                <div>
+                  <Text strong>{`${order.orderNumber} - ${order.supplier?.name}`}</Text>
+                  <br />
+                  <Text type="secondary">
+                    {order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? t('overdue_delivery_expected', { date: format(order.expectedDeliveryDate, 'MMM dd, yyyy') }) : order.status === 'submitted' && order.submittedDate ? t('submitted_days_ago', { count: Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24)) }) : t('needs_attention')}
+                  </Text>
+                </div>
+                <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenDialog(order)} />
+              </div>
+            ))}
+          </Space>
         </Card>
       )}
 
       {/* Suppliers without open orders */}
       {suppliersWithoutOpenOrders.length > 0 && (
-        <Box sx={{ mb: 2 }}>
+        <div style={{ marginBottom: 16 }}>
           {!expandedSuppliersSection ? (
-            <Button variant="outlined" size="small" startIcon={<OrderIcon />} endIcon={<ExpandMoreIcon />} onClick={() => setExpandedSuppliersSection(true)} sx={{ textTransform: 'none' }}>
-              {t('suppliers_without_open_orders')} ({suppliersWithoutOpenOrders.length})
+            <Button
+              size="small"
+              icon={<ShoppingCartOutlined />}
+              onClick={() => setExpandedSuppliersSection(true)}
+              style={{ textTransform: 'none' }}
+            >
+              {t('suppliers_without_open_orders')} ({suppliersWithoutOpenOrders.length}) <DownOutlined />
             </Button>
           ) : (
             <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row', mb: 1 }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                    <OrderIcon sx={{ marginInlineEnd: 1 }} />
-                    {t('suppliers_without_open_orders')}
-                  </Typography>
-                  <IconButton size="small" onClick={() => setExpandedSuppliersSection(false)}>
-                    <ExpandLessIcon />
-                  </IconButton>
-                </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {t('suppliers_without_open_orders_desc')}
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {suppliersWithoutOpenOrders.map(supplier => (
-                    <Chip
-                      key={supplier.id}
-                      label={supplier.name}
-                      variant="outlined"
-                      onClick={() => {
-                        setNewOrder({
-                          supplierId: supplier.id,
-                          items: [],
-                          totalAmount: 0,
-                          status: 'draft',
-                          priority: 'medium',
-                          orderDate: new Date(),
-                          autoGenerated: false,
-                          notes: ''
-                        })
-                        setOrderItems([])
-                        handleOpenDialog()
-                      }}
-                      sx={{ cursor: 'pointer' }}
-                    />
-                  ))}
-                </Box>
-              </CardContent>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row', marginBottom: 8 }}>
+                <Space direction="horizontal">
+                  <ShoppingCartOutlined />
+                  <Title level={5} style={{ margin: 0 }}>{t('suppliers_without_open_orders')}</Title>
+                </Space>
+                <Button type="text" size="small" icon={<UpOutlined />} onClick={() => setExpandedSuppliersSection(false)} />
+              </div>
+              <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
+                {t('suppliers_without_open_orders_desc')}
+              </Text>
+              <Space wrap>
+                {suppliersWithoutOpenOrders.map(supplier => (
+                  <Tag
+                    key={supplier.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setNewOrder({
+                        supplierId: supplier.id,
+                        items: [],
+                        totalAmount: 0,
+                        status: 'draft',
+                        priority: 'medium',
+                        orderDate: new Date(),
+                        autoGenerated: false,
+                        notes: ''
+                      })
+                      setOrderItems([])
+                      handleOpenDialog()
+                    }}
+                  >
+                    {supplier.name}
+                  </Tag>
+                ))}
+              </Space>
             </Card>
           )}
-        </Box>
+        </div>
       )}
 
       {/* Error handling */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        <Alert message={error} type="error" style={{ marginBottom: 24 }} closable />
       )}
 
       {/* Orders Table */}
       <Card>
-        <CardContent>
-          {/* Search Bar */}
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder={t('search_orders')}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-              }}
-            />
-          </Box>
+        {/* Search Bar */}
+        <div style={{ marginBottom: 16 }}>
+          <Input
+            placeholder={t('search_orders')}
+            prefix={<SearchOutlined />}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            allowClear
+          />
+        </div>
 
-          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-            <Table dir={isRtl ? 'rtl' : 'ltr'}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'orderNumber'} direction={orderBy === 'orderNumber' ? orderDirection : 'asc'} onClick={() => handleRequestSort('orderNumber')}>
-                      {t('order_number')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'supplier'} direction={orderBy === 'supplier' ? orderDirection : 'asc'} onClick={() => handleRequestSort('supplier')}>
-                      {t('supplier_label')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>{t('items')}</TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                    <TableSortLabel active={orderBy === 'totalAmount'} direction={orderBy === 'totalAmount' ? orderDirection : 'asc'} onClick={() => handleRequestSort('totalAmount')}>
-                      {t('total_amount')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'status'} direction={orderBy === 'status' ? orderDirection : 'asc'} onClick={() => handleRequestSort('status')}>
-                      {t('status')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'priority'} direction={orderBy === 'priority' ? orderDirection : 'asc'} onClick={() => handleRequestSort('priority')}>
-                      {t('priority')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'orderDate'} direction={orderBy === 'orderDate' ? orderDirection : 'asc'} onClick={() => handleRequestSort('orderDate')}>
-                      {t('order_date')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell>
-                    <TableSortLabel active={orderBy === 'expectedDeliveryDate'} direction={orderBy === 'expectedDeliveryDate' ? orderDirection : 'asc'} onClick={() => handleRequestSort('expectedDeliveryDate')}>
-                      {t('expected_delivery')}
-                    </TableSortLabel>
-                  </TableCell>
-                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body1" color="text.secondary">
-                        {searchQuery ? t('no_orders_match_search') : t('no_orders_found')}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map(order => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" flexDirection={isRtl ? 'row-reverse' : 'row'}>
-                          {order.autoGenerated && <AutoOrderIcon color="info" sx={{ marginInlineEnd: 1, fontSize: 16 }} />}
-                          {order.orderNumber}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{order.supplier?.name || t('unknown')}</TableCell>
-                      <TableCell>
-                        {order.items.length} {t('items')}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{formatCurrency(order.totalAmount)}</TableCell>
-                      <TableCell>
-                        <FormControl size="small" sx={{ minWidth: 120 }}>
-                          <Select
-                            value={order.status}
-                            onChange={e => handleUpdateStatus(order.id, e.target.value as SupplierOrder['status'])}
-                            variant="outlined"
-                            sx={{
-                              '& .MuiSelect-select': {
-                                padding: '4px 8px',
-                                backgroundColor: order.status === 'draft' ? '#f5f5f5' : order.status === 'submitted' ? '#e3f2fd' : order.status === 'confirmed' ? '#e8f5e8' : order.status === 'shipped' ? '#fff3e0' : order.status === 'delivered' ? '#e8f5e8' : order.status === 'cancelled' ? '#ffebee' : '#f5f5f5',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                              }
-                            }}
-                          >
-                            {ORDER_STATUSES.map(status => (
-                              <MuiMenuItem key={status} value={status}>
-                                <Chip label={t(status)} color={getStatusColor(status)} size="small" />
-                              </MuiMenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={order.priority} color={getPriorityColor(order.priority)} size="small" />
-                      </TableCell>
-                      <TableCell>{format(order.orderDate, 'MMM dd, yyyy')}</TableCell>
-                      <TableCell>{order.expectedDeliveryDate ? format(order.expectedDeliveryDate, 'MMM dd, yyyy') : '-'}</TableCell>
-                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                        <IconButton onClick={() => handleOpenDialog(order)} size="small" color="primary" title={t('edit_order')} sx={{ marginInlineEnd: 1 }}>
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDeleteOrder(order.id)} size="small" color="error" title={t('delete_order')}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
+        <Table
+          columns={columns}
+          dataSource={filteredOrders}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          locale={{
+            emptyText: searchQuery ? t('no_orders_match_search') : t('no_orders_found')
+          }}
+          onChange={(pagination, filters, sorter: any) => {
+            if (sorter.column) {
+              handleRequestSort(sorter.columnKey as OrderBy)
+            }
+          }}
+        />
       </Card>
 
       {/* Create/Edit Order Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{editingOrder ? t('edit_supplier_order') : t('create_new_supplier_order')}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <Autocomplete
-                options={suppliers}
-                getOptionLabel={option => option.name}
-                value={suppliers.find(s => s.id === newOrder.supplierId) || null}
-                onChange={(_, supplier) => {
-                  setNewOrder({ ...newOrder, supplierId: supplier?.id || '', totalAmount: 0 })
-                  // Clear existing order items when supplier changes
+      <Modal
+        title={editingOrder ? t('edit_supplier_order') : t('create_new_supplier_order')}
+        open={openDialog}
+        onCancel={handleCloseDialog}
+        width={800}
+        footer={[
+          <Button key="cancel" onClick={handleCloseDialog}>
+            {t('cancel')}
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleSubmitOrder}
+            disabled={!newOrder.supplierId || orderItems.length === 0}
+          >
+            {editingOrder ? t('update_order') : t('create_order')}
+          </Button>
+        ]}
+      >
+        <Row gutter={16} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('supplier_label')} *</Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder={t('supplier_label')}
+                value={newOrder.supplierId || undefined}
+                onChange={(value) => {
+                  setNewOrder({ ...newOrder, supplierId: value, totalAmount: 0 })
                   setOrderItems([])
                 }}
-                renderInput={params => <TextField {...params} label={t('supplier_label')} fullWidth required />}
+                showSearch
+                optionFilterProp="children"
+              >
+                {suppliers.map(supplier => (
+                  <Option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('priority')}</Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                value={newOrder.priority || 'medium'}
+                onChange={(value) => setNewOrder({ ...newOrder, priority: value as SupplierOrder['priority'] })}
+              >
+                {ORDER_PRIORITIES.map(priority => (
+                  <Option key={priority} value={priority}>
+                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('status')}</Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                value={newOrder.status || 'draft'}
+                onChange={(value) => setNewOrder({ ...newOrder, status: value as SupplierOrder['status'] })}
+              >
+                {ORDER_STATUSES.map(status => (
+                  <Option key={status} value={status}>
+                    <Tag color={getStatusColor(status)}>{t(status)}</Tag>
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('order_date')}</Text>
+              <DatePicker
+                style={{ width: '100%', marginTop: 4 }}
+                value={newOrder.orderDate ? dayjs(newOrder.orderDate) : dayjs()}
+                onChange={(date) => setNewOrder({ ...newOrder, orderDate: date ? date.toDate() : new Date() })}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('priority')}</InputLabel>
-                <Select value={newOrder.priority || 'medium'} onChange={e => setNewOrder({ ...newOrder, priority: e.target.value as SupplierOrder['priority'] })} label={t('priority')}>
-                  {ORDER_PRIORITIES.map(priority => (
-                    <MuiMenuItem key={priority} value={priority}>
-                      {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('status')}</InputLabel>
-                <Select value={newOrder.status || 'draft'} onChange={e => setNewOrder({ ...newOrder, status: e.target.value as SupplierOrder['status'] })} label={t('status')}>
-                  {ORDER_STATUSES.map(status => (
-                    <MuiMenuItem key={status} value={status}>
-                      <Chip label={t(status)} color={getStatusColor(status)} size="small" />
-                    </MuiMenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label={t('order_date')}
-                type="date"
-                value={newOrder.orderDate ? format(newOrder.orderDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
-                onChange={e =>
-                  setNewOrder({
-                    ...newOrder,
-                    orderDate: e.target.value ? new Date(e.target.value) : new Date()
-                  })
-                }
-                fullWidth
-                InputLabelProps={{ shrink: true }}
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('expected_delivery')}</Text>
+              <DatePicker
+                style={{ width: '100%', marginTop: 4 }}
+                value={newOrder.expectedDeliveryDate ? dayjs(newOrder.expectedDeliveryDate) : null}
+                onChange={(date) => setNewOrder({ ...newOrder, expectedDeliveryDate: date ? date.toDate() : undefined })}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label={t('expected_delivery')}
-                type="date"
-                value={newOrder.expectedDeliveryDate ? format(newOrder.expectedDeliveryDate, 'yyyy-MM-dd') : ''}
-                onChange={e =>
-                  setNewOrder({
-                    ...newOrder,
-                    expectedDeliveryDate: e.target.value ? new Date(e.target.value) : undefined
-                  })
-                }
-                fullWidth
-                InputLabelProps={{ shrink: true }}
+            </div>
+          </Col>
+          <Col xs={24}>
+            <div style={{ marginBottom: 16 }}>
+              <Text>{t('notes')}</Text>
+              <Input.TextArea
+                style={{ marginTop: 4 }}
+                value={newOrder.notes || ''}
+                onChange={(e) => setNewOrder({ ...newOrder, notes: e.target.value })}
+                rows={2}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label={t('notes')} value={newOrder.notes || ''} onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })} multiline rows={2} fullWidth />
-            </Grid>
-          </Grid>
+            </div>
+          </Col>
+        </Row>
 
-          <Divider sx={{ my: 2 }} />
+        <Divider />
 
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexDirection={isRtl ? 'row-reverse' : 'row'}>
-            <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-              {t('order_items')}
-            </Typography>
-            <Button startIcon={<AddIcon />} onClick={handleAddOrderItem} disabled={!newOrder.supplierId}>
-              {t('add_item')}
-            </Button>
-          </Box>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+          <Title level={5} style={{ margin: 0, textAlign: isRtl ? 'right' : 'left' }}>
+            {t('order_items')}
+          </Title>
+          <Button icon={<PlusOutlined />} onClick={handleAddOrderItem} disabled={!newOrder.supplierId}>
+            {t('add_item')}
+          </Button>
+        </div>
 
-          {!newOrder.supplierId && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {t('select_supplier_first')}
-            </Alert>
-          )}
+        {!newOrder.supplierId && (
+          <Alert message={t('select_supplier_first')} type="info" style={{ marginBottom: 16 }} />
+        )}
 
-          {newOrder.supplierId && filteredIngredients.length === 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {t('no_ingredients_for_supplier')}
-            </Alert>
-          )}
+        {newOrder.supplierId && filteredIngredients.length === 0 && (
+          <Alert message={t('no_ingredients_for_supplier')} type="warning" style={{ marginBottom: 16 }} />
+        )}
 
-          {orderItems.map(item => {
-            const selectedIngredient = filteredIngredients.find(i => i.id === item.ingredientId)
-            console.log('Selected ingredient:', selectedIngredient)
-            const hasPackaging = selectedIngredient?.orderByPackage && selectedIngredient?.unitsPerPackage && selectedIngredient.unitsPerPackage > 1
-            const packageInfo = hasPackaging ? `${selectedIngredient.unitsPerPackage} ${selectedIngredient.unit} per ${selectedIngredient.packageType || 'package'}` : ''
-            const totalUnits = hasPackaging ? item.quantity * (selectedIngredient?.unitsPerPackage || 1) : item.quantity
+        {orderItems.map(item => {
+          const selectedIngredient = filteredIngredients.find(i => i.id === item.ingredientId)
+          console.log('Selected ingredient:', selectedIngredient)
+          const hasPackaging = selectedIngredient?.orderByPackage && selectedIngredient?.unitsPerPackage && selectedIngredient.unitsPerPackage > 1
+          const packageInfo = hasPackaging ? `${selectedIngredient.unitsPerPackage} ${selectedIngredient.unit} per ${selectedIngredient.packageType || 'package'}` : ''
+          const totalUnits = hasPackaging ? item.quantity * (selectedIngredient?.unitsPerPackage || 1) : item.quantity
 
-            return (
-              <Box key={item.tempId} sx={{ mb: 3 }}>
-                <Grid container spacing={2} alignItems="flex-start">
-                  <Grid item xs={12} sm={4}>
-                    <Autocomplete
-                      options={filteredIngredients}
-                      getOptionLabel={option => {
-                        if (option.orderByPackage && option.unitsPerPackage && option.unitsPerPackage > 1) {
-                          return `${option.name} (${option.unitsPerPackage} ${option.unit}/${option.packageType || 'package'})`
-                        }
-                        return option.name
-                      }}
-                      value={filteredIngredients.find(i => i.id === item.ingredientId) || null}
-                      onChange={(_, ingredient) => {
-                        handleUpdateOrderItem(item.tempId, 'ingredientId', ingredient?.id || '')
+          return (
+            <div key={item.tempId} style={{ marginBottom: 24 }}>
+              <Row gutter={16} align="top">
+                <Col xs={24} sm={10}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>{t('ingredient')}</Text>
+                    <Select
+                      style={{ width: '100%', marginTop: 4 }}
+                      placeholder={t('ingredient')}
+                      value={item.ingredientId || undefined}
+                      onChange={(value) => {
+                        handleUpdateOrderItem(item.tempId, 'ingredientId', value)
+                        const ingredient = filteredIngredients.find(i => i.id === value)
                         if (ingredient) {
                           handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit)
                         }
                       }}
-                      renderInput={params => <TextField {...params} label={t('ingredient')} size="small" />}
                       disabled={!newOrder.supplierId}
-                      noOptionsText={!newOrder.supplierId ? t('select_supplier_first') : t('no_ingredients_for_supplier')}
-                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {filteredIngredients.map(ingredient => (
+                        <Option key={ingredient.id} value={ingredient.id}>
+                          {ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1
+                            ? `${ingredient.name} (${ingredient.unitsPerPackage} ${ingredient.unit}/${ingredient.packageType || 'package'})`
+                            : ingredient.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </div>
+                </Col>
+                <Col xs={12} sm={4}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>{hasPackaging ? `${t('quantity')} (${selectedIngredient?.packageType || 'packages'})` : t('quantity')}</Text>
+                    <Input
+                      type="number"
+                      style={{ marginTop: 4 }}
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))}
                     />
-                  </Grid>
-                  <Grid item xs={6} sm={2}>
-                    <TextField label={hasPackaging ? `${t('quantity')} (${selectedIngredient?.packageType || 'packages'})` : t('quantity')} type="number" value={item.quantity} onChange={e => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))} size="small" fullWidth helperText={hasPackaging ? `${totalUnits} ${selectedIngredient?.unit} total` : ''} />
-                  </Grid>
-                  <Grid item xs={6} sm={2}>
-                    <TextField label={hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.unit}` : t('unit_cost')} type="number" value={item.unitPrice} onChange={e => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))} size="small" fullWidth />
-                  </Grid>
-                  <Grid item xs={6} sm={2}>
-                    <TextField label={t('total')} value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)} size="small" fullWidth disabled />
-                  </Grid>
-                  <Grid item xs={6} sm={2} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '56px' }}>
-                    <IconButton onClick={() => handleRemoveOrderItem(item.tempId)} color="error">
-                      <DeleteIcon />
-                    </IconButton>
-                  </Grid>
-                </Grid>
-                {packageInfo && (
-                  <Typography variant="caption" color="textSecondary" sx={{ ml: 0, mt: 0.5, display: 'block' }}>
-                    {packageInfo}
-                  </Typography>
-                )}
-              </Box>
-            )
-          })}
+                    {hasPackaging && (
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                        {totalUnits} {selectedIngredient?.unit} total
+                      </Text>
+                    )}
+                  </div>
+                </Col>
+                <Col xs={12} sm={4}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>{hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.unit}` : t('unit_cost')}</Text>
+                    <Input
+                      type="number"
+                      style={{ marginTop: 4 }}
+                      value={item.unitPrice}
+                      onChange={(e) => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))}
+                    />
+                  </div>
+                </Col>
+                <Col xs={12} sm={4}>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>{t('total')}</Text>
+                    <Input
+                      style={{ marginTop: 4 }}
+                      value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)}
+                      disabled
+                    />
+                  </div>
+                </Col>
+                <Col xs={12} sm={2} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <Button
+                    danger
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleRemoveOrderItem(item.tempId)}
+                  />
+                </Col>
+              </Row>
+              {packageInfo && (
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                  {packageInfo}
+                </Text>
+              )}
+            </div>
+          )
+        })}
 
-          <Box mt={2} textAlign={isRtl ? 'left' : 'right'}>
-            <Typography variant="h6">
-              {t('total_amount')}: {formatCurrency(newOrder.totalAmount || 0)}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>{t('cancel')}</Button>
-          <Button onClick={handleSubmitOrder} variant="contained" disabled={!newOrder.supplierId || orderItems.length === 0}>
-            {editingOrder ? t('update_order') : t('create_order')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar for notifications */}
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        <div style={{ marginTop: 16, textAlign: isRtl ? 'left' : 'right' }}>
+          <Title level={5}>
+            {t('total_amount')}: {formatCurrency(newOrder.totalAmount || 0)}
+          </Title>
+        </div>
+      </Modal>
 
       {/* Import Dialog */}
-      <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{t('import_supplier_order')}</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {t('import_instructions')}
-          </Alert>
-
-          {importData.length > 0 && (
-            <>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                {t('map_columns')}
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Autocomplete options={suppliers} getOptionLabel={option => option.name} value={importMapping.supplier || null} onChange={(_, supplier) => setImportMapping({ ...importMapping, supplier: supplier || undefined })} renderInput={params => <TextField {...params} label={t('select_supplier')} required />} />
-                </Grid>
-
-                {importData.length > 0 && (
-                  <>
-                    <Grid item xs={12} sm={4}>
-                      <FormControl fullWidth>
-                        <InputLabel>{t('item_name_column')}</InputLabel>
-                        <Select value={importMapping.itemNameColumn || ''} onChange={e => setImportMapping({ ...importMapping, itemNameColumn: e.target.value })} label={t('item_name_column')}>
-                          {Object.keys(importData[0]).map(column => (
-                            <MuiMenuItem key={column} value={column}>
-                              {column}
-                            </MuiMenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <FormControl fullWidth>
-                        <InputLabel>{t('quantity_column')}</InputLabel>
-                        <Select value={importMapping.quantityColumn || ''} onChange={e => setImportMapping({ ...importMapping, quantityColumn: e.target.value })} label={t('quantity_column')}>
-                          {Object.keys(importData[0]).map(column => (
-                            <MuiMenuItem key={column} value={column}>
-                              {column}
-                            </MuiMenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <FormControl fullWidth>
-                        <InputLabel>{t('unit_price_column')}</InputLabel>
-                        <Select value={importMapping.unitPriceColumn || ''} onChange={e => setImportMapping({ ...importMapping, unitPriceColumn: e.target.value })} label={t('unit_price_column')}>
-                          {Object.keys(importData[0]).map(column => (
-                            <MuiMenuItem key={column} value={column}>
-                              {column}
-                            </MuiMenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </>
-                )}
-              </Grid>
-
-              {/* Preview */}
-              <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
-                {t('preview')}
-              </Typography>
-              <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t('item_name')}</TableCell>
-                      <TableCell>{t('quantity')}</TableCell>
-                      <TableCell>{t('unit_price')}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {importData.slice(0, 5).map((row, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{importMapping.itemNameColumn ? row[importMapping.itemNameColumn] : '-'}</TableCell>
-                        <TableCell>{importMapping.quantityColumn ? row[importMapping.quantityColumn] : '-'}</TableCell>
-                        <TableCell>{importMapping.unitPriceColumn ? row[importMapping.unitPriceColumn] : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {importData.length > 5 && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                  {t('showing_first_5_rows')}
-                </Typography>
-              )}
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
+      <Modal
+        title={t('import_supplier_order')}
+        open={openImportDialog}
+        onCancel={() => {
+          setOpenImportDialog(false)
+          setImportData([])
+          setImportMapping({})
+        }}
+        width={800}
+        footer={[
           <Button
+            key="cancel"
             onClick={() => {
               setOpenImportDialog(false)
               setImportData([])
@@ -1091,15 +1079,146 @@ export default function SupplierOrders() {
             }}
           >
             {t('cancel')}
-          </Button>
-          <Button onClick={handleImportMapping} variant="contained" disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}>
+          </Button>,
+          <Button
+            key="import"
+            type="primary"
+            onClick={handleImportMapping}
+            disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}
+          >
             {t('import')}
           </Button>
-        </DialogActions>
-      </Dialog>
+        ]}
+      >
+        <Alert message={t('import_instructions')} type="info" style={{ marginBottom: 16 }} />
+
+        {importData.length > 0 && (
+          <>
+            <Title level={5} style={{ marginBottom: 16 }}>
+              {t('map_columns')}
+            </Title>
+
+            <Row gutter={16}>
+              <Col xs={24}>
+                <div style={{ marginBottom: 16 }}>
+                  <Text>{t('select_supplier')} *</Text>
+                  <Select
+                    style={{ width: '100%', marginTop: 4 }}
+                    placeholder={t('select_supplier')}
+                    value={importMapping.supplier?.id}
+                    onChange={(value) => {
+                      const supplier = suppliers.find(s => s.id === value)
+                      setImportMapping({ ...importMapping, supplier: supplier || undefined })
+                    }}
+                    showSearch
+                    optionFilterProp="children"
+                  >
+                    {suppliers.map(supplier => (
+                      <Option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
+              </Col>
+
+              {importData.length > 0 && (
+                <>
+                  <Col xs={24} sm={8}>
+                    <div style={{ marginBottom: 16 }}>
+                      <Text>{t('item_name_column')}</Text>
+                      <Select
+                        style={{ width: '100%', marginTop: 4 }}
+                        value={importMapping.itemNameColumn}
+                        onChange={(value) => setImportMapping({ ...importMapping, itemNameColumn: value })}
+                      >
+                        {Object.keys(importData[0]).map(column => (
+                          <Option key={column} value={column}>
+                            {column}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  </Col>
+
+                  <Col xs={24} sm={8}>
+                    <div style={{ marginBottom: 16 }}>
+                      <Text>{t('quantity_column')}</Text>
+                      <Select
+                        style={{ width: '100%', marginTop: 4 }}
+                        value={importMapping.quantityColumn}
+                        onChange={(value) => setImportMapping({ ...importMapping, quantityColumn: value })}
+                      >
+                        {Object.keys(importData[0]).map(column => (
+                          <Option key={column} value={column}>
+                            {column}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  </Col>
+
+                  <Col xs={24} sm={8}>
+                    <div style={{ marginBottom: 16 }}>
+                      <Text>{t('unit_price_column')}</Text>
+                      <Select
+                        style={{ width: '100%', marginTop: 4 }}
+                        value={importMapping.unitPriceColumn}
+                        onChange={(value) => setImportMapping({ ...importMapping, unitPriceColumn: value })}
+                      >
+                        {Object.keys(importData[0]).map(column => (
+                          <Option key={column} value={column}>
+                            {column}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  </Col>
+                </>
+              )}
+            </Row>
+
+            {/* Preview */}
+            <Title level={5} style={{ marginTop: 24, marginBottom: 8 }}>
+              {t('preview')}
+            </Title>
+            <Table
+              size="small"
+              dataSource={importData.slice(0, 5)}
+              pagination={false}
+              scroll={{ x: true }}
+              columns={[
+                {
+                  title: t('item_name'),
+                  dataIndex: importMapping.itemNameColumn,
+                  key: 'itemName',
+                  render: (text) => text || '-'
+                },
+                {
+                  title: t('quantity'),
+                  dataIndex: importMapping.quantityColumn,
+                  key: 'quantity',
+                  render: (text) => text || '-'
+                },
+                {
+                  title: t('unit_price'),
+                  dataIndex: importMapping.unitPriceColumn,
+                  key: 'unitPrice',
+                  render: (text) => text || '-'
+                }
+              ]}
+            />
+            {importData.length > 5 && (
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+                {t('showing_first_5_rows')}
+              </Text>
+            )}
+          </>
+        )}
+      </Modal>
 
       {/* File Input */}
       <input type="file" ref={fileInputRef} accept=".csv,.xls,.xlsx" style={{ display: 'none' }} onChange={handleFileImport} />
-    </Box>
+    </div>
   )
 }

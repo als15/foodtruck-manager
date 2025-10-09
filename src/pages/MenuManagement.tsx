@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Box, Typography, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, Chip, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Autocomplete, Divider, Alert, Grid, CircularProgress, Snackbar, Select, MenuItem as MuiMenuItem, FormControl, InputLabel, Tooltip, Stack, useTheme, Menu, ListItemIcon, ListItemText, InputAdornment, Tabs, Tab, AppBar, Toolbar, Fab, Avatar, Badge, ToggleButtonGroup, ToggleButton } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, RestaurantMenu, Calculate as CalculateIcon, TrendingUp as ProfitIcon, Remove as RemoveIcon, Upload as UploadIcon, Download as DownloadIcon, Settings as SettingsIcon, Category as CategoryIcon, Search as SearchIcon, FilterList as FilterIcon, ViewList as ListViewIcon, ViewModule as GridViewIcon, VisibilityOff as HiddenIcon, Visibility as VisibleIcon, AttachMoney as PriceIcon, Schedule as TimeIcon, Warning as AllergenIcon } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, Spin, Alert, message, Select, Switch, Tabs, Divider, Statistic, Dropdown, Upload, Tooltip, FloatButton, Badge, Segmented } from 'antd'
+import type { MenuProps } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, CalculatorOutlined, DeleteFilled, UploadOutlined, DownloadOutlined, SettingOutlined, AppstoreOutlined, UnorderedListOutlined, EyeInvisibleOutlined, EyeOutlined, DollarOutlined, ClockCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { MenuItem, Ingredient, MenuItemIngredient } from '../types'
 import { menuItemsService, ingredientsService, menuCategoriesService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
 import { formatCurrency } from '../utils/currency'
 
+const { Title, Text, Paragraph } = Typography
+const { TextArea } = Input
+const { Option } = Select
+const { TabPane } = Tabs
+
 type ViewMode = 'grid' | 'list'
 type FilterType = 'all' | 'available' | 'unavailable' | 'profitable' | 'low-margin'
 
 export default function MenuManagement() {
-  const theme = useTheme()
-  const isRtl = theme.direction === 'rtl'
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
 
   // State
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -24,17 +30,14 @@ export default function MenuManagement() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
   const [importingIngredients, setImportingIngredients] = useState(false)
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
-  const [categoryMenuAnchor, setCategoryMenuAnchor] = useState<null | HTMLElement>(null)
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
-
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
 
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
@@ -85,7 +88,7 @@ export default function MenuManagement() {
       setMenuItems(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load menu items')
-      setSnackbar({ open: true, message: 'Failed to load menu items', severity: 'error' })
+      message.error(t('failed_to_load_menu_items'))
     } finally {
       setLoading(false)
     }
@@ -96,7 +99,7 @@ export default function MenuManagement() {
       const data = await ingredientsService.getAll()
       setAvailableIngredients(data)
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load ingredients', severity: 'error' })
+      message.error(t('failed_to_load_ingredients'))
     }
   }
 
@@ -106,8 +109,7 @@ export default function MenuManagement() {
       setCategories(data)
     } catch (err) {
       console.error('Failed to load categories:', err)
-      setSnackbar({ open: true, message: 'Failed to load categories', severity: 'error' })
-      // Fallback to default categories
+      message.error(t('failed_to_load_categories'))
       setCategories(['salads', 'sandwiches', 'desserts', 'sweet pastries', 'savory pastries', 'fruit shakes', 'hot drinks', 'cold drinks'])
     }
   }
@@ -122,34 +124,27 @@ export default function MenuManagement() {
     setEditingCategory(category)
     setNewCategoryName(category)
     setCategoryDialogOpen(true)
-    setCategoryMenuAnchor(null)
   }
 
   const handleDeleteCategory = async (category: string) => {
-    // Check if any menu items use this category
     const itemsWithCategory = menuItems.filter(item => item.category === category)
     if (itemsWithCategory.length > 0) {
-      setSnackbar({
-        open: true,
-        message: t('cannot_delete_category_in_use', { category, count: itemsWithCategory.length }),
-        severity: 'error'
-      })
+      message.error(t('cannot_delete_category_in_use', { category, count: itemsWithCategory.length }))
       return
     }
 
     try {
       await menuCategoriesService.delete(category)
-      await loadCategories() // Reload categories from database
-      setSnackbar({ open: true, message: t('category_deleted_successfully'), severity: 'success' })
+      await loadCategories()
+      message.success(t('category_deleted_successfully'))
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_delete_category'), severity: 'error' })
+      message.error(t('failed_to_delete_category'))
     }
-    setCategoryMenuAnchor(null)
   }
 
   const handleSaveCategory = async () => {
     if (!newCategoryName.trim()) {
-      setSnackbar({ open: true, message: t('category_name_empty'), severity: 'error' })
+      message.error(t('category_name_empty'))
       return
     }
 
@@ -157,41 +152,35 @@ export default function MenuManagement() {
 
     try {
       if (editingCategory) {
-        // Editing existing category
         if (trimmedName === editingCategory) {
           setCategoryDialogOpen(false)
-          return // No change
-        }
-
-        if (categories.includes(trimmedName)) {
-          setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
           return
         }
 
-        // Update category in database
-        await menuCategoriesService.update(editingCategory, trimmedName)
+        if (categories.includes(trimmedName)) {
+          message.error(t('category_already_exists'))
+          return
+        }
 
-        // Update all menu items that use the old category name
+        await menuCategoriesService.update(editingCategory, trimmedName)
         const itemsToUpdate = menuItems.filter(item => item.category === editingCategory)
         await Promise.all(itemsToUpdate.map(item => menuItemsService.update(item.id, { category: trimmedName })))
-
         await Promise.all([loadCategories(), loadMenuItems()])
-        setSnackbar({ open: true, message: t('category_updated_successfully'), severity: 'success' })
+        message.success(t('category_updated_successfully'))
       } else {
-        // Adding new category
         if (categories.includes(trimmedName)) {
-          setSnackbar({ open: true, message: t('category_already_exists'), severity: 'error' })
+          message.error(t('category_already_exists'))
           return
         }
 
         await menuCategoriesService.create(trimmedName)
         await loadCategories()
-        setSnackbar({ open: true, message: t('category_added_successfully'), severity: 'success' })
+        message.success(t('category_added_successfully'))
       }
 
       setCategoryDialogOpen(false)
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_save_category'), severity: 'error' })
+      message.error(t('failed_to_save_category'))
     }
   }
 
@@ -208,12 +197,7 @@ export default function MenuManagement() {
 
   const calculateProfitMargin = (price: number, totalCost: number): number => {
     if (price <= 0) return 0
-
-    // If no ingredient cost is defined, show a warning indicator instead of 100%
-    if (totalCost === 0) {
-      return -1 // Special value to indicate "no cost data"
-    }
-
+    if (totalCost === 0) return -1
     return ((price - totalCost) / price) * 100
   }
 
@@ -222,19 +206,15 @@ export default function MenuManagement() {
     return ingredient ? ingredient.name : 'Unknown Ingredient'
   }
 
-  // Filter and search logic
   const filteredItems = menuItems.filter(item => {
-    // Search filter
     if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) && !item.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false
     }
 
-    // Category filter
     if (activeCategory !== 'all' && item.category !== activeCategory) {
       return false
     }
 
-    // Status filter
     switch (filterType) {
       case 'available':
         return item.isAvailable
@@ -253,7 +233,6 @@ export default function MenuManagement() {
     }
   })
 
-  // Get category counts
   const getCategoryCount = (category: string) => {
     if (category === 'all') return menuItems.length
     return menuItems.filter(item => item.category === category).length
@@ -264,212 +243,183 @@ export default function MenuManagement() {
     handleEditItem(item)
   }
 
-  // Only show categories that have menu items
   const visibleCategories = ['all', ...categories.filter(category => menuItems.some(item => item.category === category))]
 
   const renderGridView = () => (
-    <Grid container spacing={3}>
+    <Row gutter={[16, 16]}>
       {filteredItems.map(item => {
         const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
         const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost)
 
         return (
-          <Grid item xs={12} sm={6} lg={4} key={item.id}>
+          <Col xs={24} sm={12} lg={8} key={item.id}>
             <Card
-              sx={{
-                height: '100%',
-                position: 'relative',
-                opacity: item.isAvailable ? 1 : 0.7,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: theme.shadows[8]
-                }
-              }}
+              style={{ height: '100%', opacity: item.isAvailable ? 1 : 0.7 }}
+              hoverable
+              extra={
+                <Badge status={item.isAvailable ? 'success' : 'error'} />
+              }
             >
-              {/* Availability Badge */}
-              <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
-                <Badge badgeContent={item.isAvailable ? '●' : '○'} color={item.isAvailable ? 'success' : 'error'} sx={{ '& .MuiBadge-badge': { fontSize: '16px', minWidth: '20px', height: '20px' } }} />
-              </Box>
-
-              <CardContent sx={{ pb: 1 }}>
-                {/* Header */}
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 0.5, pr: 4, textAlign: isRtl ? 'right' : 'left' }}>
+              <Space direction="vertical" style={{ width: '100%' }} size="small">
+                <div>
+                  <Title level={5} style={{ marginBottom: 4, textAlign: isRtl ? 'right' : 'left' }}>
                     {item.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: 12, textAlign: isRtl ? 'right' : 'left', display: 'block' }}>
                     {item.description}
-                  </Typography>
-                </Box>
+                  </Text>
+                </div>
 
-                {/* Price & Metrics Row */}
-                <Box
-                  sx={theme => ({
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2,
-                    p: 1,
-                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                  })}
-                >
-                  <Box>
-                    <Typography
-                      variant="h5"
-                      sx={theme => ({
-                        fontWeight: 'bold',
-                        color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary,
-                        textAlign: isRtl ? 'right' : 'left'
-                      })}
-                    >
-                      {formatCurrency(item.price)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Cost: {formatCurrency(totalCost)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
-                      {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}% ${t('margin')}`}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.prepTime}
-                      {t('minutes_short')} {t('prep')}
-                    </Typography>
-                  </Box>
-                </Box>
+                <Card size="small" style={{ backgroundColor: 'var(--ant-color-bg-container-secondary)' }}>
+                  <Space direction="horizontal" style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <div>
+                      <Title level={4} style={{ margin: 0, color: 'var(--ant-color-primary)' }}>
+                        {formatCurrency(item.price)}
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: 11 }}>Cost: {formatCurrency(totalCost)}</Text>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <Text type={profitMargin === -1 ? 'danger' : profitMargin > 30 ? 'success' : 'warning'} style={{ fontSize: 13, fontWeight: 600 }}>
+                        {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}% ${t('margin')}`}
+                      </Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {item.prepTime}
+                        {t('minutes_short')} {t('prep')}
+                      </Text>
+                    </div>
+                  </Space>
+                </Card>
 
-                {/* Allergens */}
                 {item.allergens && item.allergens.length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {item.allergens.slice(0, 3).map(allergen => (
-                        <Chip key={allergen} label={allergen} size="small" color="warning" variant="outlined" />
-                      ))}
-                      {item.allergens.length > 3 && <Chip label={`+${item.allergens.length - 3}`} size="small" variant="outlined" />}
-                    </Box>
-                  </Box>
+                  <Space wrap>
+                    {item.allergens.slice(0, 3).map(allergen => (
+                      <Tag key={allergen} color="warning" style={{ fontSize: 11 }}>
+                        {allergen}
+                      </Tag>
+                    ))}
+                    {item.allergens.length > 3 && <Tag style={{ fontSize: 11 }}>+{item.allergens.length - 3}</Tag>}
+                  </Space>
                 )}
 
-                {/* Quick Actions */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <FormControlLabel control={<Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />} label={<Typography variant="caption">{item.isAvailable ? 'Available' : 'Hidden'}</Typography>} />
+                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Space>
+                    <Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />
+                    <Text style={{ fontSize: 11 }}>{item.isAvailable ? 'Available' : 'Hidden'}</Text>
+                  </Space>
 
-                  <Box>
-                    <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDuplicateItem(item)}>
-                      <DuplicateIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-              </CardContent>
+                  <Space size="small">
+                    <Button size="small" icon={<EditOutlined />} onClick={e => handleQuickEdit(item, e)} />
+                    <Button size="small" icon={<CopyOutlined />} onClick={() => handleDuplicateItem(item)} />
+                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteItem(item.id)} />
+                  </Space>
+                </Space>
+              </Space>
             </Card>
-          </Grid>
+          </Col>
         )
       })}
-    </Grid>
+    </Row>
   )
 
-  const renderListView = () => (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Item</TableCell>
-            <TableCell align="right">Price</TableCell>
-            <TableCell align="center">Status</TableCell>
-            <TableCell align="right">Margin</TableCell>
-            <TableCell align="center">Prep Time</TableCell>
-            <TableCell align="center">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredItems.map(item => {
-            const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
-            const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost)
-
-            return (
-              <TableRow key={item.id} sx={{ opacity: item.isAvailable ? 1 : 0.6 }}>
-                <TableCell>
-                  <Box>
-                    <Typography variant="subtitle2">{item.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.description}
-                    </Typography>
-                    {item.allergens && item.allergens.length > 0 && (
-                      <Box sx={{ mt: 0.5 }}>
-                        {item.allergens.slice(0, 2).map(allergen => (
-                          <Chip key={allergen} label={allergen} size="small" sx={{ mr: 0.5, fontSize: '0.6rem' }} />
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
-                </TableCell>
-                <TableCell align="right">
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    {formatCurrency(item.price)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Cost: {formatCurrency(totalCost)}
-                  </Typography>
-                </TableCell>
-                <TableCell align="center">
-                  <Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />
-                </TableCell>
-                <TableCell align="right">
-                  <Typography variant="subtitle2" color={profitMargin === -1 ? 'error.main' : profitMargin > 30 ? 'success.main' : 'warning.main'}>
-                    {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}%`}
-                  </Typography>
-                </TableCell>
-                <TableCell align="center">
-                  <Chip label={`${item.prepTime}min`} size="small" variant="outlined" />
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton size="small" onClick={e => handleQuickEdit(item, e)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDuplicateItem(item)}>
-                    <DuplicateIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.id)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
+  const columns: ColumnsType<MenuItem> = [
+    {
+      title: 'Item',
+      key: 'item',
+      render: (_: any, item: MenuItem) => (
+        <div>
+          <Text strong>{item.name}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {item.description}
+          </Text>
+          {item.allergens && item.allergens.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              {item.allergens.slice(0, 2).map((allergen: string) => (
+                <Tag key={allergen} style={{ fontSize: 10, marginRight: 4 }}>
+                  {allergen}
+                </Tag>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      title: 'Price',
+      key: 'price',
+      align: isRtl ? 'left' : 'right',
+      render: (_: any, item: MenuItem) => {
+        const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
+        return (
+          <div>
+            <Text strong style={{ fontSize: 15 }}>
+              {formatCurrency(item.price)}
+            </Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Cost: {formatCurrency(totalCost)}
+            </Text>
+          </div>
+        )
+      }
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      align: 'center',
+      render: (_: any, item: MenuItem) => <Switch checked={item.isAvailable} onChange={() => toggleAvailability(item.id)} size="small" />
+    },
+    {
+      title: 'Margin',
+      key: 'margin',
+      align: isRtl ? 'left' : 'right',
+      render: (_: any, item: MenuItem) => {
+        const totalCost = item.totalIngredientCost || calculateTotalIngredientCost(item.ingredients)
+        const profitMargin = item.profitMargin || calculateProfitMargin(item.price, totalCost)
+        return (
+          <Text type={profitMargin === -1 ? 'danger' : profitMargin > 30 ? 'success' : 'warning'} style={{ fontWeight: 600 }}>
+            {profitMargin === -1 ? t('no_cost_data') : `${profitMargin.toFixed(1)}%`}
+          </Text>
+        )
+      }
+    },
+    {
+      title: 'Prep Time',
+      key: 'prepTime',
+      align: 'center',
+      render: (_: any, item: MenuItem) => <Tag style={{ fontSize: 11 }}>{item.prepTime}min</Tag>
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'center',
+      render: (_: any, item: MenuItem) => (
+        <Space size="small">
+          <Button size="small" icon={<EditOutlined />} onClick={e => handleQuickEdit(item, e)} />
+          <Button size="small" icon={<CopyOutlined />} onClick={() => handleDuplicateItem(item)} />
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteItem(item.id)} />
+        </Space>
+      )
+    }
+  ]
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={loadData}>
+      <div style={{ padding: 24 }}>
+        <Alert type="error" message={error} style={{ marginBottom: 16 }} />
+        <Button type="primary" onClick={loadData}>
           {t('retry')}
         </Button>
-      </Box>
+      </div>
     )
   }
 
@@ -477,10 +427,10 @@ export default function MenuManagement() {
     try {
       if (editingItem) {
         await menuItemsService.update(editingItem.id, newItem)
-        setSnackbar({ open: true, message: t('menu_item_updated_success'), severity: 'success' })
+        message.success(t('menu_item_updated_success'))
       } else {
         await menuItemsService.create(newItem as Omit<MenuItem, 'id' | 'totalIngredientCost' | 'profitMargin'>)
-        setSnackbar({ open: true, message: t('menu_item_created_success'), severity: 'success' })
+        message.success(t('menu_item_created_success'))
       }
 
       await loadMenuItems()
@@ -498,7 +448,7 @@ export default function MenuManagement() {
       setEditingItem(null)
       setOpenDialog(false)
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_save_menu_item'), severity: 'error' })
+      message.error(t('failed_to_save_menu_item'))
     }
   }
 
@@ -511,10 +461,10 @@ export default function MenuManagement() {
   const handleDeleteItem = async (id: string) => {
     try {
       await menuItemsService.delete(id)
-      setSnackbar({ open: true, message: t('menu_item_deleted_success'), severity: 'success' })
+      message.success(t('menu_item_deleted_success'))
       await loadMenuItems()
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_delete_menu_item'), severity: 'error' })
+      message.error(t('failed_to_delete_menu_item'))
     }
   }
 
@@ -536,11 +486,11 @@ export default function MenuManagement() {
       const item = menuItems.find(item => item.id === id)
       if (item) {
         await menuItemsService.update(id, { isAvailable: !item.isAvailable })
-        setSnackbar({ open: true, message: t('availability_updated_success'), severity: 'success' })
+        message.success(t('availability_updated_success'))
         await loadMenuItems()
       }
     } catch (err) {
-      setSnackbar({ open: true, message: t('failed_to_update_availability'), severity: 'error' })
+      message.error(t('failed_to_update_availability'))
     }
   }
 
@@ -552,14 +502,13 @@ export default function MenuManagement() {
   const updateIngredientInItem = (index: number, field: keyof MenuItemIngredient, value: any) => {
     const ingredients = [...(newItem.ingredients || [])]
 
-    // If changing ingredient, auto-fill the unit from the ingredient's default unit
     if (field === 'ingredientId' && value) {
       const selectedIngredient = availableIngredients.find(ing => ing.id === value)
       if (selectedIngredient) {
         ingredients[index] = {
           ...ingredients[index],
           [field]: value,
-          unit: selectedIngredient.unit // Auto-fill unit from ingredient
+          unit: selectedIngredient.unit
         }
       } else {
         ingredients[index] = { ...ingredients[index], [field]: value }
@@ -595,7 +544,6 @@ export default function MenuManagement() {
           const errors: string[] = []
 
           results.data.forEach((row: any, index: number) => {
-            // Check if ingredient exists
             const ingredient = availableIngredients.find(ing => ing.id === row.ingredientId || ing.name.toLowerCase() === row.name?.toLowerCase())
 
             if (!ingredient) {
@@ -609,7 +557,6 @@ export default function MenuManagement() {
               return
             }
 
-            // Use provided unit or default to ingredient's unit
             const unit = row.unit?.trim() || ingredient.unit
 
             importedIngredients.push({
@@ -620,34 +567,25 @@ export default function MenuManagement() {
           })
 
           if (errors.length > 0) {
-            setSnackbar({
-              open: true,
-              message: `Import completed with ${errors.length} errors. Check console for details.`,
-              severity: 'error'
-            })
+            message.error(`Import completed with ${errors.length} errors. Check console for details.`)
             console.error('Import errors:', errors)
           }
 
-          // Add imported ingredients to current menu item
           const currentIngredients = newItem.ingredients || []
           const allIngredients = [...currentIngredients, ...importedIngredients]
           setNewItem({ ...newItem, ingredients: allIngredients })
 
-          setSnackbar({
-            open: true,
-            message: `Successfully imported ${importedIngredients.length} ingredients`,
-            severity: 'success'
-          })
+          message.success(`Successfully imported ${importedIngredients.length} ingredients`)
         } catch (err) {
-          setSnackbar({ open: true, message: 'Failed to import ingredients', severity: 'error' })
+          message.error('Failed to import ingredients')
         } finally {
           setImportingIngredients(false)
-          event.target.value = '' // Reset file input
+          event.target.value = ''
         }
       },
       error: () => {
         setImportingIngredients(false)
-        setSnackbar({ open: true, message: 'Failed to parse CSV file', severity: 'error' })
+        message.error('Failed to parse CSV file')
         event.target.value = ''
       }
     })
@@ -659,13 +597,13 @@ export default function MenuManagement() {
         name: 'Ground Beef',
         ingredientId: '',
         quantity: 0.25,
-        unit: '' // Leave empty to auto-fill from ingredient's default unit
+        unit: ''
       },
       {
         name: 'Cheddar Cheese',
         ingredientId: '',
         quantity: 0.125,
-        unit: '' // Leave empty to auto-fill from ingredient's default unit
+        unit: ''
       }
     ]
 
@@ -675,7 +613,7 @@ export default function MenuManagement() {
     link.href = URL.createObjectURL(blob)
     link.download = 'menu-item-ingredients-template.csv'
     link.click()
-    setSnackbar({ open: true, message: 'Template downloaded successfully', severity: 'success' })
+    message.success('Template downloaded successfully')
   }
 
   const handleAllergenChange = (value: string) => {
@@ -686,401 +624,283 @@ export default function MenuManagement() {
     setNewItem({ ...newItem, allergens })
   }
 
+  const categoryMenuItems: MenuProps['items'] = [
+    {
+      key: 'add',
+      icon: <PlusOutlined />,
+      label: t('add_category'),
+      onClick: handleAddCategory
+    },
+    { type: 'divider' },
+    ...categories.map(category => ({
+      key: category,
+      label: (
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Text>{category}</Text>
+          <Space>
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEditCategory(category)} />
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteCategory(category)} />
+          </Space>
+        </Space>
+      )
+    }))
+  ]
+
+  const ingredientColumns: ColumnsType<any> = [
+    {
+      title: t('ingredient'),
+      key: 'ingredient',
+      render: (_: any, record: any, index: number) => (
+        <Select
+          style={{ width: '100%' }}
+          size="small"
+          value={record.ingredientId}
+          onChange={value => updateIngredientInItem(index, 'ingredientId', value)}
+          placeholder={t('select_ingredient')}
+          showSearch
+          filterOption={(input, option) =>
+            (String(option?.children) || '').toLowerCase().includes(input.toLowerCase())
+          }
+        >
+          {availableIngredients.map(ing => (
+            <Option key={ing.id} value={ing.id}>
+              {ing.name}
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: t('quantity'),
+      key: 'quantity',
+      width: 120,
+      render: (_: any, record: any, index: number) => (
+        <Input
+          type="number"
+          size="small"
+          value={record.quantity}
+          onChange={e => updateIngredientInItem(index, 'quantity', parseFloat(e.target.value))}
+          step="0.01"
+        />
+      )
+    },
+    {
+      title: t('unit'),
+      key: 'unit',
+      width: 100,
+      render: (_: any, record: any, index: number) => (
+        <Input size="small" value={record.unit} onChange={e => updateIngredientInItem(index, 'unit', e.target.value)} placeholder="unit" />
+      )
+    },
+    {
+      title: t('cost'),
+      key: 'cost',
+      width: 100,
+      align: 'right',
+      render: (_: any, record: any) => {
+        const cost = calculateIngredientCost(record.ingredientId, record.quantity)
+        return <Text type="secondary">{formatCurrency(cost)}</Text>
+      }
+    },
+    {
+      title: t('actions'),
+      key: 'actions',
+      width: 80,
+      align: 'center',
+      render: (_: any, record: any, index: number) => <Button size="small" danger icon={<DeleteFilled />} onClick={() => removeIngredientFromItem(index)} />
+    }
+  ]
+
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Modern Header */}
-      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar sx={{ gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1, textAlign: isRtl ? 'right' : 'left' }}>
-            {t('menu_management')}
-          </Typography>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      {/* Header */}
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--ant-color-border)', backgroundColor: 'var(--ant-color-bg-container)' }}>
+        <Row align="middle" gutter={16}>
+          <Col flex="auto">
+            <Title level={3} style={{ margin: 0, textAlign: isRtl ? 'right' : 'left' }}>
+              {t('menu_management')}
+            </Title>
+          </Col>
 
-          {/* Search */}
-          <TextField
-            size="small"
-            placeholder={t('search_menu_items') || 'Search menu items...'}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            InputProps={{
-              ...(isRtl
-                ? {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    )
-                  }
-                : {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    )
-                  })
-            }}
-            sx={{ minWidth: 250 }}
-          />
+          <Col>
+            <Input.Search placeholder={t('search_menu_items') || 'Search menu items...'} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ width: 250 }} allowClear />
+          </Col>
 
-          {/* View Toggle */}
-          <ToggleButtonGroup value={viewMode} exclusive onChange={(_, newMode) => newMode && setViewMode(newMode)} size="small" sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-            <ToggleButton value="grid">
-              <GridViewIcon fontSize="small" />
-            </ToggleButton>
-            <ToggleButton value="list">
-              <ListViewIcon fontSize="small" />
-            </ToggleButton>
-          </ToggleButtonGroup>
+          <Col>
+            <Segmented
+              value={viewMode}
+              onChange={value => setViewMode(value as ViewMode)}
+              options={[
+                { value: 'grid', icon: <AppstoreOutlined /> },
+                { value: 'list', icon: <UnorderedListOutlined /> }
+              ]}
+            />
+          </Col>
 
-          <Button variant="outlined" startIcon={<SettingsIcon />} onClick={e => setCategoryMenuAnchor(e.currentTarget)}>
-            {t('manage_categories')}
-          </Button>
-        </Toolbar>
-      </AppBar>
+          <Col>
+            <Dropdown menu={{ items: categoryMenuItems }} trigger={['click']}>
+              <Button icon={<SettingOutlined />}>{t('manage_categories')}</Button>
+            </Dropdown>
+          </Col>
+        </Row>
+      </div>
 
       {/* Filter Bar */}
-      <Box
-        sx={theme => ({
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          p: 2,
-          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
-          borderBottom: 1,
-          borderColor: 'divider',
-          flexDirection: isRtl ? 'row-reverse' : 'row'
-        })}
-      >
-        {/* Category Tabs */}
-        <Tabs
-          value={activeCategory}
-          onChange={(_, newValue) => setActiveCategory(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={theme => ({
-            flexGrow: 1,
-            '& .MuiTabs-indicator': {
-              height: 3,
-              borderRadius: 3,
-              backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
-            }
-          })}
-        >
-          {visibleCategories.map(category => (
-            <Tab
-              key={category}
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2">{category === 'all' ? t('all_items') : t(category)}</Typography>
-                  <Chip label={getCategoryCount(category)} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
-                </Box>
-              }
-              value={category}
-              sx={theme => ({
-                minHeight: 36,
-                px: 1,
-                '&.Mui-selected': {
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.12)' : 'grey.100',
-                  border: '1px solid',
-                  borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.35)' : 'divider',
-                  borderRadius: 1
-                },
-                '&.Mui-selected .MuiTypography-root': {
-                  fontWeight: 700,
-                  color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary
-                }
-              })}
-            />
-          ))}
-        </Tabs>
+      <div style={{ padding: '12px 24px', backgroundColor: 'var(--ant-color-bg-container-secondary)', borderBottom: '1px solid var(--ant-color-border)' }}>
+        <Row align="middle" gutter={16}>
+          <Col flex="auto">
+            <Tabs activeKey={activeCategory} onChange={setActiveCategory} size="small">
+              {visibleCategories.map(category => (
+                <TabPane
+                  tab={
+                    <Space size={4}>
+                      <Text style={{ fontSize: 13 }}>{category === 'all' ? t('all_items') : t(category)}</Text>
+                      <Tag style={{ fontSize: 11, marginLeft: 4 }}>{getCategoryCount(category)}</Tag>
+                    </Space>
+                  }
+                  key={category}
+                />
+              ))}
+            </Tabs>
+          </Col>
 
-        {/* Status Filter */}
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>{t('filter')}</InputLabel>
-          <Select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)} label={t('filter')}>
-            <MuiMenuItem value="all">{t('all_items')}</MuiMenuItem>
-            <MuiMenuItem value="available">{t('available')}</MuiMenuItem>
-            <MuiMenuItem value="unavailable">{t('unavailable')}</MuiMenuItem>
-            <MuiMenuItem value="profitable">{t('high_margin')}</MuiMenuItem>
-            <MuiMenuItem value="low-margin">{t('low_margin')}</MuiMenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+          <Col>
+            <Select value={filterType} onChange={value => setFilterType(value)} style={{ width: 150 }} size="small">
+              <Option value="all">{t('all_items')}</Option>
+              <Option value="available">{t('available')}</Option>
+              <Option value="unavailable">{t('unavailable')}</Option>
+              <Option value="profitable">{t('high_margin')}</Option>
+              <Option value="low-margin">{t('low_margin')}</Option>
+            </Select>
+          </Col>
+        </Row>
+      </div>
 
       {/* Content Area */}
-      <Box sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
+      <div style={{ padding: 24, overflowY: 'auto' }}>
         {filteredItems.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 8 }}>
-            <RestaurantMenu sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
+          <div style={{ textAlign: 'center', padding: 64 }}>
+            <div style={{ fontSize: 48, color: 'var(--ant-color-text-tertiary)', marginBottom: 16 }}>🍽️</div>
+            <Title level={4} type="secondary">
               {t('no_menu_items_found')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              {searchQuery ? `No items match "${searchQuery}"` : t('start_by_adding_first_menu_item')}
-            </Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
+            </Title>
+            <Text type="secondary">{searchQuery ? `No items match "${searchQuery}"` : t('start_by_adding_first_menu_item')}</Text>
+            <br />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenDialog(true)} style={{ marginTop: 16 }}>
               {t('add_menu_item')}
             </Button>
-          </Box>
+          </div>
         ) : (
           <>
-            {/* Results Summary */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary">
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary">
                 {t('showing')} {filteredItems.length} {t('of')} {menuItems.length} {t('items')}
                 {searchQuery && ` for "${searchQuery}"`}
-              </Typography>
-            </Box>
+              </Text>
+            </div>
 
-            {/* Content */}
-            {viewMode === 'grid' ? renderGridView() : renderListView()}
+            {viewMode === 'grid' ? renderGridView() : <Table columns={columns} dataSource={filteredItems} rowKey="id" pagination={{ pageSize: 20 }} />}
           </>
         )}
-      </Box>
+      </div>
 
       {/* Floating Add Button */}
-      <Fab color="primary" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={() => setOpenDialog(true)}>
-        <AddIcon />
-      </Fab>
+      <FloatButton icon={<PlusOutlined />} type="primary" onClick={() => setOpenDialog(true)} />
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>{editingItem ? t('edit_menu_item') : t('add_new_menu_item')}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('item_name')} value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Autocomplete freeSolo options={categories} value={newItem.category} onChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} onInputChange={(_, value) => setNewItem({ ...newItem, category: value || '' })} renderInput={params => <TextField {...params} fullWidth label={t('category')} placeholder={t('select_or_type_new_category')} />} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth label={t('description')} multiline rows={2} value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('price')} type="number" inputProps={{ step: '0.01' }} value={newItem.price} onChange={e => setNewItem({ ...newItem, price: parseFloat(e.target.value) })} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth label={t('prep_time_minutes')} type="number" value={newItem.prepTime} onChange={e => setNewItem({ ...newItem, prepTime: parseInt(e.target.value) })} />
-            </Grid>
+      {/* Add/Edit Dialog */}
+      <Modal title={editingItem ? t('edit_menu_item') : t('add_new_menu_item')} open={openDialog} onOk={handleSaveItem} onCancel={() => setOpenDialog(false)} width={1000} okText={editingItem ? t('update_item') : t('add_item')}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12}>
+            <Input placeholder={t('item_name')} value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Select
+              style={{ width: '100%' }}
+              placeholder={t('category')}
+              value={newItem.category}
+              onChange={value => setNewItem({ ...newItem, category: value })}
+              showSearch
+              allowClear
+              options={categories.map(cat => ({ value: cat, label: t(cat) }))}
+            />
+          </Col>
+          <Col xs={24}>
+            <TextArea rows={2} placeholder={t('description')} value={newItem.description} onChange={e => setNewItem({ ...newItem, description: e.target.value })} />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Input type="number" placeholder={t('price')} value={newItem.price} onChange={e => setNewItem({ ...newItem, price: parseFloat(e.target.value) })} step="0.01" prefix="$" />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Input type="number" placeholder={t('prep_time_minutes')} value={newItem.prepTime} onChange={e => setNewItem({ ...newItem, prepTime: parseInt(e.target.value) })} suffix="min" />
+          </Col>
 
-            <Grid item xs={12}>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ textAlign: isRtl ? 'right' : 'left' }}>
-                  {t('ingredients')}
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Tooltip title={t('download_template_tooltip')}>
-                    <Button variant="text" size="small" startIcon={<DownloadIcon />} onClick={downloadIngredientsTemplate}>
-                      {t('download_template')}
-                    </Button>
-                  </Tooltip>
-                  <Button variant="text" size="small" startIcon={<UploadIcon />} onClick={handleImportIngredientsClick} disabled={importingIngredients}>
-                    {importingIngredients ? t('importing') : t('import_csv')}
-                  </Button>
-                  <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addIngredientToItem}>
-                    {t('add_ingredient')}
-                  </Button>
-                </Stack>
-              </Box>
+          <Col xs={24}>
+            <Divider>{t('ingredients')}</Divider>
+            <Space style={{ marginBottom: 12 }}>
+              <Tooltip title={t('download_template_tooltip')}>
+                <Button size="small" icon={<DownloadOutlined />} onClick={downloadIngredientsTemplate}>
+                  {t('download_template')}
+                </Button>
+              </Tooltip>
+              <Button size="small" icon={<UploadOutlined />} onClick={handleImportIngredientsClick} loading={importingIngredients}>
+                {importingIngredients ? t('importing') : t('import_csv')}
+              </Button>
+              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addIngredientToItem}>
+                {t('add_ingredient')}
+              </Button>
+            </Space>
 
-              {newItem.ingredients && newItem.ingredients.length > 0 && (
-                <TableContainer component={Paper} sx={{ mb: 2 }} dir={isRtl ? 'rtl' : 'ltr'}>
-                  <Table size="small" dir={isRtl ? 'rtl' : 'ltr'}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>{t('ingredient')}</TableCell>
-                        <TableCell>{t('quantity')}</TableCell>
-                        <TableCell>{t('unit')}</TableCell>
-                        <TableCell>{t('cost')}</TableCell>
-                        <TableCell>{t('actions')}</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {newItem.ingredients.map((ingredient, index) => {
-                        const cost = calculateIngredientCost(ingredient.ingredientId, ingredient.quantity)
-                        return (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <Autocomplete size="small" options={availableIngredients} getOptionLabel={option => option.name} value={availableIngredients.find(ing => ing.id === ingredient.ingredientId) || null} onChange={(_, value) => updateIngredientInItem(index, 'ingredientId', value?.id || '')} renderInput={params => <TextField {...params} placeholder={t('select_ingredient')} />} />
-                            </TableCell>
-                            <TableCell>
-                              <TextField size="small" type="number" inputProps={{ step: '0.01' }} value={ingredient.quantity} onChange={e => updateIngredientInItem(index, 'quantity', parseFloat(e.target.value))} />
-                            </TableCell>
-                            <TableCell>
-                              <TextField size="small" value={ingredient.unit} onChange={e => updateIngredientInItem(index, 'unit', e.target.value)} placeholder="unit" />
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" color="primary">
-                                {formatCurrency(cost)}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <IconButton size="small" onClick={() => removeIngredientFromItem(index)}>
-                                <RemoveIcon />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                      <TableRow>
-                        <TableCell colSpan={3} sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                          <Typography variant="subtitle2">{t('total_ingredient_cost')}:</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="subtitle2" color="primary">
-                            {formatCurrency(calculateTotalIngredientCost(newItem.ingredients))}
-                          </Typography>
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+            {newItem.ingredients && newItem.ingredients.length > 0 && (
+              <>
+                <Table columns={ingredientColumns} dataSource={newItem.ingredients} rowKey={(_, index) => index!} pagination={false} size="small" />
+                <Card size="small" style={{ marginTop: 12, backgroundColor: 'var(--ant-color-bg-container-secondary)' }}>
+                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Text strong>{t('total_ingredient_cost')}:</Text>
+                    <Text strong type="warning">
+                      {formatCurrency(calculateTotalIngredientCost(newItem.ingredients))}
+                    </Text>
+                  </Space>
+                </Card>
+              </>
+            )}
 
-              {newItem.price && newItem.ingredients && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2">Profit Margin: {calculateProfitMargin(newItem.price, calculateTotalIngredientCost(newItem.ingredients)).toFixed(1)}%</Typography>
-                  <Typography variant="body2">Profit per Item: {formatCurrency(newItem.price - calculateTotalIngredientCost(newItem.ingredients))}</Typography>
-                </Alert>
-              )}
-            </Grid>
+            {newItem.price && newItem.ingredients && (
+              <Alert
+                type="info"
+                message={
+                  <Space direction="vertical" size={0}>
+                    <Text>
+                      Profit Margin: <Text strong>{calculateProfitMargin(newItem.price, calculateTotalIngredientCost(newItem.ingredients)).toFixed(1)}%</Text>
+                    </Text>
+                    <Text>
+                      Profit per Item: <Text strong>{formatCurrency(newItem.price - calculateTotalIngredientCost(newItem.ingredients))}</Text>
+                    </Text>
+                  </Space>
+                }
+                style={{ marginTop: 12 }}
+              />
+            )}
+          </Col>
 
-            <Grid item xs={12}>
-              <TextField fullWidth label={t('allergens_comma_separated')} value={newItem.allergens?.join(', ') || ''} onChange={e => handleAllergenChange(e.target.value)} />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel control={<Switch checked={newItem.isAvailable} onChange={e => setNewItem({ ...newItem, isAvailable: e.target.checked })} />} label={t('available')} />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setOpenDialog(false)
-              setEditingItem(null)
-              setNewItem({
-                name: '',
-                description: '',
-                price: 0,
-                category: '',
-                ingredients: [],
-                allergens: [],
-                isAvailable: true,
-                prepTime: 5
-              })
-            }}
-          >
-            {t('cancel')}
-          </Button>
-          <Button onClick={handleSaveItem} variant="contained">
-            {editingItem ? t('update_item') : t('add_item')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          <Col xs={24}>
+            <Input placeholder={t('allergens_comma_separated')} value={newItem.allergens?.join(', ') || ''} onChange={e => handleAllergenChange(e.target.value)} />
+          </Col>
+          <Col xs={24}>
+            <Switch checked={newItem.isAvailable} onChange={checked => setNewItem({ ...newItem, isAvailable: checked })} />
+            <Text style={{ marginLeft: 8 }}>{t('available')}</Text>
+          </Col>
+        </Row>
+      </Modal>
 
       <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleIngredientsFileImport} />
 
-      {/* Category Management Menu */}
-      <Menu anchorEl={categoryMenuAnchor} open={Boolean(categoryMenuAnchor)} onClose={() => setCategoryMenuAnchor(null)} sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-        <MuiMenuItem onClick={handleAddCategory}>
-          <ListItemIcon sx={{ minWidth: isRtl ? 'auto' : '56px', marginInlineEnd: isRtl ? 0 : 2, marginInlineStart: isRtl ? 2 : 0 }}>
-            <AddIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText sx={{ textAlign: isRtl ? 'right' : 'left' }}>{t('add_category')}</ListItemText>
-        </MuiMenuItem>
-        <Divider />
-        {categories.map(category => (
-          <MuiMenuItem
-            key={category}
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexDirection: isRtl ? 'row-reverse' : 'row',
-              textAlign: isRtl ? 'right' : 'left'
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                flex: 1,
-                flexDirection: isRtl ? 'row-reverse' : 'row'
-              }}
-            >
-              <CategoryIcon
-                fontSize="small"
-                sx={{
-                  marginInlineEnd: isRtl ? 0 : 2,
-                  marginInlineStart: isRtl ? 2 : 0
-                }}
-              />
-              <Typography sx={{ textAlign: isRtl ? 'right' : 'left' }}>{category}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-              <IconButton size="small" onClick={() => handleEditCategory(category)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" onClick={() => handleDeleteCategory(category)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          </MuiMenuItem>
-        ))}
-      </Menu>
-
       {/* Category Add/Edit Dialog */}
-      <Dialog open={categoryDialogOpen} onClose={() => setCategoryDialogOpen(false)} maxWidth="sm" fullWidth sx={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-        <DialogTitle sx={{ textAlign: isRtl ? 'right' : 'left' }}>{editingCategory ? t('edit_category') : t('add_category')}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label={t('category_name')}
-            value={newCategoryName}
-            onChange={e => setNewCategoryName(e.target.value)}
-            sx={{
-              mt: 2,
-              '& .MuiInputBase-input': {
-                textAlign: isRtl ? 'right' : 'left'
-              }
-            }}
-            placeholder={t('enter_category_name')}
-            inputProps={{
-              dir: isRtl ? 'rtl' : 'ltr'
-            }}
-          />
-          {editingCategory && (
-            <Typography
-              variant="body2"
-              sx={{
-                mt: 2,
-                color: 'text.secondary',
-                textAlign: isRtl ? 'right' : 'left'
-              }}
-            >
-              {t('note_editing_category_will_update_items')}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions
-          sx={{
-            flexDirection: isRtl ? 'row-reverse' : 'row',
-            justifyContent: isRtl ? 'flex-end' : 'flex-start'
-          }}
-        >
-          <Button onClick={() => setCategoryDialogOpen(false)}>{t('cancel')}</Button>
-          <Button onClick={handleSaveCategory} variant="contained" disabled={!newCategoryName.trim()}>
-            {editingCategory ? t('update') : t('add')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      <Modal title={editingCategory ? t('edit_category') : t('add_category')} open={categoryDialogOpen} onOk={handleSaveCategory} onCancel={() => setCategoryDialogOpen(false)} okText={editingCategory ? t('update') : t('add')} okButtonProps={{ disabled: !newCategoryName.trim() }}>
+        <Input placeholder={t('category_name')} value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} style={{ marginTop: 16 }} />
+        {editingCategory && (
+          <Alert type="info" message={t('note_editing_category_will_update_items')} style={{ marginTop: 16 }} showIcon />
+        )}
+      </Modal>
+    </div>
   )
 }

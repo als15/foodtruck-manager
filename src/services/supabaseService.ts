@@ -1,18 +1,19 @@
 import { supabase } from '../lib/supabase';
-import { 
-  Ingredient, 
-  MenuItem, 
-  MenuItemIngredient, 
-  Employee, 
-  Shift, 
-  Transaction, 
-  Location, 
-  InventoryItem, 
+import {
+  Product,
+  Ingredient,
+  MenuItem,
+  MenuItemIngredient,
+  Employee,
+  Shift,
+  Transaction,
+  Location,
+  InventoryItem,
   InventoryTransaction,
   InventoryValidationResult,
   InventoryAlert,
   StockMovement,
-  Customer, 
+  Customer,
   Supplier,
   Expense,
   ExpenseCategory,
@@ -300,6 +301,9 @@ export const ingredientsService = {
     if (error) handleError(error, 'delete ingredient');
   }
 };
+
+// Product service (alias for ingredients service with updated terminology)
+export const productsService = ingredientsService;
 
 // ==================== MENU ITEMS ====================
 
@@ -2211,13 +2215,30 @@ export const subscriptions = {
     const businessId = getCurrentBusinessId();
     return supabase
       .channel('ingredients_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'ingredients',
           filter: `business_id=eq.${businessId}`
-        }, 
+        },
+        callback
+      )
+      .subscribe();
+  },
+
+  // Alias for ingredients subscription with updated terminology
+  products: (callback: (payload: any) => void) => {
+    const businessId = getCurrentBusinessId();
+    return supabase
+      .channel('products_changes')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ingredients',
+          filter: `business_id=eq.${businessId}`
+        },
         callback
       )
       .subscribe();

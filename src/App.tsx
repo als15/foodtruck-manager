@@ -1,11 +1,11 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
-import AppLayout from './components/Layout/AppLayout'
+import AppLayout from './components/Layout/AntdAppLayout'
 import Dashboard from './pages/Dashboard'
 import Orders from './pages/Orders'
 import FinancialManagement from './pages/FinancialManagement'
 import MenuManagement from './pages/MenuManagement'
-import Ingredients from './pages/Ingredients'
+import Products from './pages/Products'
 import Employees from './pages/Employees'
 import Logistics from './pages/Logistics'
 import Inventory from './pages/Inventory'
@@ -53,7 +53,9 @@ function App() {
                       <Route path="/orders" element={<Orders />} />
                       <Route path="/finances" element={<FinancialManagement />} />
                       <Route path="/menu" element={<MenuManagement />} />
-                      <Route path="/ingredients" element={<Ingredients />} />
+                      <Route path="/products" element={<Products />} />
+                      {/* Legacy route redirect for backwards compatibility */}
+                      <Route path="/ingredients" element={<Products />} />
                       <Route path="/employees" element={<Employees />} />
                       <Route path="/logistics" element={<Logistics />} />
                       <Route path="/inventory" element={<Inventory />} />

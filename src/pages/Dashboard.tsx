@@ -1,38 +1,51 @@
 import React, { useState, useEffect } from 'react'
-import { Grid, Paper, Typography, Box, Card, CardContent, LinearProgress, CircularProgress, Chip, Divider } from '@mui/material'
-import { TrendingUp, AttachMoney, People, Restaurant, ShoppingCart, Warning, Schedule, TrendingDown, Star, Assignment } from '@mui/icons-material'
+import { Row, Col, Card, Typography, Spin, Tag, Divider, Statistic, Space } from 'antd'
+import {
+  RiseOutlined,
+  FallOutlined,
+  DollarOutlined,
+  ShoppingOutlined,
+  TeamOutlined,
+  ShoppingCartOutlined,
+  WarningOutlined,
+  StarFilled,
+} from '@ant-design/icons'
 import { inventoryService, suppliersService, ordersService, transactionsService, employeesService, shiftsService, menuItemsService, customersService, financialGoalsService } from '../services/supabaseService'
-import { useTheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
 import { InventoryItem, Supplier, Order, Transaction, Employee, Shift, MenuItem, Customer, FinancialGoal } from '../types'
 import { formatCurrency } from '../utils/currency'
 
-const StatCard = ({ title, value, icon, color, subtitle, isRtl }: any) => (
-  <Card>
-    <CardContent>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-        <Box sx={{ color, mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }}>{icon}</Box>
-        <Typography variant="h6" component="div">
-          {title}
-        </Typography>
-      </Box>
-      <Typography variant="h4" sx={{ mb: 1, width: '100%', textAlign: isRtl ? 'right' : 'left' }}>
-        {value}
-      </Typography>
-      {subtitle && (
-        <Typography variant="body2" color="text.secondary">
-          {subtitle}
-        </Typography>
-      )}
-    </CardContent>
+const { Title, Text } = Typography
+
+interface StatCardProps {
+  title: string
+  value: string | number
+  icon: React.ReactNode
+  color: string
+  subtitle?: string
+  prefix?: React.ReactNode
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle, prefix }) => (
+  <Card bordered={false} style={{ height: '100%' }}>
+    <Statistic
+      title={title}
+      value={value}
+      prefix={prefix || icon}
+      valueStyle={{ color }}
+      suffix={subtitle && <div style={{ fontSize: 14, fontWeight: 'normal', color: '#8c8c8c', marginTop: 8 }}>{subtitle}</div>}
+    />
+    {subtitle && (
+      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+        {subtitle}
+      </Text>
+    )}
   </Card>
 )
 
 export default function Dashboard() {
-  const theme = useTheme()
-  const { t } = useTranslation()
-  const docDir = typeof document !== 'undefined' ? document.documentElement.dir : 'ltr'
-  const isRtl = docDir === 'rtl' || theme.direction === 'rtl'
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.dir() === 'rtl'
   const [loading, setLoading] = useState(true)
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -190,253 +203,235 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <Spin size="large" />
+      </div>
     )
   }
 
   return (
-    <Box>
-      <Grid container spacing={3} direction={isRtl ? 'row-reverse' : 'row'} justifyContent={isRtl ? 'flex-end' : 'flex-start'}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title={t('todays_revenue')} value={formatCurrency(todaysRevenue)} icon={<AttachMoney />} color={revenueChange >= 0 ? 'success.main' : 'error.main'} subtitle={revenueChange >= 0 ? t('plus_percent_from_yesterday', { percent: Math.abs(revenueChange).toFixed(1) }) : `${revenueChange.toFixed(1)}% ${t('from_yesterday')}`} isRtl={isRtl} />
-        </Grid>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      <Row gutter={[16, 16]}>
+        {/* Top Stats */}
+        <Col xs={24} sm={12} md={6}>
+          <StatCard
+            title={t('todays_revenue')}
+            value={formatCurrency(todaysRevenue)}
+            icon={<DollarOutlined />}
+            color={revenueChange >= 0 ? '#52c41a' : '#ff4d4f'}
+            subtitle={revenueChange >= 0 ? t('plus_percent_from_yesterday', { percent: Math.abs(revenueChange).toFixed(1) }) : `${revenueChange.toFixed(1)}% ${t('from_yesterday')}`}
+            prefix={revenueChange >= 0 ? <RiseOutlined /> : <FallOutlined />}
+          />
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title={t('orders_today')} value={todaysOrderCount.toString()} icon={<Restaurant />} color="primary.main" subtitle={orderChange >= 0 ? t('plus_percent_from_yesterday', { percent: Math.abs(orderChange).toFixed(1) }) : `${orderChange.toFixed(1)}% ${t('from_yesterday')}`} isRtl={isRtl} />
-        </Grid>
+        <Col xs={24} sm={12} md={6}>
+          <StatCard
+            title={t('orders_today')}
+            value={todaysOrderCount}
+            icon={<ShoppingOutlined />}
+            color="#1890ff"
+            subtitle={orderChange >= 0 ? t('plus_percent_from_yesterday', { percent: Math.abs(orderChange).toFixed(1) }) : `${orderChange.toFixed(1)}% ${t('from_yesterday')}`}
+          />
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title={t('active_staff')} value={activeStaff.toString()} icon={<People />} color="info.main" subtitle={t('on_duty_today')} isRtl={isRtl} />
-        </Grid>
+        <Col xs={24} sm={12} md={6}>
+          <StatCard
+            title={t('active_staff')}
+            value={activeStaff}
+            icon={<TeamOutlined />}
+            color="#1890ff"
+            subtitle={t('on_duty_today')}
+          />
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title={t('profit_margin')} value={`${profitMargin.toFixed(1)}%`} icon={profitMargin >= 20 ? <TrendingUp /> : <TrendingDown />} color={profitMargin >= 20 ? 'success.main' : profitMargin >= 10 ? 'warning.main' : 'error.main'} subtitle={t('today')} isRtl={isRtl} />
-        </Grid>
+        <Col xs={24} sm={12} md={6}>
+          <StatCard
+            title={t('profit_margin')}
+            value={`${profitMargin.toFixed(1)}%`}
+            icon={profitMargin >= 20 ? <RiseOutlined /> : <FallOutlined />}
+            color={profitMargin >= 20 ? '#52c41a' : profitMargin >= 10 ? '#faad14' : '#ff4d4f'}
+            subtitle={t('today')}
+          />
+        </Col>
 
         {/* Auto-Order Status Card */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <ShoppingCart sx={{ color: 'warning.main', mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }} />
-                <Typography variant="h6">{t('auto_order_status')}</Typography>
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Warning sx={{ color: 'error.main', fontSize: 16, mr: isRtl ? 0 : 0.5, ml: isRtl ? 0.5 : 0 }} />
-                  <Typography variant="body2" color="error">
+        <Col xs={24} md={8}>
+          <Card
+            title={
+              <Space>
+                <ShoppingCartOutlined style={{ color: '#faad14' }} />
+                {t('auto_order_status')}
+              </Space>
+            }
+            bordered={false}
+          >
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div>
+                <Space>
+                  <WarningOutlined style={{ color: '#ff4d4f' }} />
+                  <Text type="danger">
                     {lowStockItems.length} {t('low_stock_items')}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {autoOrderSuggestions.length} {t('suppliers_ready_for_auto_order')}
-                </Typography>
-              </Box>
+                  </Text>
+                </Space>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {autoOrderSuggestions.length} {t('suppliers_ready_for_auto_order')}
+                  </Text>
+                </div>
+              </div>
 
-              <Box
-                sx={theme => ({
-                  p: 2,
-                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.08)' : 'grey.50',
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: theme.palette.mode === 'dark' ? 'rgba(127,255,212,0.25)' : 'divider'
-                })}
+              <Card
+                size="small"
+                style={{
+                  background: 'rgba(127, 211, 199, 0.08)',
+                  border: '1px solid rgba(127, 211, 199, 0.25)',
+                }}
               >
-                <Typography variant="body2" color="text.secondary">
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                   {t('estimated_order_value')}
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={theme => ({
-                    width: '100%',
-                    color: theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.text.primary,
-                    fontWeight: 700
-                  })}
-                >
+                </Text>
+                <Title level={4} style={{ margin: 0, color: '#7fd3c7' }}>
                   {formatCurrency(estimatedOrderValue)}
-                </Typography>
-              </Box>
+                </Title>
+              </Card>
 
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>
                 {t('visit_inventory_auto_order_to_review')}
-              </Typography>
-            </CardContent>
+              </Text>
+            </Space>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
-              {t('business_insights')}
-            </Typography>
+        {/* Business Insights */}
+        <Col xs={24} md={8}>
+          <Card title={t('business_insights')} bordered={false}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {/* Top Selling Items */}
+              <div>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 12 }}>
+                  {t('top_selling_items_this_week')}
+                </Text>
+                {topSellingItems.length > 0 ? (
+                  <Space direction="vertical" style={{ width: '100%' }} size="small">
+                    {topSellingItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                        }}
+                      >
+                        <Space>
+                          <Tag
+                            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'default'}
+                            icon={index === 0 ? <StarFilled /> : undefined}
+                          >
+                            {index + 1}
+                          </Tag>
+                          <Text>{item.name}</Text>
+                        </Space>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {item.count} {t('sold')} • {formatCurrency(item.revenue)}
+                        </Text>
+                      </div>
+                    ))}
+                  </Space>
+                ) : (
+                  <Text type="secondary">{t('no_sales_this_week')}</Text>
+                )}
+              </div>
 
-            {/* TODO: Implement Revenue Goal Progress in future */}
-            {/* Revenue Goal Progress */}
-            {/* {monthlyRevenueGoal && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body2" sx={{ mb: 1, textAlign: isRtl ? 'right' : 'left' }}>
-                  {t('monthly_revenue_goal')}
-                </Typography>
-                <LinearProgress variant="determinate" value={Math.min(goalProgress, 100)} sx={{ mb: 1, height: 8, borderRadius: 4 }} color={goalProgress >= 100 ? 'success' : goalProgress >= 75 ? 'primary' : 'warning'} />
-                <Typography variant="caption" color="text.secondary">
-                  {formatCurrency(thisMonthRevenue)} {t('of_goal', { value: formatCurrency(monthlyRevenueGoal.targetAmount) })} ({goalProgress.toFixed(1)}%)
-                </Typography>
-              </Box>
-            )} */}
+              <Divider style={{ margin: '8px 0' }} />
 
-            {/* Top Selling Items */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                {t('top_selling_items_this_week')}
-              </Typography>
-              {topSellingItems.length > 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {topSellingItems.map((item, index) => (
-                    <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                      <Chip label={index + 1} size="small" color={index === 0 ? 'primary' : index === 1 ? 'secondary' : 'default'} icon={index === 0 ? <Star /> : undefined} />
-                      <Typography variant="body2" sx={{ flex: 1 }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.count} {t('sold')} • {formatCurrency(item.revenue)}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  {t('no_sales_this_week')}
-                </Typography>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* Business Metrics */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('average_order_value')}:
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  {formatCurrency(averageOrderValue)}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('peak_hour_today')}:
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  {peakHourFormatted} ({Math.max(...hourlyOrders)} {t('orders_text')})
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('total_customers')}:
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  {totalCustomers.toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('inventory_value')}:
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  {formatCurrency(totalInventoryValue)}
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
+              {/* Business Metrics */}
+              <Space direction="vertical" style={{ width: '100%' }} size="small">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">{t('average_order_value')}:</Text>
+                  <Text strong>{formatCurrency(averageOrderValue)}</Text>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">{t('peak_hour_today')}:</Text>
+                  <Text strong>
+                    {peakHourFormatted} ({Math.max(...hourlyOrders)} {t('orders_text')})
+                  </Text>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">{t('total_customers')}:</Text>
+                  <Text strong>{totalCustomers.toLocaleString()}</Text>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">{t('inventory_value')}:</Text>
+                  <Text strong>{formatCurrency(totalInventoryValue)}</Text>
+                </div>
+              </Space>
+            </Space>
+          </Card>
+        </Col>
 
         {/* Performance Summary Card */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: isRtl ? 'right' : 'left' }}>
-              {t('performance_summary')}
-            </Typography>
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Col xs={24} md={8}>
+          <Card title={t('performance_summary')} bordered={false}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
               {/* Weekly Performance */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              <div>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
                   {t('this_week')}
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('orders_text')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {thisWeeksOrders.length}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('revenue')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {formatCurrency(thisWeeksOrders.reduce((sum, order) => sum + order.total, 0))}
-                  </Typography>
-                </Box>
-              </Box>
+                </Text>
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('orders_text')}:</Text>
+                    <Text strong>{thisWeeksOrders.length}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('revenue')}:</Text>
+                    <Text strong>{formatCurrency(thisWeeksOrders.reduce((sum, order) => sum + order.total, 0))}</Text>
+                  </div>
+                </Space>
+              </div>
 
-              <Divider />
+              <Divider style={{ margin: '8px 0' }} />
 
               {/* Customer Insights */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              <div>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
                   {t('customers')}
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('new_this_month')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {newCustomersThisMonth}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('avg_loyalty_points')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {averageLoyaltyPoints.toFixed(0)}
-                  </Typography>
-                </Box>
-              </Box>
+                </Text>
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('new_this_month')}:</Text>
+                    <Text strong>{newCustomersThisMonth}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('avg_loyalty_points')}:</Text>
+                    <Text strong>{averageLoyaltyPoints.toFixed(0)}</Text>
+                  </div>
+                </Space>
+              </div>
 
-              <Divider />
+              <Divider style={{ margin: '8px 0' }} />
 
               {/* Staff Performance */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              <div>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
                   {t('staff_efficiency')}
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('orders_per_staff_today')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {activeStaff > 0 ? (todaysOrderCount / activeStaff).toFixed(1) : '0'}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {t('revenue_per_staff')}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {activeStaff > 0 ? formatCurrency(todaysRevenue / activeStaff) : formatCurrency(0)}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+                </Text>
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('orders_per_staff_today')}:</Text>
+                    <Text strong>{activeStaff > 0 ? (todaysOrderCount / activeStaff).toFixed(1) : '0'}</Text>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">{t('revenue_per_staff')}:</Text>
+                    <Text strong>{activeStaff > 0 ? formatCurrency(todaysRevenue / activeStaff) : formatCurrency(0)}</Text>
+                  </div>
+                </Space>
+              </div>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   )
 }

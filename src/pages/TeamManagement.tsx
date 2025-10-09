@@ -1,39 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Typography, Button, Input, Select, Table, Modal, Alert, Spin, message, Space } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
-  Alert,
-  Typography,
-  CircularProgress
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Send as SendIcon,
-  ContentCopy as CopyIcon
-} from '@mui/icons-material';
+  PlusOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  SendOutlined,
+  CopyOutlined
+} from '@ant-design/icons';
 import { useBusiness } from '../contexts/BusinessContext';
 import { supabase } from '../lib/supabase';
 import { UserBusiness, BusinessInvitation } from '../types';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface TeamMember extends UserBusiness {
   email?: string;
@@ -75,10 +55,6 @@ const TeamManagement: React.FC = () => {
 
       if (membersError) throw membersError;
 
-      // For now, we'll just use user IDs. In a production app, you might want to:
-      // 1. Create a profiles table that stores user metadata
-      // 2. Use a server-side function to fetch user emails
-      // 3. Or show user IDs and let users set display names
       setTeamMembers(membersData?.map(m => ({
         id: m.id,
         userId: m.user_id,
@@ -86,7 +62,7 @@ const TeamManagement: React.FC = () => {
         role: m.role,
         joinedAt: new Date(m.joined_at),
         permissions: m.permissions,
-        email: `User ${m.user_id.substring(0, 8)}...`, // Show partial user ID
+        email: `User ${m.user_id.substring(0, 8)}...`,
         name: `User ${m.user_id.substring(0, 8)}...`
       })) || []);
 
@@ -114,6 +90,7 @@ const TeamManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading team data:', error);
+      message.error('Failed to load team data');
     } finally {
       setLoading(false);
     }
@@ -123,10 +100,9 @@ const TeamManagement: React.FC = () => {
     if (!currentBusiness || !inviteForm.email) return;
 
     try {
-      // Generate invitation token
       const token = crypto.randomUUID();
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
       const { error } = await supabase
         .from('business_invitations')
@@ -141,20 +117,20 @@ const TeamManagement: React.FC = () => {
 
       if (error) throw error;
 
-      // Generate invitation link
       const inviteLink = `${window.location.origin}/invite/${token}`;
-      
-      // Copy to clipboard
       await navigator.clipboard.writeText(inviteLink);
-      
-      alert(`Invitation created! The link has been copied to your clipboard:\n\n${inviteLink}\n\nSend this link to ${inviteForm.email}`);
-      
+
+      Modal.success({
+        title: 'Invitation Created!',
+        content: `The invitation link has been copied to your clipboard. Send this link to ${inviteForm.email}:\n\n${inviteLink}`
+      });
+
       setInviteDialogOpen(false);
       setInviteForm({ email: '', role: 'member' });
       loadTeamData();
     } catch (error) {
       console.error('Error creating invitation:', error);
-      alert('Failed to create invitation');
+      message.error('Failed to create invitation');
     }
   };
 
@@ -170,261 +146,280 @@ const TeamManagement: React.FC = () => {
 
       if (error) throw error;
 
+      message.success('Role updated successfully');
       setEditDialogOpen(false);
       setSelectedMember(null);
       loadTeamData();
     } catch (error) {
       console.error('Error updating role:', error);
-      alert('Failed to update role');
+      message.error('Failed to update role');
     }
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!currentBusiness || !window.confirm('Are you sure you want to remove this team member?')) return;
+    if (!currentBusiness) return;
 
-    try {
-      const { error } = await supabase
-        .from('user_businesses')
-        .delete()
-        .eq('id', memberId)
-        .eq('business_id', currentBusiness.id);
+    Modal.confirm({
+      title: 'Remove Team Member',
+      content: 'Are you sure you want to remove this team member?',
+      onOk: async () => {
+        try {
+          const { error } = await supabase
+            .from('user_businesses')
+            .delete()
+            .eq('id', memberId)
+            .eq('business_id', currentBusiness.id);
 
-      if (error) throw error;
+          if (error) throw error;
 
-      loadTeamData();
-    } catch (error) {
-      console.error('Error removing member:', error);
-      alert('Failed to remove member');
-    }
+          message.success('Team member removed successfully');
+          loadTeamData();
+        } catch (error) {
+          console.error('Error removing member:', error);
+          message.error('Failed to remove member');
+        }
+      }
+    });
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this invitation?')) return;
+    Modal.confirm({
+      title: 'Cancel Invitation',
+      content: 'Are you sure you want to cancel this invitation?',
+      onOk: async () => {
+        try {
+          const { error } = await supabase
+            .from('business_invitations')
+            .delete()
+            .eq('id', invitationId);
 
-    try {
-      const { error } = await supabase
-        .from('business_invitations')
-        .delete()
-        .eq('id', invitationId);
+          if (error) throw error;
 
-      if (error) throw error;
-
-      loadTeamData();
-    } catch (error) {
-      console.error('Error canceling invitation:', error);
-      alert('Failed to cancel invitation');
-    }
+          message.success('Invitation cancelled successfully');
+          loadTeamData();
+        } catch (error) {
+          console.error('Error canceling invitation:', error);
+          message.error('Failed to cancel invitation');
+        }
+      }
+    });
   };
 
   const getRoleColor = (role: string) => {
-    const colors = {
-      owner: 'error',
-      admin: 'warning',
-      member: 'info',
+    const colors: Record<string, string> = {
+      owner: 'red',
+      admin: 'orange',
+      member: 'blue',
       viewer: 'default'
     };
-    return colors[role as keyof typeof colors] || 'default';
+    return colors[role] || 'default';
   };
+
+  const memberColumns: ColumnsType<TeamMember> = [
+    {
+      title: 'Name/Email',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => record.name || record.email
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{role}</span>
+    },
+    {
+      title: 'Joined',
+      dataIndex: 'joinedAt',
+      key: 'joinedAt',
+      render: (date) => date.toLocaleDateString()
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_, record) => (
+        record.role !== 'owner' && userRole === 'owner' ? (
+          <Space>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setSelectedMember(record);
+                setEditDialogOpen(true);
+              }}
+            />
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleRemoveMember(record.id)}
+            />
+          </Space>
+        ) : null
+      )
+    }
+  ];
+
+  const invitationColumns: ColumnsType<BusinessInvitation> = [
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email'
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{role}</span>
+    },
+    {
+      title: 'Expires',
+      dataIndex: 'expiresAt',
+      key: 'expiresAt',
+      render: (date) => date.toLocaleDateString()
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            onClick={async () => {
+              const link = `${window.location.origin}/invite/${record.token}`;
+              await navigator.clipboard.writeText(link);
+              message.success('Invitation link copied to clipboard!');
+            }}
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleCancelInvitation(record.id)}
+          />
+        </Space>
+      )
+    }
+  ];
 
   if (!canManageTeam) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="warning">
-          You don't have permission to manage team members. Only owners and admins can access this page.
-        </Alert>
-      </Box>
+      <div style={{ padding: 24 }}>
+        <Alert
+          message="Access Denied"
+          description="You don't have permission to manage team members. Only owners and admins can access this page."
+          type="warning"
+          showIcon
+        />
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Team Management</Typography>
+    <div style={{ padding: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+        <Title level={4}>Team Management</Title>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
+          type="primary"
+          icon={<PlusOutlined />}
           onClick={() => setInviteDialogOpen(true)}
         >
           Invite Team Member
         </Button>
-      </Box>
+      </div>
 
       {/* Team Members */}
-      <Paper sx={{ mb: 3 }}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name/Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Joined</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {teamMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>{member.name || member.email}</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={member.role} 
-                      color={getRoleColor(member.role) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>{member.joinedAt.toLocaleDateString()}</TableCell>
-                  <TableCell align="right">
-                    {member.role !== 'owner' && userRole === 'owner' && (
-                      <>
-                        <IconButton
-                          onClick={() => {
-                            setSelectedMember(member);
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleRemoveMember(member.id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      <Card title="Team Members" style={{ marginBottom: 24 }}>
+        <Table
+          columns={memberColumns}
+          dataSource={teamMembers}
+          rowKey="id"
+          pagination={false}
+        />
+      </Card>
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (
-        <Paper>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6">Pending Invitations</Typography>
-          </Box>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Expires</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell>{invitation.email}</TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={invitation.role} 
-                        color={getRoleColor(invitation.role) as any}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{invitation.expiresAt.toLocaleDateString()}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        onClick={async () => {
-                          const link = `${window.location.origin}/invite/${invitation.token}`;
-                          await navigator.clipboard.writeText(link);
-                          alert('Invitation link copied to clipboard!');
-                        }}
-                      >
-                        <CopyIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleCancelInvitation(invitation.id)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
+        <Card title="Pending Invitations">
+          <Table
+            columns={invitationColumns}
+            dataSource={invitations}
+            rowKey="id"
+            pagination={false}
+          />
+        </Card>
       )}
 
       {/* Invite Dialog */}
-      <Dialog open={inviteDialogOpen} onClose={() => setInviteDialogOpen(false)}>
-        <DialogTitle>Invite Team Member</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              fullWidth
-              label="Email"
+      <Modal
+        title="Invite Team Member"
+        open={inviteDialogOpen}
+        onOk={handleInvite}
+        onCancel={() => setInviteDialogOpen(false)}
+        okText="Send Invitation"
+        okButtonProps={{ icon: <SendOutlined /> }}
+      >
+        <Space direction="vertical" style={{ width: '100%', paddingTop: 16 }} size="middle">
+          <div>
+            <Text>Email</Text>
+            <Input
               type="email"
               value={inviteForm.email}
               onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-              sx={{ mb: 2 }}
+              placeholder="Enter email address"
+              style={{ marginTop: 8 }}
             />
-            <FormControl fullWidth>
-              <InputLabel>Role</InputLabel>
-              <Select
-                value={inviteForm.role}
-                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })}
-                label="Role"
-              >
-                <MenuItem value="member">Member</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                {userRole === 'owner' && <MenuItem value="owner">Owner</MenuItem>}
-                <MenuItem value="viewer">Viewer</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleInvite} variant="contained" startIcon={<SendIcon />}>
-            Send Invitation
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </div>
+          <div>
+            <Text>Role</Text>
+            <Select
+              value={inviteForm.role}
+              onChange={(value) => setInviteForm({ ...inviteForm, role: value })}
+              style={{ width: '100%', marginTop: 8 }}
+            >
+              <Option value="member">Member</Option>
+              <Option value="admin">Admin</Option>
+              {userRole === 'owner' && <Option value="owner">Owner</Option>}
+              <Option value="viewer">Viewer</Option>
+            </Select>
+          </div>
+        </Space>
+      </Modal>
 
       {/* Edit Role Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Update Role</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Role</InputLabel>
-              <Select
-                value={selectedMember?.role || 'member'}
-                onChange={(e) => setSelectedMember({ ...selectedMember!, role: e.target.value as any })}
-                label="Role"
-              >
-                <MenuItem value="member">Member</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                {userRole === 'owner' && <MenuItem value="owner">Owner</MenuItem>}
-                <MenuItem value="viewer">Viewer</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateRole} variant="contained">
-            Update Role
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <Modal
+        title="Update Role"
+        open={editDialogOpen}
+        onOk={handleUpdateRole}
+        onCancel={() => setEditDialogOpen(false)}
+        okText="Update Role"
+      >
+        <div style={{ paddingTop: 16 }}>
+          <Text>Role</Text>
+          <Select
+            value={selectedMember?.role || 'member'}
+            onChange={(value) => setSelectedMember({ ...selectedMember!, role: value })}
+            style={{ width: '100%', marginTop: 8 }}
+          >
+            <Option value="member">Member</Option>
+            <Option value="admin">Admin</Option>
+            {userRole === 'owner' && <Option value="owner">Owner</Option>}
+            <Option value="viewer">Viewer</Option>
+          </Select>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

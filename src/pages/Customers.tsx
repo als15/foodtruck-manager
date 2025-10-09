@@ -1,60 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
+  Row,
+  Col,
   Card,
-  CardContent,
+  Typography,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
+  Modal,
+  Input,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
-  Avatar,
-  IconButton,
-  Tab,
-  Tabs,
-  Grid,
-  CircularProgress,
+  Tag,
+  Space,
+  Spin,
   Alert,
-} from '@mui/material';
+  message,
+  Tabs,
+  Avatar,
+  Statistic,
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Person as PersonIcon,
-  Star as StarIcon,
-  ShoppingCart as OrderIcon,
-} from '@mui/icons-material';
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  StarOutlined,
+} from '@ant-design/icons';
 import { Customer } from '../types';
 import { customersService } from '../services/supabaseService';
 import { formatCurrency } from '../utils/currency';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 
 export default function Customers() {
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState('1');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -91,17 +70,14 @@ export default function Customers() {
     lastVisit: new Date()
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
   const handleSaveCustomer = async () => {
     try {
       if (editingCustomer) {
         const updated = await customersService.update(editingCustomer.id, newCustomer);
-        setCustomers(customers.map(customer => 
+        setCustomers(customers.map(customer =>
           customer.id === editingCustomer.id ? updated : customer
         ));
+        message.success('Customer updated successfully');
       } else {
         const created = await customersService.create({
           ...newCustomer,
@@ -112,8 +88,9 @@ export default function Customers() {
           lastVisit: newCustomer.lastVisit || new Date()
         } as Omit<Customer, 'id' | 'businessId'>);
         setCustomers([...customers, created]);
+        message.success('Customer added successfully');
       }
-      
+
       setNewCustomer({
         firstName: '',
         lastName: '',
@@ -129,7 +106,7 @@ export default function Customers() {
       setOpenDialog(false);
     } catch (err) {
       console.error('Error saving customer:', err);
-      alert('Failed to save customer');
+      message.error('Failed to save customer');
     }
   };
 
@@ -140,27 +117,31 @@ export default function Customers() {
   };
 
   const handleDeleteCustomer = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      try {
-        await customersService.delete(id);
-        setCustomers(customers.filter(customer => customer.id !== id));
-      } catch (err) {
-        console.error('Error deleting customer:', err);
-        alert('Failed to delete customer');
+    Modal.confirm({
+      title: 'Are you sure you want to delete this customer?',
+      onOk: async () => {
+        try {
+          await customersService.delete(id);
+          setCustomers(customers.filter(customer => customer.id !== id));
+          message.success('Customer deleted successfully');
+        } catch (err) {
+          console.error('Error deleting customer:', err);
+          message.error('Failed to delete customer');
+        }
       }
-    }
+    });
   };
 
   const getLoyaltyTier = (points: number) => {
-    if (points >= 200) return { tier: 'Gold', color: 'warning' };
-    if (points >= 100) return { tier: 'Silver', color: 'info' };
+    if (points >= 200) return { tier: 'Gold', color: 'gold' };
+    if (points >= 100) return { tier: 'Silver', color: 'blue' };
     return { tier: 'Bronze', color: 'default' };
   };
 
   const totalCustomers = customers.length;
   const totalLoyaltyPoints = customers.reduce((sum, customer) => sum + (customer.loyaltyPoints || 0), 0);
-  const avgOrderValue = customers.length > 0 
-    ? customers.reduce((sum, customer) => sum + (customer.totalSpent || 0), 0) / 
+  const avgOrderValue = customers.length > 0
+    ? customers.reduce((sum, customer) => sum + (customer.totalSpent || 0), 0) /
       customers.reduce((sum, customer) => sum + (customer.totalOrders || 0), 0)
     : 0;
 
@@ -171,351 +152,361 @@ export default function Customers() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+      <div style={{ padding: 24 }}>
+        <Alert
+          message={error}
+          type="error"
+          style={{ marginBottom: 16 }}
+        />
         <Button onClick={loadCustomers}>Retry</Button>
-      </Box>
+      </div>
     );
   }
 
+  const loyaltyColumns: ColumnsType<Customer> = [
+    {
+      title: 'Customer',
+      key: 'name',
+      render: (_, record) => `${record.firstName} ${record.lastName}`,
+      sorter: (a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+    },
+    {
+      title: 'Tier',
+      key: 'tier',
+      render: (_, record) => {
+        const loyaltyTier = getLoyaltyTier(record.loyaltyPoints || 0);
+        return (
+          <Tag color={loyaltyTier.color} icon={<StarOutlined />}>
+            {loyaltyTier.tier}
+          </Tag>
+        );
+      },
+      sorter: (a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0),
+    },
+    {
+      title: 'Points',
+      dataIndex: 'loyaltyPoints',
+      key: 'loyaltyPoints',
+      render: (points) => points || 0,
+      sorter: (a, b) => (a.loyaltyPoints || 0) - (b.loyaltyPoints || 0),
+    },
+    {
+      title: 'Total Orders',
+      dataIndex: 'totalOrders',
+      key: 'totalOrders',
+      render: (orders) => orders || 0,
+      sorter: (a, b) => (a.totalOrders || 0) - (b.totalOrders || 0),
+    },
+    {
+      title: 'Total Spent',
+      dataIndex: 'totalSpent',
+      key: 'totalSpent',
+      render: (spent) => formatCurrency(spent || 0),
+      sorter: (a, b) => (a.totalSpent || 0) - (b.totalSpent || 0),
+    },
+    {
+      title: 'Points per $',
+      key: 'pointsPerDollar',
+      render: (_, record) => {
+        const pointsPerDollar = (record.totalSpent || 0) > 0
+          ? (record.loyaltyPoints || 0) / (record.totalSpent || 0)
+          : 0;
+        return formatCurrency(pointsPerDollar);
+      },
+    },
+  ];
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Customer Management</Typography>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={2}>Customer Management</Title>
         <Button
-          variant="contained"
-          startIcon={<AddIcon />}
+          type="primary"
+          icon={<PlusOutlined />}
           onClick={() => setOpenDialog(true)}
         >
           Add Customer
         </Button>
-      </Box>
+      </div>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary">
-                Total Customers
-              </Typography>
-              <Typography variant="h4">
-                {totalCustomers}
-              </Typography>
-            </CardContent>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Statistic
+              title="Total Customers"
+              value={totalCustomers}
+              valueStyle={{ color: '#1890ff' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="warning.main">
-                Loyalty Points Issued
-              </Typography>
-              <Typography variant="h4">
-                {totalLoyaltyPoints.toLocaleString()}
-              </Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Statistic
+              title="Loyalty Points Issued"
+              value={totalLoyaltyPoints}
+              valueStyle={{ color: '#faad14' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="success.main">
-                Avg Order Value
-              </Typography>
-              <Typography variant="h4">
-                {formatCurrency(avgOrderValue)}
-              </Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Statistic
+              title="Avg Order Value"
+              value={avgOrderValue}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: '#52c41a' }}
+            />
           </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="info.main">
-                Repeat Customers
-              </Typography>
-              <Typography variant="h4">
-                {customers.filter(c => (c.totalOrders || 0) > 1).length}
-              </Typography>
-            </CardContent>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card bordered={false}>
+            <Statistic
+              title="Repeat Customers"
+              value={customers.filter(c => (c.totalOrders || 0) > 1).length}
+              valueStyle={{ color: '#13c2c2' }}
+            />
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
-      <Paper>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Customer List" />
-          <Tab label="Loyalty Program" />
-          <Tab label="Analytics" />
-        </Tabs>
-
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={2}>
-            {customers.map((customer) => {
-              const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints || 0);
-              return (
-                <Grid item xs={12} sm={6} md={4} key={customer.id}>
-                  <Card>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Avatar sx={{ mr: 2 }}>
-                          <PersonIcon />
-                        </Avatar>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6">
+      <Card bordered={false}>
+        <Tabs activeKey={tabValue} onChange={setTabValue}>
+          <TabPane tab="Customer List" key="1">
+            <Row gutter={[16, 16]}>
+              {customers.map((customer) => {
+                const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints || 0);
+                return (
+                  <Col xs={24} sm={12} md={8} key={customer.id}>
+                    <Card bordered>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                        <Avatar icon={<UserOutlined />} style={{ marginRight: 16 }} />
+                        <div style={{ flexGrow: 1 }}>
+                          <Title level={5} style={{ margin: 0 }}>
                             {customer.firstName} {customer.lastName}
-                          </Typography>
-                          <Chip
-                            label={loyaltyTier.tier}
-                            color={loyaltyTier.color as any}
-                            size="small"
-                            icon={<StarIcon />}
+                          </Title>
+                          <Tag color={loyaltyTier.color} icon={<StarOutlined />} style={{ marginTop: 4 }}>
+                            {loyaltyTier.tier}
+                          </Tag>
+                        </div>
+                        <Space>
+                          <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEditCustomer(customer)}
                           />
-                        </Box>
-                        <Box>
-                          <IconButton size="small" onClick={() => handleEditCustomer(customer)}>
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteCustomer(customer.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                      
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Email: {customer.email}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Phone: {customer.phone}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Loyalty Points: {customer.loyaltyPoints || 0}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Total Orders: {customer.totalOrders || 0}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Total Spent: {formatCurrency(customer.totalSpent || 0)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Last Visit: {customer.lastVisit?.toLocaleDateString() || 'Never'}
-                      </Typography>
-                      
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                          />
+                        </Space>
+                      </div>
+
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Email: </Text>
+                        <Text>{customer.email}</Text>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Phone: </Text>
+                        <Text>{customer.phone}</Text>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Loyalty Points: </Text>
+                        <Text>{customer.loyaltyPoints || 0}</Text>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Total Orders: </Text>
+                        <Text>{customer.totalOrders || 0}</Text>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Total Spent: </Text>
+                        <Text>{formatCurrency(customer.totalSpent || 0)}</Text>
+                      </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Text type="secondary">Last Visit: </Text>
+                        <Text>{customer.lastVisit?.toLocaleDateString() || 'Never'}</Text>
+                      </div>
+
                       {(customer.favoriteItems?.length || 0) > 0 && (
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="caption" display="block">
+                        <div style={{ marginTop: 8 }}>
+                          <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
                             Favorite Items:
-                          </Typography>
-                          {(customer.favoriteItems || []).map((item, index) => (
-                            <Chip
-                              key={index}
-                              label={item}
-                              size="small"
-                              variant="outlined"
-                              sx={{ mr: 0.5, mb: 0.5 }}
-                            />
-                          ))}
-                        </Box>
+                          </Text>
+                          <Space wrap>
+                            {(customer.favoriteItems || []).map((item, index) => (
+                              <Tag key={index}>{item}</Tag>
+                            ))}
+                          </Space>
+                        </div>
                       )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
-        </TabPanel>
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+          </TabPane>
 
-        <TabPanel value={tabValue} index={1}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Loyalty Program Overview
-          </Typography>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Tier</TableCell>
-                  <TableCell>Points</TableCell>
-                  <TableCell>Total Orders</TableCell>
-                  <TableCell>Total Spent</TableCell>
-                  <TableCell>Points per $</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {customers
-                  .sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))
-                  .map((customer) => {
-                    const loyaltyTier = getLoyaltyTier(customer.loyaltyPoints || 0);
-                    const pointsPerDollar = (customer.totalSpent || 0) > 0 
-                      ? (customer.loyaltyPoints || 0) / (customer.totalSpent || 0)
-                      : 0;
-                    
-                    return (
-                      <TableRow key={customer.id}>
-                        <TableCell>
-                          {customer.firstName} {customer.lastName}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={loyaltyTier.tier}
-                            color={loyaltyTier.color as any}
-                            size="small"
-                            icon={<StarIcon />}
-                          />
-                        </TableCell>
-                        <TableCell>{customer.loyaltyPoints || 0}</TableCell>
-                        <TableCell>{customer.totalOrders || 0}</TableCell>
-                        <TableCell>{formatCurrency(customer.totalSpent || 0)}</TableCell>
-                        <TableCell>{formatCurrency(pointsPerDollar)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </TabPanel>
+          <TabPane tab="Loyalty Program" key="2">
+            <Title level={4} style={{ marginBottom: 16 }}>
+              Loyalty Program Overview
+            </Title>
+            <Table
+              columns={loyaltyColumns}
+              dataSource={[...customers].sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))}
+              rowKey="id"
+              pagination={{ pageSize: 10 }}
+            />
+          </TabPane>
 
-        <TabPanel value={tabValue} index={2}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Customer Analytics
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
+          <TabPane tab="Analytics" key="3">
+            <Title level={4} style={{ marginBottom: 16 }}>
+              Customer Analytics
+            </Title>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Card bordered>
+                  <Title level={5} style={{ marginBottom: 16 }}>
                     Loyalty Tier Distribution
-                  </Typography>
-                  <Box>
-                    <Typography variant="body2">
-                      Gold Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 200).length}
-                    </Typography>
-                    <Typography variant="body2">
-                      Silver Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 100 && (c.loyaltyPoints || 0) < 200).length}
-                    </Typography>
-                    <Typography variant="body2">
-                      Bronze Members: {customers.filter(c => (c.loyaltyPoints || 0) < 100).length}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
+                  </Title>
+                  <div>
+                    <div style={{ marginBottom: 8 }}>
+                      <Text>Gold Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 200).length}</Text>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <Text>Silver Members: {customers.filter(c => (c.loyaltyPoints || 0) >= 100 && (c.loyaltyPoints || 0) < 200).length}</Text>
+                    </div>
+                    <div>
+                      <Text>Bronze Members: {customers.filter(c => (c.loyaltyPoints || 0) < 100).length}</Text>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+              <Col xs={24} md={12}>
+                <Card bordered>
+                  <Title level={5} style={{ marginBottom: 16 }}>
                     Customer Insights
-                  </Typography>
-                  <Typography variant="body2">
-                    Most Loyal Customer: {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.firstName} {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.lastName}
-                  </Typography>
-                  <Typography variant="body2">
-                    Highest Spender: {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.lastName}
-                  </Typography>
-                  <Typography variant="body2">
-                    Most Frequent Visitor: {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.lastName}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
-      </Paper>
+                  </Title>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>Most Loyal Customer: {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.firstName} {customers.sort((a, b) => (b.loyaltyPoints || 0) - (a.loyaltyPoints || 0))[0]?.lastName}</Text>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <Text>Highest Spender: {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0))[0]?.lastName}</Text>
+                  </div>
+                  <div>
+                    <Text>Most Frequent Visitor: {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.firstName} {customers.sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))[0]?.lastName}</Text>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+        </Tabs>
+      </Card>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="First Name"
+      <Modal
+        open={openDialog}
+        onCancel={() => setOpenDialog(false)}
+        onOk={handleSaveCustomer}
+        title={editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+        width={600}
+      >
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12}>
+            <div>
+              <Text>First Name</Text>
+              <Input
                 value={newCustomer.firstName || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Last Name"
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div>
+              <Text>Last Name</Text>
+              <Input
                 value={newCustomer.lastName || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Email"
+            </div>
+          </Col>
+          <Col xs={24}>
+            <div>
+              <Text>Email</Text>
+              <Input
                 type="email"
                 value={newCustomer.email || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Phone"
+            </div>
+          </Col>
+          <Col xs={24}>
+            <div>
+              <Text>Phone</Text>
+              <Input
                 value={newCustomer.phone || ''}
                 onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Loyalty Points"
+            </div>
+          </Col>
+          <Col xs={24} sm={8}>
+            <div>
+              <Text>Loyalty Points</Text>
+              <Input
                 type="number"
                 value={newCustomer.loyaltyPoints || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, loyaltyPoints: parseInt(e.target.value) })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Total Orders"
+            </div>
+          </Col>
+          <Col xs={24} sm={8}>
+            <div>
+              <Text>Total Orders</Text>
+              <Input
                 type="number"
                 value={newCustomer.totalOrders || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, totalOrders: parseInt(e.target.value) })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Total Spent"
+            </div>
+          </Col>
+          <Col xs={24} sm={8}>
+            <div>
+              <Text>Total Spent</Text>
+              <Input
                 type="number"
-                inputProps={{ step: "0.01" }}
+                step="0.01"
                 value={newCustomer.totalSpent || 0}
                 onChange={(e) => setNewCustomer({ ...newCustomer, totalSpent: parseFloat(e.target.value) })}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Favorite Items (comma separated)"
+            </div>
+          </Col>
+          <Col xs={24}>
+            <div>
+              <Text>Favorite Items (comma separated)</Text>
+              <Input
                 value={newCustomer.favoriteItems?.join(', ') || ''}
                 onChange={(e) => handleFavoriteItemsChange(e.target.value)}
+                style={{ marginTop: 4 }}
               />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button onClick={handleSaveCustomer} variant="contained">
-            {editingCustomer ? 'Update' : 'Add'} Customer
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            </div>
+          </Col>
+        </Row>
+      </Modal>
+    </div>
   );
 }

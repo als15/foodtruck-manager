@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Autocomplete, Switch, FormControlLabel, CircularProgress, Alert, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, useTheme, ToggleButtonGroup, ToggleButton } from '@mui/material'
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, Kitchen as KitchenIcon, Upload as UploadIcon, Download as DownloadIcon, MoreVert as MoreVertIcon, AutoAwesome as AIIcon } from '@mui/icons-material'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { Box, Typography, Grid, Card, CardContent, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Autocomplete, Switch, FormControlLabel, CircularProgress, Alert, Snackbar, Menu, MenuItem as MuiMenuItem, ListItemIcon, ListItemText, Divider, useTheme, ToggleButtonGroup, ToggleButton, TableSortLabel } from '@mui/material'
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ContentCopy as DuplicateIcon, Kitchen as KitchenIcon, Upload as UploadIcon, Download as DownloadIcon, MoreVert as MoreVertIcon, AutoAwesome as AIIcon, Search as SearchIcon } from '@mui/icons-material'
 import { Ingredient, Supplier } from '../types'
 import { ingredientsService, suppliersService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
@@ -29,6 +29,12 @@ export default function Ingredients() {
 
   // View toggle: 'table' (default) or 'grouped'
   const [ingredientsView, setIngredientsView] = useState<'table' | 'grouped'>('table')
+
+  // Search and sort state
+  type OrderBy = 'name' | 'category' | 'costPerUnit' | 'unit' | 'supplier' | 'lastUpdated'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [orderBy, setOrderBy] = useState<OrderBy>('name')
+  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>('asc')
 
   const [newIngredient, setNewIngredient] = useState<Partial<Ingredient>>({
     name: '',
@@ -355,6 +361,69 @@ export default function Ingredients() {
   const availableIngredients = ingredients.filter(ing => ing.isAvailable).length
   const avgCostPerIngredient = ingredients.length > 0 ? ingredients.reduce((sum, ing) => sum + ing.costPerUnit, 0) / ingredients.length : 0
 
+  // Sorting logic
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && orderDirection === 'asc'
+    setOrderDirection(isAsc ? 'desc' : 'asc')
+    setOrderBy(property)
+  }
+
+  const sortedIngredients = useMemo(() => {
+    const comparator = (a: Ingredient, b: Ingredient) => {
+      let aValue: any
+      let bValue: any
+
+      switch (orderBy) {
+        case 'name':
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
+          break
+        case 'category':
+          aValue = a.category.toLowerCase()
+          bValue = b.category.toLowerCase()
+          break
+        case 'costPerUnit':
+          aValue = a.costPerUnit
+          bValue = b.costPerUnit
+          break
+        case 'unit':
+          aValue = a.unit.toLowerCase()
+          bValue = b.unit.toLowerCase()
+          break
+        case 'supplier':
+          aValue = a.supplier.toLowerCase()
+          bValue = b.supplier.toLowerCase()
+          break
+        case 'lastUpdated':
+          aValue = a.lastUpdated.getTime()
+          bValue = b.lastUpdated.getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (bValue < aValue) {
+        return orderDirection === 'desc' ? -1 : 1
+      }
+      if (bValue > aValue) {
+        return orderDirection === 'desc' ? 1 : -1
+      }
+      return 0
+    }
+
+    return [...ingredients].sort(comparator)
+  }, [ingredients, orderBy, orderDirection])
+
+  // Filter ingredients based on search query
+  const filteredIngredients = useMemo(() => {
+    if (!searchQuery.trim()) return sortedIngredients
+
+    const query = searchQuery.toLowerCase()
+    return sortedIngredients.filter(ingredient => {
+      return ingredient.name.toLowerCase().includes(query) || ingredient.category.toLowerCase().includes(query) || ingredient.supplier.toLowerCase().includes(query) || ingredient.unit.toLowerCase().includes(query)
+    })
+  }, [sortedIngredients, searchQuery])
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -383,7 +452,7 @@ export default function Ingredients() {
           {t('ingredient_management')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-          <ToggleButtonGroup value={ingredientsView} exclusive onChange={(_, v) => v && setIngredientsView(v)} size="small" sx={{ mr: isRtl ? 0 : 1, ml: isRtl ? 1 : 0 }}>
+          <ToggleButtonGroup value={ingredientsView} exclusive onChange={(_, v) => v && setIngredientsView(v)} size="small" sx={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
             <ToggleButton value="table">{t('table_view') || 'Table'}</ToggleButton>
             <ToggleButton value="grouped">{t('grouped_view') || 'Grouped'}</ToggleButton>
           </ToggleButtonGroup>
@@ -442,160 +511,250 @@ export default function Ingredients() {
       </Grid>
 
       {ingredientsView === 'table' ? (
-        <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-          <Table dir={isRtl ? 'rtl' : 'ltr'}>
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('ingredient_name')}</TableCell>
-                <TableCell>{t('category')}</TableCell>
-                <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
-                <TableCell>{t('unit')}</TableCell>
-                <TableCell>{t('supplier_label')}</TableCell>
-                <TableCell>{t('status_text')}</TableCell>
-                <TableCell>{t('last_updated')}</TableCell>
-                <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {ingredients
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map(ingredient => (
-                  <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
-                    <TableCell>
-                      <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                        {ingredient.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                        {ingredient.category}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' }}>
-                        {formatCurrency(ingredient.costPerUnit)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                        {ingredient.unit}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                        {ingredient.supplier}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
-                        {ingredient.lastUpdated.toLocaleDateString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                      <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
-                        <DuplicateIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        categories.map(category => (
-          <Box key={category} sx={{ mb: 4 }}>
-            <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-              <KitchenIcon sx={{ marginInlineEnd: 1 }} />
-              {category}
-            </Typography>
-
-            <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
-              <Table dir={isRtl ? 'rtl' : 'ltr'}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('ingredient_name')}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('cost_per_unit')}</TableCell>
-                    <TableCell>{t('unit')}</TableCell>
-                    <TableCell>{t('supplier_label')}</TableCell>
-                    <TableCell>{t('status_text')}</TableCell>
-                    <TableCell>{t('last_updated')}</TableCell>
-                    <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ingredients
-                    .filter(ing => ing.category === category)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(ingredient => (
-                      <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
-                        <TableCell>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              fontWeight: 600,
-                              color: theme.palette.text.primary
-                            }}
-                          >
-                            {ingredient.name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              fontWeight: 600,
-                              color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' // Better contrast colors
-                            }}
-                          >
-                            {formatCurrency(ingredient.costPerUnit)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                            {ingredient.unit}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
-                            {ingredient.supplier}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
-                            {ingredient.lastUpdated.toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
-                          <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
-                            <DuplicateIcon />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+        <>
+          {/* Search Bar */}
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder={t('search_ingredients')}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              }}
+            />
           </Box>
-        ))
+          <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+            <Table dir={isRtl ? 'rtl' : 'ltr'}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'name'} direction={orderBy === 'name' ? orderDirection : 'asc'} onClick={() => handleRequestSort('name')}>
+                      {t('ingredient_name')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'category'} direction={orderBy === 'category' ? orderDirection : 'asc'} onClick={() => handleRequestSort('category')}>
+                      {t('category')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                    <TableSortLabel active={orderBy === 'costPerUnit'} direction={orderBy === 'costPerUnit' ? orderDirection : 'asc'} onClick={() => handleRequestSort('costPerUnit')}>
+                      {t('cost_per_unit')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'unit'} direction={orderBy === 'unit' ? orderDirection : 'asc'} onClick={() => handleRequestSort('unit')}>
+                      {t('unit')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'supplier'} direction={orderBy === 'supplier' ? orderDirection : 'asc'} onClick={() => handleRequestSort('supplier')}>
+                      {t('supplier_label')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>{t('status_text')}</TableCell>
+                  <TableCell>
+                    <TableSortLabel active={orderBy === 'lastUpdated'} direction={orderBy === 'lastUpdated' ? orderDirection : 'asc'} onClick={() => handleRequestSort('lastUpdated')}>
+                      {t('last_updated')}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredIngredients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                      <Typography variant="body1" color="text.secondary">
+                        {searchQuery ? t('no_ingredients_match_search') : t('no_ingredients_found')}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredIngredients.map(ingredient => (
+                    <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
+                      <TableCell>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                          {ingredient.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                          {ingredient.category}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' }}>
+                          {formatCurrency(ingredient.costPerUnit)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                          {ingredient.unit}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                          {ingredient.supplier}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
+                          {ingredient.lastUpdated.toLocaleDateString()}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                        <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
+                          <DuplicateIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      ) : (
+        <>
+          {/* Search Bar for Grouped View */}
+          <Box sx={{ mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder={t('search_ingredients')}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              }}
+            />
+          </Box>
+          {categories.map(category => {
+            const categoryIngredients = filteredIngredients.filter(ing => ing.category === category)
+            if (categoryIngredients.length === 0) return null
+
+            return (
+              <Box key={category} sx={{ mb: 4 }}>
+                <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', textAlign: isRtl ? 'right' : 'left', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                  <KitchenIcon sx={{ marginInlineEnd: 1 }} />
+                  {category} ({categoryIngredients.length})
+                </Typography>
+
+                <TableContainer component={Paper} dir={isRtl ? 'rtl' : 'ltr'}>
+                  <Table dir={isRtl ? 'rtl' : 'ltr'}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>
+                          <TableSortLabel active={orderBy === 'name'} direction={orderBy === 'name' ? orderDirection : 'asc'} onClick={() => handleRequestSort('name')}>
+                            {t('ingredient_name')}
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                          <TableSortLabel active={orderBy === 'costPerUnit'} direction={orderBy === 'costPerUnit' ? orderDirection : 'asc'} onClick={() => handleRequestSort('costPerUnit')}>
+                            {t('cost_per_unit')}
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell>
+                          <TableSortLabel active={orderBy === 'unit'} direction={orderBy === 'unit' ? orderDirection : 'asc'} onClick={() => handleRequestSort('unit')}>
+                            {t('unit')}
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell>
+                          <TableSortLabel active={orderBy === 'supplier'} direction={orderBy === 'supplier' ? orderDirection : 'asc'} onClick={() => handleRequestSort('supplier')}>
+                            {t('supplier_label')}
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell>{t('status_text')}</TableCell>
+                        <TableCell>
+                          <TableSortLabel active={orderBy === 'lastUpdated'} direction={orderBy === 'lastUpdated' ? orderDirection : 'asc'} onClick={() => handleRequestSort('lastUpdated')}>
+                            {t('last_updated')}
+                          </TableSortLabel>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>{t('actions')}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {categoryIngredients.map(ingredient => (
+                        <TableRow key={ingredient.id} sx={{ opacity: ingredient.isAvailable ? 1 : 0.6 }}>
+                          <TableCell>
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                fontWeight: 600,
+                                color: theme.palette.text.primary
+                              }}
+                            >
+                              {ingredient.name}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                fontWeight: 600,
+                                color: theme.palette.mode === 'dark' ? '#a8efe7' : '#1f5c3d' // Better contrast colors
+                              }}
+                            >
+                              {formatCurrency(ingredient.costPerUnit)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                              {ingredient.unit}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
+                              {ingredient.supplier}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <FormControlLabel control={<Switch checked={ingredient.isAvailable} onChange={() => toggleAvailability(ingredient.id)} size="small" />} label={ingredient.isAvailable ? t('available') : t('unavailable')} />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
+                              {ingredient.lastUpdated.toLocaleDateString()}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ textAlign: isRtl ? 'start' : 'end' }}>
+                            <IconButton size="small" onClick={() => handleDuplicateIngredient(ingredient)}>
+                              <DuplicateIcon />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleEditIngredient(ingredient)}>
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleDeleteIngredient(ingredient.id)}>
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )
+          })}
+          {filteredIngredients.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                {searchQuery ? t('no_ingredients_match_search') : t('no_ingredients_found')}
+              </Typography>
+            </Box>
+          )}
+        </>
       )}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
@@ -683,7 +842,7 @@ export default function Ingredients() {
           <ListItemIcon>
             <AIIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Parse Recipe with AI</ListItemText>
+          <ListItemText>{t('parse_recipe_with_ai')}</ListItemText>
         </MuiMenuItem>
         <Divider />
         <MuiMenuItem onClick={downloadTemplate}>

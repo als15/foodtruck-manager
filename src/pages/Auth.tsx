@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Container } from '@mui/material'
+import { Spin } from 'antd'
 import { LoginForm } from '../components/Auth/LoginForm'
 import { SignupForm } from '../components/Auth/SignupForm'
 import { Navigate } from 'react-router-dom'
@@ -10,7 +10,11 @@ export const Auth: React.FC = () => {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    )
   }
 
   if (user) {
@@ -18,7 +22,7 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <Container>
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
       {isLogin ? (
         <LoginForm
           onSwitchToSignup={() => setIsLogin(false)}
@@ -30,6 +34,6 @@ export const Auth: React.FC = () => {
           onSuccess={() => setIsLogin(true)}
         />
       )}
-    </Container>
+    </div>
   )
 }

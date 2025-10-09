@@ -36,12 +36,12 @@ export interface BusinessInvitation {
   createdAt: Date;
 }
 
-export interface Ingredient {
+export interface Product {
   id: string;
   businessId: string;
   name: string;
   costPerUnit: number;
-  unit: string; // e.g., "lbs", "oz", "cups", "pieces"
+  unit: string; // e.g., "lbs", "oz", "cups", "pieces", "count"
   supplier: string;
   category: string;
   isAvailable: boolean;
@@ -50,14 +50,17 @@ export interface Ingredient {
   unitsPerPackage?: number; // e.g., 12 for a box of 12 bottles
   packageType?: string; // e.g., "box", "case", "bag", "crate"
   minimumOrderQuantity?: number; // Minimum units that can be ordered
-  orderByPackage?: boolean; // Whether this ingredient must be ordered by package
+  orderByPackage?: boolean; // Whether this product must be ordered by package
 }
 
+// Legacy type alias for backwards compatibility
+export type Ingredient = Product;
+
 export interface MenuItemIngredient {
-  ingredientId: string;
+  ingredientId: string; // Still called ingredientId as it represents food products used in menu items
   quantity: number;
   unit: string;
-  cost?: number; // calculated from ingredient cost * quantity
+  cost?: number; // calculated from product cost * quantity
 }
 
 export interface MenuItem {
@@ -155,7 +158,8 @@ export interface InventoryItem {
   supplier?: string;
   lastRestocked: Date;
   reservedQuantity?: number; // quantity reserved for pending orders
-  ingredientId?: string; // link to ingredient table
+  productId?: string; // link to product table
+  ingredientId?: string; // legacy field name, same as productId
   lastMovementDate?: Date;
   disposedQuantity?: number; // quantity marked as disposed/wasted
 }
@@ -421,7 +425,8 @@ export interface LaborProjection {
 // Supplier Order Management Interfaces
 export interface SupplierOrderItem {
   id?: string;
-  ingredientId: string;
+  productId?: string;
+  ingredientId: string; // kept for backwards compatibility, represents productId
   ingredient?: {
     name: string;
     unit: string;
