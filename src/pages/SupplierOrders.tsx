@@ -592,7 +592,7 @@ export default function SupplierOrders() {
       dataIndex: 'priority',
       key: 'priority',
       sorter: true,
-      render: (priority) => <Tag color={getPriorityColor(priority)}>{priority}</Tag>
+      render: (priority) => <Tag color={getPriorityColor(priority)}>{t(priority)}</Tag>
     },
     {
       title: t('order_date'),
@@ -885,7 +885,7 @@ export default function SupplierOrders() {
               >
                 {ORDER_PRIORITIES.map(priority => (
                   <Option key={priority} value={priority}>
-                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                    {t(priority)}
                   </Option>
                 ))}
               </Select>

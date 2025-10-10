@@ -614,6 +614,7 @@ export default function Employees() {
     {
       title: t('employee'),
       key: 'employee',
+      align: isRtl ? 'right' : 'left',
       render: (_, record) => getEmployeeName(record.employeeId),
     },
     {
@@ -665,6 +666,7 @@ export default function Employees() {
     {
       title: t('employee'),
       key: 'employee',
+      align: isRtl ? 'right' : 'left',
       render: (_, record) => (
         <Space>
           <Text>{record.firstName} {record.lastName}</Text>
@@ -740,10 +742,10 @@ export default function Employees() {
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
                       <Avatar icon={<UserOutlined />} style={{ marginRight: isRtl ? 0 : 16, marginLeft: isRtl ? 16 : 0 }} />
                       <div style={{ flexGrow: 1 }}>
-                        <Title level={5} style={{ margin: 0 }}>
+                        <Title level={5} style={{ margin: 0, textAlign: isRtl ? 'right' : 'left' }}>
                           {employee.firstName} {employee.lastName}
                         </Title>
-                        <Text type="secondary">{employee.position}</Text>
+                        <Text type="secondary" style={{ display: 'block', textAlign: isRtl ? 'right' : 'left' }}>{employee.position}</Text>
                       </div>
                       <Space>
                         <Button type="text" icon={<EditOutlined />} onClick={() => handleEditEmployee(employee)} />
@@ -916,7 +918,7 @@ export default function Employees() {
                     .map(employee => {
                       const employeeSchedule = weeklySchedule[employee.id] || {}
                       const employeeCell = (
-                        <td key={`emp-${employee.id}`} style={{ padding: 8, borderBottom: '1px solid #f0f0f0' }}>
+                        <td key={`emp-${employee.id}`} style={{ padding: 8, borderBottom: '1px solid #f0f0f0', textAlign: isRtl ? 'right' : 'left' }}>
                           {employee.id.startsWith('temp-') ? (
                             <Input
                               size="small"
@@ -930,11 +932,11 @@ export default function Employees() {
                               style={{ width: 120 }}
                             />
                           ) : (
-                            <>
+                            <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
                               <Text strong>{getDisplayName(employee, employees)}</Text>
                               <br />
                               <Text type="secondary" style={{ fontSize: 12 }}>{employee.position}</Text>
-                            </>
+                            </div>
                           )}
                         </td>
                       )

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Row, Col, Card, Typography, Button, Input, Table, Tag, Space, Alert, Tabs } from 'antd'
+import { Row, Col, Card, Typography, Button, Input, Table, Tag, Space, Alert, Tabs, Select } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { PlusOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
@@ -265,16 +265,24 @@ export default function PrepPlanner() {
                   <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                       <Text>{t('select_menu_item')}</Text>
-                      <Input.Search
+                      <Select
                         placeholder={t('select_menu_item')}
-                        value={selectedMenuItem?.name || ''}
-                        onSearch={() => {}}
-                        onChange={() => {}}
-                        disabled
-                        style={{ marginTop: 8 }}
+                        value={selectedMenuItem?.id}
+                        onChange={(value) => {
+                          const item = menuItems.find(mi => mi.id === value)
+                          setSelectedMenuItem(item || null)
+                        }}
+                        style={{ marginTop: 8, width: '100%' }}
+                        showSearch
+                        filterOption={(input, option) =>
+                          (option?.label?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={menuItems.map(item => ({
+                          value: item.id,
+                          label: item.name
+                        }))}
+                        disabled={loading || menuItems.length === 0}
                       />
-                      {/* Note: Ant Design doesn't have a direct Autocomplete equivalent in the same way MUI does */}
-                      {/* For production, you'd want to use Ant Design's AutoComplete or Select with search */}
                     </div>
 
                     <div>
@@ -388,7 +396,7 @@ export default function PrepPlanner() {
                   </div>
                   <div style={{ marginTop: 4 }}>
                     <Text type="secondary" style={{ textAlign: isRtl ? 'right' : 'left', display: 'block' }}>
-                      {t('total_quantity')}: {r.totalQuantity} {r.unit}
+                      {t('total_quantity')}: {r.totalQuantity}
                     </Text>
                   </div>
                 </div>

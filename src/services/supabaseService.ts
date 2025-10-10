@@ -954,26 +954,28 @@ export const inventoryManagementService = {
       if (updateError) throw updateError;
       
       // Create transaction record (optional - skip if table doesn't exist)
-      try {
-        const transactionQuantity = type === 'adjustment' ? (newBalance - currentStock) : 
-                                    type === 'out' ? -Math.abs(quantity) : Math.abs(quantity);
-        
-        await inventoryTransactionService.create({
-          inventoryItemId,
-          type,
-          quantity: transactionQuantity,
-          reason,
-          referenceId,
-          referenceName,
-          notes,
-          unitCost: unitCost || currentItem.cost_per_unit,
-          totalValue: (unitCost || currentItem.cost_per_unit) * Math.abs(transactionQuantity),
-          balanceAfter: newBalance
-        });
-      } catch (transactionError) {
-        console.warn('Inventory transaction logging failed (table may not exist):', transactionError);
-        // Continue execution - transaction logging is optional
-      }
+      // NOTE: inventory_transactions table is not yet implemented
+      // Uncomment when table is created in database
+      // try {
+      //   const transactionQuantity = type === 'adjustment' ? (newBalance - currentStock) :
+      //                               type === 'out' ? -Math.abs(quantity) : Math.abs(quantity);
+      //
+      //   await inventoryTransactionService.create({
+      //     inventoryItemId,
+      //     type,
+      //     quantity: transactionQuantity,
+      //     reason,
+      //     referenceId,
+      //     referenceName,
+      //     notes,
+      //     unitCost: unitCost || currentItem.cost_per_unit,
+      //     totalValue: (unitCost || currentItem.cost_per_unit) * Math.abs(transactionQuantity),
+      //     balanceAfter: newBalance
+      //   });
+      // } catch (transactionError) {
+      //   console.warn('Inventory transaction logging failed (table may not exist):', transactionError);
+      //   // Continue execution - transaction logging is optional
+      // }
       
       return {
         id: updatedItem.id,

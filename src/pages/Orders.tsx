@@ -958,6 +958,245 @@ export default function Orders() {
         </Tabs>
       </Card>
 
+      {/* Add/Edit Order Dialog */}
+      <Modal
+        title={editingOrder ? t('edit_order') : t('add_order_record')}
+        open={openOrderDialog}
+        onCancel={() => {
+          setOpenOrderDialog(false)
+          resetOrderForm()
+        }}
+        onOk={handleCreateOrder}
+        cancelText={t('cancel')}
+        okText={editingOrder ? t('update') : t('create')}
+        width={900}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
+      >
+        <div style={{ marginTop: 16 }}>
+          <Row gutter={[16, 16]}>
+            {/* Customer Selection */}
+            <Col xs={24}>
+              <Text strong>{t('customer')}</Text>
+              <div style={{ marginTop: 8 }}>
+                {!showNewCustomerForm ? (
+                  <>
+                    <Select
+                      style={{ width: '100%' }}
+                      placeholder={t('select_customer')}
+                      value={selectedCustomerId || undefined}
+                      onChange={value => setSelectedCustomerId(value)}
+                      allowClear
+                    >
+                      {customers.map(customer => (
+                        <Option key={customer.id} value={customer.id}>
+                          {customer.firstName} {customer.lastName} - {customer.phone}
+                        </Option>
+                      ))}
+                    </Select>
+                    <Button type="link" onClick={() => setShowNewCustomerForm(true)} style={{ padding: 0, marginTop: 8 }}>
+                      {t('add_new_customer')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Row gutter={[8, 8]}>
+                      <Col xs={12}>
+                        <Input placeholder={t('first_name')} value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} />
+                      </Col>
+                      <Col xs={12}>
+                        <Input placeholder={t('last_name')} value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} />
+                      </Col>
+                      <Col xs={12}>
+                        <Input placeholder={t('email')} value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                      </Col>
+                      <Col xs={12}>
+                        <Input placeholder={t('phone')} value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                      </Col>
+                    </Row>
+                    <Button type="link" onClick={() => setShowNewCustomerForm(false)} style={{ padding: 0, marginTop: 8 }}>
+                      {t('select_existing_customer')}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </Col>
+
+            <Col xs={24}>
+              <Divider />
+            </Col>
+
+            {/* Menu Items Selection */}
+            <Col xs={24}>
+              <Text strong>{t('menu_items')}</Text>
+              <div style={{ marginTop: 8 }}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder={t('select_menu_item_to_add')}
+                  onChange={value => {
+                    const menuItem = menuItems.find(item => item.id === value)
+                    if (menuItem) addMenuItem(menuItem)
+                  }}
+                  showSearch
+                  filterOption={(input, option) => (option?.label?.toString() || '').toLowerCase().includes(input.toLowerCase())}
+                  options={menuItems.map(item => ({
+                    value: item.id,
+                    label: `${item.name} - ${formatCurrency(item.price)}`
+                  }))}
+                />
+              </div>
+            </Col>
+
+            {/* Order Items Table */}
+            {orderItems.length > 0 && (
+              <Col xs={24}>
+                <Table
+                  dataSource={orderItems}
+                  rowKey="menuItemId"
+                  pagination={false}
+                  size="small"
+                  columns={[
+                    {
+                      title: t('item'),
+                      dataIndex: ['menuItem', 'name'],
+                      key: 'name',
+                      align: isRtl ? 'right' : 'left'
+                    },
+                    {
+                      title: t('price'),
+                      dataIndex: 'unitPrice',
+                      key: 'unitPrice',
+                      align: isRtl ? 'left' : 'right',
+                      render: price => formatCurrency(price)
+                    },
+                    {
+                      title: t('quantity'),
+                      key: 'quantity',
+                      align: 'center',
+                      render: (_, record) => (
+                        <Input
+                          type="number"
+                          min={1}
+                          value={record.quantity}
+                          onChange={e => updateItemQuantity(record.menuItemId, parseInt(e.target.value) || 0)}
+                          style={{ width: 70, textAlign: 'center' }}
+                        />
+                      )
+                    },
+                    {
+                      title: t('total'),
+                      dataIndex: 'totalPrice',
+                      key: 'totalPrice',
+                      align: isRtl ? 'left' : 'right',
+                      render: price => formatCurrency(price)
+                    },
+                    {
+                      title: t('actions'),
+                      key: 'actions',
+                      align: 'center',
+                      render: (_, record) => (
+                        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeMenuItem(record.menuItemId)} />
+                      )
+                    }
+                  ]}
+                />
+              </Col>
+            )}
+
+            <Col xs={24}>
+              <Divider />
+            </Col>
+
+            {/* Order Details */}
+            <Col xs={24} sm={12}>
+              <Text>{t('payment_method')}</Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                value={newOrder.paymentMethod}
+                onChange={value => setNewOrder({ ...newOrder, paymentMethod: value })}
+              >
+                <Option value="cash">{t('cash')}</Option>
+                <Option value="card">{t('card')}</Option>
+                <Option value="digital_wallet">{t('digital_wallet')}</Option>
+              </Select>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Text>{t('location')}</Text>
+              <Input
+                style={{ marginTop: 4 }}
+                value={newOrder.location}
+                onChange={e => setNewOrder({ ...newOrder, location: e.target.value })}
+                placeholder={t('location')}
+              />
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Text>{t('tip_amount')}</Text>
+              <Input
+                type="number"
+                step="0.01"
+                style={{ marginTop: 4 }}
+                value={newOrder.tipAmount || 0}
+                onChange={e => setNewOrder({ ...newOrder, tipAmount: parseFloat(e.target.value) || 0 })}
+                prefix="$"
+              />
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <Text>{t('tax_rate')}</Text>
+              <Input
+                type="number"
+                step="0.01"
+                style={{ marginTop: 4 }}
+                value={(taxRate * 100).toFixed(0)}
+                onChange={e => setTaxRate(parseFloat(e.target.value) / 100 || 0)}
+                suffix="%"
+              />
+            </Col>
+
+            <Col xs={24}>
+              <Text>{t('special_instructions')}</Text>
+              <TextArea
+                style={{ marginTop: 4 }}
+                rows={2}
+                value={newOrder.specialInstructions}
+                onChange={e => setNewOrder({ ...newOrder, specialInstructions: e.target.value })}
+                placeholder={t('special_instructions')}
+              />
+            </Col>
+
+            <Col xs={24}>
+              <Divider />
+            </Col>
+
+            {/* Order Totals */}
+            <Col xs={24}>
+              <div style={{ textAlign: isRtl ? 'left' : 'right' }}>
+                <div style={{ marginBottom: 8 }}>
+                  <Text type="secondary">{t('subtotal')}: </Text>
+                  <Text strong>{formatCurrency(calculateTotals().subtotal)}</Text>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <Text type="secondary">{t('tax')}: </Text>
+                  <Text strong>{formatCurrency(calculateTotals().taxAmount)}</Text>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <Text type="secondary">{t('tip')}: </Text>
+                  <Text strong>{formatCurrency(calculateTotals().tipAmount)}</Text>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <Text strong style={{ fontSize: 16 }}>{t('total')}: </Text>
+                  <Text strong style={{ fontSize: 18 }}>{formatCurrency(calculateTotals().total)}</Text>
+                </div>
+              </div>
+            </Col>
+          </Row>
+        </div>
+      </Modal>
+
       {/* Import Dialog */}
       <Modal
         title={t('import_orders_clearing_device')}
