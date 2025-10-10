@@ -37,6 +37,11 @@ export const lightTheme: ThemeConfig = {
       borderRadius: 8,
       headerBg: '#fafafa',
     },
+    Switch: {
+      colorPrimary: '#52c41a',
+      colorPrimaryHover: '#73d13d',
+      colorPrimaryBorder: '#52c41a',
+    },
   },
 }
 
@@ -76,6 +81,11 @@ export const darkTheme: ThemeConfig = {
     Table: {
       borderRadius: 8,
       headerBg: '#1f1f1f',
+    },
+    Switch: {
+      colorPrimary: '#52c41a',
+      colorPrimaryHover: '#73d13d',
+      colorPrimaryBorder: '#52c41a',
     },
   },
   algorithm: 'darkAlgorithm' as any,

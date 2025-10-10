@@ -5,6 +5,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, PhoneOutlined
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { useBusiness } from '../contexts/BusinessContext'
 import { formatCurrency } from '../utils/currency'
 import { WEEKDAYS_ORDERED, sortDaysChronologically } from '../utils/weekdayUtils'
 
@@ -17,6 +18,7 @@ const DELIVERY_METHODS = ['pickup', 'delivery'] as const
 
 export default function Suppliers() {
   const { t, i18n } = useTranslation()
+  const { currentBusiness } = useBusiness()
   const isRtl = i18n.dir() === 'rtl'
   const [openDialog, setOpenDialog] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
@@ -45,13 +47,17 @@ export default function Suppliers() {
     isActive: true
   })
 
-  // Load suppliers on component mount
+  // Load suppliers on component mount and when business changes
   useEffect(() => {
-    loadSuppliers()
-  }, [])
+    if (currentBusiness?.id) {
+      loadSuppliers()
+    }
+  }, [currentBusiness?.id])
 
   // Set up real-time subscription
   useEffect(() => {
+    if (!currentBusiness?.id) return
+
     const subscription = subscriptions.suppliers(payload => {
       console.log('Suppliers changed:', payload)
       // Only reload if modal is not open to prevent disruption
@@ -63,7 +69,7 @@ export default function Suppliers() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [openDialog])
+  }, [currentBusiness?.id, openDialog])
 
   // Persist form data to prevent loss when switching tabs
   useEffect(() => {

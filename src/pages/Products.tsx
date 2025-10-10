@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, AutoComplete, Switch, Spin, message, Dropdown, Divider, Segmented, Statistic } from 'antd'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, AutoComplete, Switch, Spin, message, Dropdown, Divider, Segmented, Statistic, Flex } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, AppstoreOutlined, MoreOutlined, UploadOutlined, DownloadOutlined, BulbOutlined, TableOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
@@ -7,6 +7,7 @@ import { Product, Supplier } from '../types'
 import { productsService, suppliersService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
+import { useBusiness } from '../contexts/BusinessContext'
 import RecipeParser from '../components/RecipeParser'
 import { formatCurrency } from '../utils/currency'
 
@@ -14,6 +15,7 @@ const { Title, Text } = Typography
 
 export default function Products() {
   const { t, i18n } = useTranslation()
+  const { currentBusiness } = useBusiness()
   const isRtl = i18n.dir() === 'rtl'
   const [openDialog, setOpenDialog] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -44,14 +46,18 @@ export default function Products() {
     lastUpdated: new Date()
   })
 
-  // Load products and suppliers on component mount
+  // Load products and suppliers on component mount and when business changes
   useEffect(() => {
-    loadProducts()
-    loadSuppliers()
-  }, [])
+    if (currentBusiness?.id) {
+      loadProducts()
+      loadSuppliers()
+    }
+  }, [currentBusiness?.id])
 
   // Set up real-time subscription
   useEffect(() => {
+    if (!currentBusiness?.id) return
+
     const subscription = subscriptions.products(payload => {
       console.log('Products changed:', payload)
       // Reload products when changes occur
@@ -61,7 +67,7 @@ export default function Products() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [currentBusiness?.id])
 
   const loadProducts = async () => {
     try {
@@ -324,28 +330,10 @@ export default function Products() {
     }
   }
 
-  // Common product categories for autocomplete
-  const commonCategories = [
-    // Food Products
-    'Meat', 'Vegetables', 'Fruits', 'Dairy', 'Grains', 'Spices', 'Condiments', 'Seafood', 'Pantry', 'Beverages', 'Oils', 'Nuts', 'Herbs', 'Baking',
-    // Disposables
-    'Disposables - Cups & Lids', 'Disposables - Plates & Bowls', 'Disposables - Utensils', 'Disposables - Napkins & Towels', 'Disposables - Straws', 'Disposables - Bags',
-    // Packaging
-    'Packaging - Takeout Containers', 'Packaging - Food Wrapping', 'Packaging - Labels & Stickers',
-    // Cleaning Supplies
-    'Cleaning - Sanitizers', 'Cleaning - Soaps & Detergents', 'Cleaning - Gloves', 'Cleaning - Towels & Wipes', 'Cleaning - Disinfectants',
-    // Operational Supplies
-    'Operational - Propane & Fuel', 'Operational - Paper Products', 'Operational - Office Supplies',
-    // Equipment & Parts
-    'Equipment - Replacement Parts', 'Equipment - Tools', 'Equipment - Maintenance Items'
-  ]
-
-  const existingCategories = Array.from(new Set(products.map(p => p.category)))
-  // Keep allCategories for autocomplete (includes common + existing)
-  const allCategories = commonCategories.concat(existingCategories)
-  const categoriesForAutocomplete = Array.from(new Set(allCategories)).sort()
-  // Only show categories that actually have products
-  const categories = existingCategories.sort()
+  // Only use existing categories from user's products
+  const existingCategories = Array.from(new Set(products.map(p => p.category).filter(c => c)))
+  const categoriesForAutocomplete = existingCategories.sort()
+  const categories = existingCategories
 
   const supplierNames = suppliers.map(supplier => supplier.name).sort()
 
@@ -615,9 +603,13 @@ export default function Products() {
         okText={editingProduct ? t('update_ingredient') : t('add_ingredient')}
         cancelText={t('cancel')}
         width={600}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
       >
-        <div style={{ marginTop: 16 }}>
-          <Row gutter={[16, 16]}>
+        <div style={{ marginTop: 16, direction: isRtl ? 'rtl' : 'ltr' }}>
+          <Row gutter={[16, 16]} style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
             <Col span={24}>
               <Text>{t('ingredient_name')}</Text>
               <Input
@@ -666,7 +658,7 @@ export default function Products() {
               />
             </Col>
             <Col span={24}>
-              <Divider orientation="left">{t('packaging_information')}</Divider>
+              <Divider orientation={isRtl ? 'right' : 'left'}>{t('packaging_information')}</Divider>
             </Col>
             <Col span={12}>
               <Text>{t('units_per_package')}</Text>
@@ -699,19 +691,23 @@ export default function Products() {
             </Col>
             <Col span={12}>
               <div style={{ marginTop: 32 }}>
-                <Switch
-                  checked={newProduct.orderByPackage || false}
-                  onChange={checked => setNewProduct({ ...newProduct, orderByPackage: checked })}
-                />
-                <Text style={{ marginLeft: 8 }}>{t('order_by_package')}</Text>
+                <Space direction="horizontal" style={{ width: '100%', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
+                  <Switch
+                    checked={newProduct.orderByPackage || false}
+                    onChange={checked => setNewProduct({ ...newProduct, orderByPackage: checked })}
+                  />
+                  <Text>{t('order_by_package')}</Text>
+                </Space>
               </div>
             </Col>
             <Col span={24}>
-              <Switch
-                checked={newProduct.isAvailable}
-                onChange={checked => setNewProduct({ ...newProduct, isAvailable: checked })}
-              />
-              <Text style={{ marginLeft: 8 }}>{t('available')}</Text>
+              <Space direction="horizontal" style={{ width: '100%', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
+                <Switch
+                  checked={newProduct.isAvailable}
+                  onChange={checked => setNewProduct({ ...newProduct, isAvailable: checked })}
+                />
+                <Text>{t('available')}</Text>
+              </Space>
             </Col>
           </Row>
         </div>
@@ -724,8 +720,12 @@ export default function Products() {
         onCancel={() => setImportDialogOpen(false)}
         okText={t('continue')}
         cancelText={t('cancel')}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
       >
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, direction: isRtl ? 'rtl' : 'ltr' }}>
           <Text>{t('supplier_label')}</Text>
           <AutoComplete
             style={{ marginTop: 8, width: '100%' }}

@@ -345,15 +345,10 @@ export default function Ingredients() {
     }
   }
 
-  // Common ingredient categories for autocomplete
-  const commonCategories = ['Meat', 'Vegetables', 'Fruits', 'Dairy', 'Grains', 'Spices', 'Condiments', 'Seafood', 'Pantry', 'Beverages', 'Oils', 'Nuts', 'Herbs', 'Baking']
-
-  const existingCategories = Array.from(new Set(ingredients.map(ing => ing.category)))
-  // Keep allCategories for autocomplete (includes common + existing)
-  const allCategories = commonCategories.concat(existingCategories)
-  const categoriesForAutocomplete = Array.from(new Set(allCategories)).sort()
-  // Only show categories that actually have ingredients
-  const categories = existingCategories.sort()
+  // Only use existing categories from user's ingredients
+  const existingCategories = Array.from(new Set(ingredients.map(ing => ing.category).filter(c => c)))
+  const categoriesForAutocomplete = existingCategories.sort()
+  const categories = existingCategories
 
   const supplierNames = suppliers.map(supplier => supplier.name).sort()
 

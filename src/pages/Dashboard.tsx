@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons'
 import { inventoryService, suppliersService, ordersService, transactionsService, employeesService, shiftsService, menuItemsService, customersService, financialGoalsService } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
+import { useBusiness } from '../contexts/BusinessContext'
 import { InventoryItem, Supplier, Order, Transaction, Employee, Shift, MenuItem, Customer, FinancialGoal } from '../types'
 import { formatCurrency } from '../utils/currency'
 
@@ -45,6 +46,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation()
+  const { currentBusiness } = useBusiness()
   const isRtl = i18n.dir() === 'rtl'
   const [loading, setLoading] = useState(true)
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
@@ -58,8 +60,10 @@ export default function Dashboard() {
   const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>([])
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (currentBusiness?.id) {
+      loadData()
+    }
+  }, [currentBusiness?.id])
 
   const loadData = async () => {
     try {

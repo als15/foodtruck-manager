@@ -959,7 +959,18 @@ export default function Orders() {
       </Card>
 
       {/* Import Dialog */}
-      <Modal title={t('import_orders_clearing_device')} open={openImportDialog} onCancel={() => setOpenImportDialog(false)} onOk={handleImportOrders} width={800}>
+      <Modal
+        title={t('import_orders_clearing_device')}
+        open={openImportDialog}
+        onCancel={() => setOpenImportDialog(false)}
+        onOk={handleImportOrders}
+        cancelText={t('cancel')}
+        width={800}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
+      >
         <div style={{ marginBottom: 16 }}>
           <Text>{t('clearing_device_import_instructions')}</Text>
         </div>

@@ -7,6 +7,7 @@ import { MenuItem, Ingredient, MenuItemIngredient } from '../types'
 import { menuItemsService, ingredientsService, menuCategoriesService, subscriptions } from '../services/supabaseService'
 import Papa from 'papaparse'
 import { useTranslation } from 'react-i18next'
+import { useBusiness } from '../contexts/BusinessContext'
 import { formatCurrency } from '../utils/currency'
 
 const { Title, Text, Paragraph } = Typography
@@ -19,6 +20,7 @@ type FilterType = 'all' | 'available' | 'unavailable' | 'profitable' | 'low-marg
 
 export default function MenuManagement() {
   const { t, i18n } = useTranslation()
+  const { currentBusiness } = useBusiness()
   const isRtl = i18n.dir() === 'rtl'
 
   // State
@@ -35,6 +37,7 @@ export default function MenuManagement() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [categories, setCategories] = useState<string[]>([])
+  const [editingQuantities, setEditingQuantities] = useState<{[key: number]: string}>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
@@ -51,15 +54,19 @@ export default function MenuManagement() {
     prepTime: 5
   })
 
-  // Load data on component mount
+  // Load data on component mount and when business changes
   useEffect(() => {
-    loadData()
-    loadCategories()
+    if (currentBusiness?.id) {
+      loadData()
+      loadCategories()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentBusiness?.id])
 
   // Set up real-time subscriptions
   useEffect(() => {
+    if (!currentBusiness?.id) return
+
     const menuSubscription = subscriptions.menuItems(payload => {
       console.log('Menu items changed:', payload)
       loadMenuItems()
@@ -74,7 +81,7 @@ export default function MenuManagement() {
       menuSubscription.unsubscribe()
       ingredientSubscription.unsubscribe()
     }
-  }, [])
+  }, [currentBusiness?.id])
 
   const loadData = async () => {
     await Promise.all([loadMenuItems(), loadIngredients()])
@@ -650,6 +657,7 @@ export default function MenuManagement() {
     {
       title: t('ingredient'),
       key: 'ingredient',
+      align: isRtl ? 'right' : 'left',
       render: (_: any, record: any, index: number) => (
         <Select
           style={{ width: '100%' }}
@@ -674,20 +682,54 @@ export default function MenuManagement() {
       title: t('quantity'),
       key: 'quantity',
       width: 120,
-      render: (_: any, record: any, index: number) => (
-        <Input
-          type="number"
-          size="small"
-          value={record.quantity}
-          onChange={e => updateIngredientInItem(index, 'quantity', parseFloat(e.target.value))}
-          step="0.01"
-        />
-      )
+      align: isRtl ? 'right' : 'left',
+      render: (_: any, record: any, index: number) => {
+        const displayValue = editingQuantities[index] !== undefined
+          ? editingQuantities[index]
+          : String(record.quantity || '')
+
+        return (
+          <Input
+            type="text"
+            size="small"
+            value={displayValue}
+            onChange={e => {
+              const value = e.target.value
+              // Allow empty, numbers, and decimal points during typing
+              if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                // Store the raw string value for display
+                setEditingQuantities(prev => ({ ...prev, [index]: value }))
+                // Parse and update the actual value
+                const numValue = parseFloat(value)
+                if (!isNaN(numValue)) {
+                  updateIngredientInItem(index, 'quantity', numValue)
+                } else if (value === '') {
+                  updateIngredientInItem(index, 'quantity', 0)
+                }
+              }
+            }}
+            onBlur={() => {
+              // Clear editing state on blur
+              setEditingQuantities(prev => {
+                const newState = { ...prev }
+                delete newState[index]
+                return newState
+              })
+              // Ensure we have a valid number
+              if (!record.quantity || record.quantity === 0) {
+                updateIngredientInItem(index, 'quantity', 0)
+              }
+            }}
+            placeholder="0.000"
+          />
+        )
+      }
     },
     {
       title: t('unit'),
       key: 'unit',
       width: 100,
+      align: isRtl ? 'right' : 'left',
       render: (_: any, record: any, index: number) => (
         <Input size="small" value={record.unit} onChange={e => updateIngredientInItem(index, 'unit', e.target.value)} placeholder="unit" />
       )
@@ -808,8 +850,21 @@ export default function MenuManagement() {
       <FloatButton icon={<PlusOutlined />} type="primary" onClick={() => setOpenDialog(true)} />
 
       {/* Add/Edit Dialog */}
-      <Modal title={editingItem ? t('edit_menu_item') : t('add_new_menu_item')} open={openDialog} onOk={handleSaveItem} onCancel={() => setOpenDialog(false)} width={1000} okText={editingItem ? t('update_item') : t('add_item')}>
-        <Row gutter={[16, 16]}>
+      <Modal
+        title={editingItem ? t('edit_menu_item') : t('add_new_menu_item')}
+        open={openDialog}
+        onOk={handleSaveItem}
+        onCancel={() => setOpenDialog(false)}
+        width={1000}
+        okText={editingItem ? t('update_item') : t('add_item')}
+        cancelText={t('cancel')}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
+      >
+        <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+        <Row gutter={[16, 16]} style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
           <Col xs={24} sm={12}>
             <Input placeholder={t('item_name')} value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
           </Col>
@@ -835,8 +890,8 @@ export default function MenuManagement() {
           </Col>
 
           <Col xs={24}>
-            <Divider>{t('ingredients')}</Divider>
-            <Space style={{ marginBottom: 12 }}>
+            <Divider orientation={isRtl ? 'right' : 'left'}>{t('ingredients')}</Divider>
+            <Space style={{ marginBottom: 12, width: '100%', justifyContent: isRtl ? 'flex-end' : 'flex-start' }} wrap direction={isRtl ? 'horizontal' : 'horizontal'}>
               <Tooltip title={t('download_template_tooltip')}>
                 <Button size="small" icon={<DownloadOutlined />} onClick={downloadIngredientsTemplate}>
                   {t('download_template')}
@@ -852,9 +907,16 @@ export default function MenuManagement() {
 
             {newItem.ingredients && newItem.ingredients.length > 0 && (
               <>
-                <Table columns={ingredientColumns} dataSource={newItem.ingredients} rowKey={(_, index) => index!} pagination={false} size="small" />
-                <Card size="small" style={{ marginTop: 12, backgroundColor: 'var(--ant-color-bg-container-secondary)' }}>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Table
+                  columns={ingredientColumns}
+                  dataSource={newItem.ingredients}
+                  rowKey={(_, index) => index!}
+                  pagination={false}
+                  size="small"
+                  style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+                />
+                <Card size="small" style={{ marginTop: 12, backgroundColor: 'var(--ant-color-bg-container-secondary)', direction: isRtl ? 'rtl' : 'ltr' }}>
+                  <Space style={{ width: '100%', justifyContent: 'space-between', direction: isRtl ? 'rtl' : 'ltr' }}>
                     <Text strong>{t('total_ingredient_cost')}:</Text>
                     <Text strong type="warning">
                       {formatCurrency(calculateTotalIngredientCost(newItem.ingredients))}
@@ -868,16 +930,16 @@ export default function MenuManagement() {
               <Alert
                 type="info"
                 message={
-                  <Space direction="vertical" size={0}>
+                  <Space direction="vertical" size={0} style={{ width: '100%', textAlign: isRtl ? 'right' : 'left' }}>
                     <Text>
-                      Profit Margin: <Text strong>{calculateProfitMargin(newItem.price, calculateTotalIngredientCost(newItem.ingredients)).toFixed(1)}%</Text>
+                      {t('profit_margin')}: <Text strong>{calculateProfitMargin(newItem.price, calculateTotalIngredientCost(newItem.ingredients)).toFixed(1)}%</Text>
                     </Text>
                     <Text>
-                      Profit per Item: <Text strong>{formatCurrency(newItem.price - calculateTotalIngredientCost(newItem.ingredients))}</Text>
+                      {t('profit_per_item')}: <Text strong>{formatCurrency(newItem.price - calculateTotalIngredientCost(newItem.ingredients))}</Text>
                     </Text>
                   </Space>
                 }
-                style={{ marginTop: 12 }}
+                style={{ marginTop: 12, direction: isRtl ? 'rtl' : 'ltr' }}
               />
             )}
           </Col>
@@ -886,16 +948,31 @@ export default function MenuManagement() {
             <Input placeholder={t('allergens_comma_separated')} value={newItem.allergens?.join(', ') || ''} onChange={e => handleAllergenChange(e.target.value)} />
           </Col>
           <Col xs={24}>
-            <Switch checked={newItem.isAvailable} onChange={checked => setNewItem({ ...newItem, isAvailable: checked })} />
-            <Text style={{ marginLeft: 8 }}>{t('available')}</Text>
+            <Space direction="horizontal" style={{ width: '100%', justifyContent: isRtl ? 'flex-end' : 'flex-start' }}>
+              <Switch checked={newItem.isAvailable} onChange={checked => setNewItem({ ...newItem, isAvailable: checked })} />
+              <Text>{t('available')}</Text>
+            </Space>
           </Col>
         </Row>
+        </div>
       </Modal>
 
       <input type="file" ref={fileInputRef} accept=".csv" style={{ display: 'none' }} onChange={handleIngredientsFileImport} />
 
       {/* Category Add/Edit Dialog */}
-      <Modal title={editingCategory ? t('edit_category') : t('add_category')} open={categoryDialogOpen} onOk={handleSaveCategory} onCancel={() => setCategoryDialogOpen(false)} okText={editingCategory ? t('update') : t('add')} okButtonProps={{ disabled: !newCategoryName.trim() }}>
+      <Modal
+        title={editingCategory ? t('edit_category') : t('add_category')}
+        open={categoryDialogOpen}
+        onOk={handleSaveCategory}
+        onCancel={() => setCategoryDialogOpen(false)}
+        okText={editingCategory ? t('update') : t('add')}
+        cancelText={t('cancel')}
+        okButtonProps={{ disabled: !newCategoryName.trim() }}
+        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        styles={{
+          footer: { textAlign: isRtl ? 'left' : 'right', direction: isRtl ? 'rtl' : 'ltr' }
+        }}
+      >
         <Input placeholder={t('category_name')} value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} style={{ marginTop: 16 }} />
         {editingCategory && (
           <Alert type="info" message={t('note_editing_category_will_update_items')} style={{ marginTop: 16 }} showIcon />
