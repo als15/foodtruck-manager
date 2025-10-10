@@ -11,6 +11,7 @@ import {
 import { useBusiness } from '../contexts/BusinessContext';
 import { supabase } from '../lib/supabase';
 import { UserBusiness, BusinessInvitation } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -22,6 +23,7 @@ interface TeamMember extends UserBusiness {
 
 const TeamManagement: React.FC = () => {
   const { currentBusiness, userRole } = useBusiness();
+  const { t } = useTranslation();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<BusinessInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ const TeamManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading team data:', error);
-      message.error('Failed to load team data');
+      message.error(t('failed_to_load_team_data'));
     } finally {
       setLoading(false);
     }
@@ -121,7 +123,7 @@ const TeamManagement: React.FC = () => {
       await navigator.clipboard.writeText(inviteLink);
 
       Modal.success({
-        title: 'Invitation Created!',
+        title: t('invitation_created'),
         content: `The invitation link has been copied to your clipboard. Send this link to ${inviteForm.email}:\n\n${inviteLink}`
       });
 
@@ -130,7 +132,7 @@ const TeamManagement: React.FC = () => {
       loadTeamData();
     } catch (error) {
       console.error('Error creating invitation:', error);
-      message.error('Failed to create invitation');
+      message.error(t('failed_to_create_invitation'));
     }
   };
 
@@ -146,13 +148,13 @@ const TeamManagement: React.FC = () => {
 
       if (error) throw error;
 
-      message.success('Role updated successfully');
+      message.success(t('role_updated_successfully'));
       setEditDialogOpen(false);
       setSelectedMember(null);
       loadTeamData();
     } catch (error) {
       console.error('Error updating role:', error);
-      message.error('Failed to update role');
+      message.error(t('failed_to_update_role'));
     }
   };
 
@@ -160,7 +162,7 @@ const TeamManagement: React.FC = () => {
     if (!currentBusiness) return;
 
     Modal.confirm({
-      title: 'Remove Team Member',
+      title: t('remove_team_member'),
       content: 'Are you sure you want to remove this team member?',
       onOk: async () => {
         try {
@@ -172,11 +174,11 @@ const TeamManagement: React.FC = () => {
 
           if (error) throw error;
 
-          message.success('Team member removed successfully');
+          message.success(t('team_member_removed_successfully'));
           loadTeamData();
         } catch (error) {
           console.error('Error removing member:', error);
-          message.error('Failed to remove member');
+          message.error(t('failed_to_remove_member'));
         }
       }
     });
@@ -184,7 +186,7 @@ const TeamManagement: React.FC = () => {
 
   const handleCancelInvitation = async (invitationId: string) => {
     Modal.confirm({
-      title: 'Cancel Invitation',
+      title: t('cancel_invitation'),
       content: 'Are you sure you want to cancel this invitation?',
       onOk: async () => {
         try {
@@ -195,11 +197,11 @@ const TeamManagement: React.FC = () => {
 
           if (error) throw error;
 
-          message.success('Invitation cancelled successfully');
+          message.success(t('invitation_cancelled_successfully'));
           loadTeamData();
         } catch (error) {
           console.error('Error canceling invitation:', error);
-          message.error('Failed to cancel invitation');
+          message.error(t('failed_to_cancel_invitation'));
         }
       }
     });
@@ -217,25 +219,25 @@ const TeamManagement: React.FC = () => {
 
   const memberColumns: ColumnsType<TeamMember> = [
     {
-      title: 'Name/Email',
+      title: t('name_email'),
       dataIndex: 'name',
       key: 'name',
       render: (text, record) => record.name || record.email
     },
     {
-      title: 'Role',
+      title: t('role'),
       dataIndex: 'role',
       key: 'role',
-      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{role}</span>
+      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{t(role)}</span>
     },
     {
-      title: 'Joined',
+      title: t('joined'),
       dataIndex: 'joinedAt',
       key: 'joinedAt',
       render: (date) => date.toLocaleDateString()
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       align: 'right',
       render: (_, record) => (
@@ -263,24 +265,24 @@ const TeamManagement: React.FC = () => {
 
   const invitationColumns: ColumnsType<BusinessInvitation> = [
     {
-      title: 'Email',
+      title: t('email'),
       dataIndex: 'email',
       key: 'email'
     },
     {
-      title: 'Role',
+      title: t('role'),
       dataIndex: 'role',
       key: 'role',
-      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{role}</span>
+      render: (role) => <span style={{ color: getRoleColor(role), textTransform: 'capitalize' }}>{t(role)}</span>
     },
     {
-      title: 'Expires',
+      title: t('expires'),
       dataIndex: 'expiresAt',
       key: 'expiresAt',
       render: (date) => date.toLocaleDateString()
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       align: 'right',
       render: (_, record) => (
@@ -291,7 +293,7 @@ const TeamManagement: React.FC = () => {
             onClick={async () => {
               const link = `${window.location.origin}/invite/${record.token}`;
               await navigator.clipboard.writeText(link);
-              message.success('Invitation link copied to clipboard!');
+              message.success(t('invitation_link_copied'));
             }}
           />
           <Button
@@ -309,8 +311,8 @@ const TeamManagement: React.FC = () => {
     return (
       <div style={{ padding: 24 }}>
         <Alert
-          message="Access Denied"
-          description="You don't have permission to manage team members. Only owners and admins can access this page."
+          message={t('access_denied')}
+          description={t('no_permission_manage_team')}
           type="warning"
           showIcon
         />
@@ -329,18 +331,18 @@ const TeamManagement: React.FC = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={4}>Team Management</Title>
+        <Title level={4}>{t('team_management')}</Title>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setInviteDialogOpen(true)}
         >
-          Invite Team Member
+          {t('invite_team_member')}
         </Button>
       </div>
 
       {/* Team Members */}
-      <Card title="Team Members" style={{ marginBottom: 24 }}>
+      <Card title={t('team_members')} style={{ marginBottom: 24 }}>
         <Table
           columns={memberColumns}
           dataSource={teamMembers}
@@ -351,7 +353,7 @@ const TeamManagement: React.FC = () => {
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (
-        <Card title="Pending Invitations">
+        <Card title={t('pending_invitations')}>
           <Table
             columns={invitationColumns}
             dataSource={invitations}
@@ -363,35 +365,35 @@ const TeamManagement: React.FC = () => {
 
       {/* Invite Dialog */}
       <Modal
-        title="Invite Team Member"
+        title={t('invite_team_member')}
         open={inviteDialogOpen}
         onOk={handleInvite}
         onCancel={() => setInviteDialogOpen(false)}
-        okText="Send Invitation"
+        okText={t('send_invitation')}
         okButtonProps={{ icon: <SendOutlined /> }}
       >
         <Space direction="vertical" style={{ width: '100%', paddingTop: 16 }} size="middle">
           <div>
-            <Text>Email</Text>
+            <Text>{t('email')}</Text>
             <Input
               type="email"
               value={inviteForm.email}
               onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-              placeholder="Enter email address"
+              placeholder={t('enter_email_address')}
               style={{ marginTop: 8 }}
             />
           </div>
           <div>
-            <Text>Role</Text>
+            <Text>{t('role')}</Text>
             <Select
               value={inviteForm.role}
               onChange={(value) => setInviteForm({ ...inviteForm, role: value })}
               style={{ width: '100%', marginTop: 8 }}
             >
-              <Option value="member">Member</Option>
-              <Option value="admin">Admin</Option>
-              {userRole === 'owner' && <Option value="owner">Owner</Option>}
-              <Option value="viewer">Viewer</Option>
+              <Option value="member">{t('member')}</Option>
+              <Option value="admin">{t('admin')}</Option>
+              {userRole === 'owner' && <Option value="owner">{t('owner')}</Option>}
+              <Option value="viewer">{t('viewer')}</Option>
             </Select>
           </div>
         </Space>
@@ -399,23 +401,23 @@ const TeamManagement: React.FC = () => {
 
       {/* Edit Role Dialog */}
       <Modal
-        title="Update Role"
+        title={t('update_role')}
         open={editDialogOpen}
         onOk={handleUpdateRole}
         onCancel={() => setEditDialogOpen(false)}
-        okText="Update Role"
+        okText={t('update_role')}
       >
         <div style={{ paddingTop: 16 }}>
-          <Text>Role</Text>
+          <Text>{t('role')}</Text>
           <Select
             value={selectedMember?.role || 'member'}
             onChange={(value) => setSelectedMember({ ...selectedMember!, role: value })}
             style={{ width: '100%', marginTop: 8 }}
           >
-            <Option value="member">Member</Option>
-            <Option value="admin">Admin</Option>
-            {userRole === 'owner' && <Option value="owner">Owner</Option>}
-            <Option value="viewer">Viewer</Option>
+            <Option value="member">{t('member')}</Option>
+            <Option value="admin">{t('admin')}</Option>
+            {userRole === 'owner' && <Option value="owner">{t('owner')}</Option>}
+            <Option value="viewer">{t('viewer')}</Option>
           </Select>
         </div>
       </Modal>

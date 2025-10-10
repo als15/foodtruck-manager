@@ -1,19 +1,10 @@
 import React, { useState } from 'react'
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Link,
-  CircularProgress,
-  IconButton,
-  InputAdornment
-} from '@mui/material'
-import { Visibility, VisibilityOff } from '@mui/icons-material'
+import { Card, Form, Input, Button, Typography, Alert, Space, Divider } from 'antd'
+import { MailOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from 'react-i18next'
+
+const { Title, Text, Link } = Typography
 
 interface LoginFormProps {
   onSwitchToSignup: () => void
@@ -21,102 +12,127 @@ interface LoginFormProps {
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSuccess }) => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { signIn } = useAuth()
   const { t } = useTranslation()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (values: any) => {
     setLoading(true)
     setError(null)
 
     try {
-      const { error } = await signIn(email, password)
+      const { error } = await signIn(values.email, values.password)
       if (error) {
         setError(error.message)
       } else {
         onSuccess?.()
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      setError(t('unexpected_error'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 400, mx: 'auto', mt: 8 }}>
-      <Typography variant="h4" component="h1" gutterBottom align="center">
-        {t('login')}
-      </Typography>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '24px'
+    }}>
+      <Card
+        style={{
+          maxWidth: 450,
+          width: '100%',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
+            <Title level={2} style={{ marginBottom: 8, color: '#667eea' }}>
+              {t('welcome_back')}
+            </Title>
+            <Text type="secondary">
+              {t('login_to_your_account')}
+            </Text>
+          </div>
 
-      <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-        <TextField
-          fullWidth
-          label={t('email')}
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          sx={{ mb: 2 }}
-          disabled={loading}
-        />
-        
-        <TextField
-          fullWidth
-          label={t('password')}
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          sx={{ mb: 3 }}
-          disabled={loading}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  onClick={() => setShowPassword(!showPassword)}
-                  edge="end"
-                  disabled={loading}
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            )
-          }}
-        />
+          {error && (
+            <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} />
+          )}
 
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-          sx={{ mb: 2 }}
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={24} /> : t('login')}
-        </Button>
-
-        <Box textAlign="center">
-          <Link
-            component="button"
-            type="button"
-            onClick={onSwitchToSignup}
-            disabled={loading}
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            size="large"
+            requiredMark={false}
           >
-            {t('dont_have_account')}
-          </Link>
-        </Box>
-      </Box>
-    </Paper>
+            <Form.Item
+              name="email"
+              label={t('email')}
+              rules={[
+                { required: true, message: t('please_enter_email') },
+                { type: 'email', message: t('please_enter_valid_email') }
+              ]}
+            >
+              <Input
+                prefix={<MailOutlined style={{ color: 'rgba(0,0,0,.25)' }} />}
+                placeholder={t('email')}
+                disabled={loading}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="password"
+              label={t('password')}
+              rules={[
+                { required: true, message: t('please_enter_password') }
+              ]}
+            >
+              <Input.Password
+                prefix={<LockOutlined style={{ color: 'rgba(0,0,0,.25)' }} />}
+                placeholder={t('password')}
+                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                disabled={loading}
+              />
+            </Form.Item>
+
+            <Form.Item style={{ marginBottom: 8 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={loading}
+                size="large"
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  height: 48
+                }}
+              >
+                {t('login')}
+              </Button>
+            </Form.Item>
+          </Form>
+
+          <Divider />
+
+          <div style={{ textAlign: 'center' }}>
+            <Text type="secondary">
+              {t('dont_have_account_question')}{' '}
+              <Link onClick={onSwitchToSignup} disabled={loading}>
+                {t('signup')}
+              </Link>
+            </Text>
+          </div>
+        </Space>
+      </Card>
+    </div>
   )
 }

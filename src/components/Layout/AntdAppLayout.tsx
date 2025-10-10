@@ -1,13 +1,16 @@
 import React, { useState } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Space, Button, Grid } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Space, Button, Grid, Typography, Modal, Form, Input, Select, message } from 'antd'
 import type { MenuProps } from 'antd'
-import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, ShoppingCartOutlined, DollarOutlined, ShopOutlined, TeamOutlined, AppstoreOutlined, UserOutlined, TruckOutlined, BarChartOutlined, SettingOutlined, LogoutOutlined, UserOutlined as ProfileIcon, CoffeeOutlined, CalculatorOutlined, AccountBookOutlined } from '@ant-design/icons'
+import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, ShoppingCartOutlined, DollarOutlined, ShopOutlined, TeamOutlined, AppstoreOutlined, UserOutlined, TruckOutlined, BarChartOutlined, SettingOutlined, LogoutOutlined, UserOutlined as ProfileIcon, CoffeeOutlined, CalculatorOutlined, AccountBookOutlined, CheckOutlined, PlusOutlined, BuildOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '../LanguageSwitcher'
 import DarkModeToggle from '../DarkModeToggle'
 import { useAuth } from '../../contexts/AuthContext'
-import { BusinessSelector } from '../Business/BusinessSelector'
+import { useBusiness } from '../../contexts/BusinessContext'
+
+const { Text } = Typography
+const { Option } = Select
 
 const { Header, Sider, Content } = Layout
 const { useBreakpoint } = Grid
@@ -21,10 +24,14 @@ type MenuItem = Required<MenuProps>['items'][number]
 const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
+  const [isCreateBusinessModalOpen, setIsCreateBusinessModalOpen] = useState(false)
+  const [createBusinessLoading, setCreateBusinessLoading] = useState(false)
+  const [form] = Form.useForm()
   const navigate = useNavigate()
   const location = useLocation()
   const { t, i18n } = useTranslation()
   const { user, signOut } = useAuth()
+  const { currentBusiness, userBusinesses, switchBusiness, userRole, createBusiness } = useBusiness()
   const screens = useBreakpoint()
   const isMobile = !screens.md
   const isRtl = i18n.dir() === 'rtl'
@@ -34,18 +41,116 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
     navigate('/login')
   }
 
+  const handleCreateBusiness = async (values: any) => {
+    setCreateBusinessLoading(true)
+    try {
+      await createBusiness({
+        name: values.name,
+        email: values.email || '',
+        phone: values.phone || '',
+        address: values.address || '',
+        taxId: values.taxId || '',
+        currency: values.currency || 'USD',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
+      message.success(t('business_created_successfully'))
+      setIsCreateBusinessModalOpen(false)
+      form.resetFields()
+    } catch (error) {
+      console.error('Error creating business:', error)
+      message.error(t('failed_to_create_business'))
+    } finally {
+      setCreateBusinessLoading(false)
+    }
+  }
+
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      owner: t('owner'),
+      admin: t('admin'),
+      member: t('member'),
+      viewer: t('viewer')
+    }
+    return labels[role] || role
+  }
+
   // User dropdown menu
   const userMenuItems: MenuProps['items'] = [
-    {
-      key: 'profile',
-      icon: <ProfileIcon />,
-      label: t('profile'),
-      onClick: () => navigate('/profile')
+    // Current Business Section
+    currentBusiness && {
+      key: 'current-business',
+      type: 'group',
+      label: t('current_business'),
+      children: [
+        {
+          key: 'business-info',
+          icon: <BuildOutlined />,
+          label: (
+            <div>
+              <div style={{ fontWeight: 500 }}>{currentBusiness.name}</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {getRoleLabel(userRole || '')}
+              </Text>
+            </div>
+          ),
+          disabled: true
+        }
+      ]
+    },
+    // Business Switcher
+    userBusinesses.length > 1 && {
+      type: 'divider'
+    },
+    userBusinesses.length > 1 && {
+      key: 'switch-business',
+      type: 'group',
+      label: t('switch_business'),
+      children: userBusinesses
+        .filter(ub => ub.businessId !== currentBusiness?.id)
+        .map(ub => ({
+          key: `business-${ub.businessId}`,
+          icon: ub.businessId === currentBusiness?.id ? <CheckOutlined /> : <BuildOutlined />,
+          label: (
+            <div>
+              <div>{(ub as any).business?.name || 'Unknown Business'}</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {getRoleLabel(ub.role)}
+              </Text>
+            </div>
+          ),
+          onClick: () => switchBusiness(ub.businessId)
+        }))
     },
     {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: t('settings'),
+      type: 'divider'
+    },
+    {
+      key: 'create-business',
+      icon: <PlusOutlined />,
+      label: t('create_new_business'),
+      onClick: () => setIsCreateBusinessModalOpen(true)
+    },
+    userRole &&
+      ['owner', 'admin'].includes(userRole) && {
+        key: 'manage-team',
+        icon: <TeamOutlined />,
+        label: t('manage_team'),
+        onClick: () => navigate('/team')
+      },
+    userRole &&
+      ['owner', 'admin'].includes(userRole) && {
+        key: 'business-settings',
+        icon: <SettingOutlined />,
+        label: t('business_settings'),
+        onClick: () => navigate('/settings/business')
+      },
+    {
+      type: 'divider'
+    },
+    {
+      key: 'account-settings',
+      icon: <UserOutlined />,
+      label: t('account_settings'),
       onClick: () => navigate('/settings')
     },
     {
@@ -58,7 +163,7 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
       onClick: handleSignOut,
       danger: true
     }
-  ]
+  ].filter(Boolean) as MenuProps['items']
 
   // Navigation menu items
   const navigationItems: MenuItem[] = [
@@ -197,13 +302,6 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
         <h2 style={{ color: '#7fd3c7', margin: 0, fontSize: collapsed ? 18 : 20 }}>{collapsed ? 'FT' : 'NomNom'}</h2>
       </div>
 
-      {/* Business Selector */}
-      {!collapsed && (
-        <div style={{ padding: '16px 12px' }}>
-          <BusinessSelector />
-        </div>
-      )}
-
       {/* Navigation Menu */}
       <Menu mode="inline" selectedKeys={getSelectedKeys()} defaultOpenKeys={getDefaultOpenKeys()} items={navigationItems} style={{ flex: 1, borderRight: 0 }} theme="dark" />
     </div>
@@ -242,10 +340,7 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
             overflow: 'auto',
             height: '100vh',
             position: 'fixed',
-            ...(isRtl
-              ? { right: mobileDrawerOpen ? 0 : -240, transition: 'right 0.3s ease' }
-              : { left: mobileDrawerOpen ? 0 : -240, transition: 'left 0.3s ease' }
-            ),
+            ...(isRtl ? { right: mobileDrawerOpen ? 0 : -240, transition: 'right 0.3s ease' } : { left: mobileDrawerOpen ? 0 : -240, transition: 'left 0.3s ease' }),
             top: 0,
             bottom: 0,
             zIndex: 1000
@@ -271,12 +366,11 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
         />
       )}
 
-      <Layout style={{
-        ...(isRtl
-          ? { marginRight: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-right 0.2s' }
-          : { marginLeft: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-left 0.2s' }
-        )
-      }}>
+      <Layout
+        style={{
+          ...(isRtl ? { marginRight: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-right 0.2s' } : { marginLeft: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-left 0.2s' })
+        }}
+      >
         {/* Header */}
         <Header
           style={{
@@ -331,6 +425,68 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
           {children}
         </Content>
       </Layout>
+
+      {/* Create Business Modal */}
+      <Modal
+        title={t('create_new_business')}
+        open={isCreateBusinessModalOpen}
+        onCancel={() => {
+          setIsCreateBusinessModalOpen(false)
+          form.resetFields()
+        }}
+        footer={null}
+      >
+        <Form form={form} layout="vertical" onFinish={handleCreateBusiness} style={{ paddingTop: 16 }}>
+          <Form.Item name="name" label={t('business_name')} rules={[{ required: true, message: t('please_enter_business_name') }]}>
+            <Input placeholder={t('business_name')} />
+          </Form.Item>
+
+          <Form.Item name="email" label={t('email')}>
+            <Input type="email" placeholder={t('email')} />
+          </Form.Item>
+
+          <Form.Item name="phone" label={t('phone')}>
+            <Input placeholder={t('phone')} />
+          </Form.Item>
+
+          <Form.Item name="address" label={t('address')}>
+            <Input.TextArea rows={2} placeholder={t('address')} />
+          </Form.Item>
+
+          <Space style={{ width: '100%' }}>
+            <Form.Item name="currency" label={t('currency')} initialValue="USD" style={{ marginBottom: 0 }}>
+              <Select style={{ width: 150 }}>
+                <Option value="USD">USD ($)</Option>
+                <Option value="EUR">EUR (€)</Option>
+                <Option value="GBP">GBP (£)</Option>
+                <Option value="CAD">CAD ($)</Option>
+                <Option value="AUD">AUD ($)</Option>
+                <Option value="ILS">ILS (₪)</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item name="taxId" label={t('tax_id')} style={{ flex: 1, marginBottom: 0 }}>
+              <Input placeholder={t('tax_id')} />
+            </Form.Item>
+          </Space>
+
+          <Form.Item style={{ marginTop: 16, marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button
+                onClick={() => {
+                  setIsCreateBusinessModalOpen(false)
+                  form.resetFields()
+                }}
+              >
+                {t('cancel')}
+              </Button>
+              <Button type="primary" htmlType="submit" loading={createBusinessLoading}>
+                {t('create_business_button')}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </Layout>
   )
 }

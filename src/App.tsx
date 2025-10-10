@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics'
 import PrepPlanner from './pages/PrepPlanner'
 import BreakEvenAnalysis from './pages/BreakEvenAnalysis'
 import BusinessSettings from './pages/BusinessSettings'
+import UserSettings from './pages/UserSettings'
 import { Auth } from './pages/Auth'
 import { UserManagement } from './pages/UserManagement'
 import TeamManagement from './pages/TeamManagement'
@@ -66,6 +67,7 @@ function App() {
                       <Route path="/prep-planner" element={<PrepPlanner />} />
                       <Route path="/break-even-analysis" element={<BreakEvenAnalysis />} />
                       <Route path="/settings/business" element={<BusinessSettings />} />
+                      <Route path="/settings" element={<UserSettings />} />
                       <Route path="/team" element={<TeamManagement />} />
                     </Routes>
                   </AppLayout>

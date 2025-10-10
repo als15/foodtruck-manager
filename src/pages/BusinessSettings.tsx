@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useBusiness } from '../contexts/BusinessContext'
 import { useThemeMode } from '../contexts/ThemeContext'
+import { supabase } from '../lib/supabase'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -138,20 +139,44 @@ export default function BusinessSettings() {
   useEffect(() => {
     // Load business settings
     loadBusinessSettings()
-  }, [])
+  }, [currentBusiness?.id])
 
   const loadBusinessSettings = async () => {
+    if (!currentBusiness?.id) return
+
     try {
-      // In a real app, this would load from the API
-      // For now, we'll use default settings with some business data
-      setSettings(prev => ({
-        ...prev,
-        name: currentBusiness?.name || 'My Food Truck',
-        email: currentBusiness?.email || '',
-        language: i18n.language
-      }))
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', currentBusiness.id)
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        const businessSettings = data.settings || {}
+
+        setSettings({
+          name: data.name || '',
+          description: businessSettings.description || '',
+          address: data.address || '',
+          city: businessSettings.city || '',
+          country: businessSettings.country || '',
+          phone: data.phone || '',
+          email: data.email || '',
+          website: businessSettings.website || '',
+          taxId: data.tax_id || '',
+          currency: data.currency || 'USD',
+          timezone: data.timezone || 'UTC',
+          language: businessSettings.language || i18n.language,
+          workingHours: businessSettings.workingHours || defaultSettings.workingHours,
+          notifications: businessSettings.notifications || defaultSettings.notifications,
+          branding: businessSettings.branding || defaultSettings.branding
+        })
+      }
     } catch (error) {
       console.error('Error loading business settings:', error)
+      message.error(t('failed_to_load_settings'))
     }
   }
 
@@ -192,10 +217,39 @@ export default function BusinessSettings() {
   }
 
   const handleSaveSettings = async () => {
+    if (!currentBusiness?.id) {
+      message.error(t('no_business_selected'))
+      return
+    }
+
     setLoading(true)
     try {
-      // In a real app, this would save to the API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Update business settings in the database
+      const { error } = await supabase
+        .from('businesses')
+        .update({
+          name: settings.name,
+          email: settings.email,
+          phone: settings.phone,
+          address: settings.address,
+          tax_id: settings.taxId,
+          currency: settings.currency,
+          timezone: settings.timezone,
+          settings: {
+            description: settings.description,
+            city: settings.city,
+            country: settings.country,
+            website: settings.website,
+            language: settings.language,
+            workingHours: settings.workingHours,
+            notifications: settings.notifications,
+            branding: settings.branding
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentBusiness.id)
+
+      if (error) throw error
 
       // Update language if changed
       if (settings.language !== i18n.language) {
@@ -204,6 +258,7 @@ export default function BusinessSettings() {
 
       message.success(t('settings_saved_successfully') || 'Settings saved successfully')
     } catch (error) {
+      console.error('Error saving settings:', error)
       message.error(t('failed_to_save_settings') || 'Failed to save settings')
     } finally {
       setLoading(false)

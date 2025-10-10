@@ -13,6 +13,7 @@ interface CreateBusinessModalProps {
 
 const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isOpen, onClose, onCreated }) => {
   const { createBusiness } = useBusiness()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -51,22 +52,22 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isOpen, onClo
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Create New Business</DialogTitle>
+      <DialogTitle>{t('create_new_business')}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField label="Business Name *" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} fullWidth required autoFocus />
+            <TextField label={t('business_name_required')} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} fullWidth required autoFocus />
 
-            <TextField label="Email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} fullWidth />
+            <TextField label={t('email')} type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} fullWidth />
 
-            <TextField label="Phone" type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} fullWidth />
+            <TextField label={t('phone')} type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} fullWidth />
 
-            <TextField label="Address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} fullWidth multiline rows={2} />
+            <TextField label={t('address')} value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} fullWidth multiline rows={2} />
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
               <FormControl fullWidth>
-                <InputLabel>Currency</InputLabel>
-                <Select value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })} label="Currency">
+                <InputLabel>{t('currency')}</InputLabel>
+                <Select value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })} label={t('currency')}>
                   <MenuItem value="USD">USD ($)</MenuItem>
                   <MenuItem value="EUR">EUR (€)</MenuItem>
                   <MenuItem value="GBP">GBP (£)</MenuItem>
@@ -76,16 +77,16 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isOpen, onClo
                 </Select>
               </FormControl>
 
-              <TextField label="Tax ID" value={formData.taxId} onChange={e => setFormData({ ...formData, taxId: e.target.value })} fullWidth />
+              <TextField label={t('tax_id')} value={formData.taxId} onChange={e => setFormData({ ...formData, taxId: e.target.value })} fullWidth />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} disabled={loading}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button type="submit" variant="contained" disabled={loading || !formData.name.trim()}>
-            {loading ? <CircularProgress size={24} /> : 'Create Business'}
+            {loading ? <CircularProgress size={24} /> : t('create_business_button')}
           </Button>
         </DialogActions>
       </form>
@@ -106,13 +107,13 @@ export const BusinessSelector: React.FC = () => {
   }
 
   const getRoleLabel = (role: string) => {
-    const labels = {
-      owner: 'Owner',
-      admin: 'Admin',
-      member: 'Member',
-      viewer: 'Viewer'
+    const labels: Record<string, string> = {
+      owner: t('owner'),
+      admin: t('admin'),
+      member: t('member'),
+      viewer: t('viewer')
     }
-    return labels[role as keyof typeof labels] || role
+    return labels[role] || role
   }
 
   if (!currentBusiness) {
@@ -186,36 +187,36 @@ export const BusinessSelector: React.FC = () => {
             <ListItemIcon>
               <Plus fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Create New Business</ListItemText>
+            <ListItemText>{t('create_new_business')}</ListItemText>
           </MenuItem>
 
-          {userRole && ['owner', 'admin'].includes(userRole) && (
-            <>
-              <MenuItem
-                onClick={() => {
-                  window.location.href = '/team'
-                  setIsDropdownOpen(null)
-                }}
-              >
-                <ListItemIcon>
-                  <Users fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Manage Team</ListItemText>
-              </MenuItem>
+          {userRole && ['owner', 'admin'].includes(userRole) && [
+            <MenuItem
+              key="team"
+              onClick={() => {
+                window.location.href = '/team'
+                setIsDropdownOpen(null)
+              }}
+            >
+              <ListItemIcon>
+                <Users fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{t('manage_team')}</ListItemText>
+            </MenuItem>,
 
-              <MenuItem
-                onClick={() => {
-                  window.location.href = '/settings/business'
-                  setIsDropdownOpen(null)
-                }}
-              >
-                <ListItemIcon>
-                  <Settings fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>{t('business_settings')}</ListItemText>
-              </MenuItem>
-            </>
-          )}
+            <MenuItem
+              key="settings"
+              onClick={() => {
+                window.location.href = '/settings/business'
+                setIsDropdownOpen(null)
+              }}
+            >
+              <ListItemIcon>
+                <Settings fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{t('business_settings')}</ListItemText>
+            </MenuItem>
+          ]}
 
           <Divider sx={{ my: 1 }} />
 

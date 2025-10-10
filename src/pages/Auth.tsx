@@ -22,7 +22,7 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
+    <>
       {isLogin ? (
         <LoginForm
           onSwitchToSignup={() => setIsLogin(false)}
@@ -34,6 +34,6 @@ export const Auth: React.FC = () => {
           onSuccess={() => setIsLogin(true)}
         />
       )}
-    </div>
+    </>
   )
 }
