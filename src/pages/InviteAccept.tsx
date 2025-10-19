@@ -151,7 +151,11 @@ const InviteAccept: React.FC = () => {
           <Button
             block
             type="primary"
-            onClick={() => navigate('/auth', { state: { email: invitation?.email } })}
+            onClick={() => {
+              // Store invitation token for later acceptance
+              localStorage.setItem('pendingInvitation', token || '');
+              navigate('/auth', { state: { email: invitation?.email, invitationEmail: invitation?.email } });
+            }}
           >
             Sign In / Sign Up
           </Button>

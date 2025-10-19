@@ -9,15 +9,23 @@ const { Title, Text, Link } = Typography
 interface SignupFormProps {
   onSwitchToLogin: () => void
   onSuccess?: () => void
+  initialEmail?: string
 }
 
-export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSuccess }) => {
+export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSuccess, initialEmail }) => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const { signUp } = useAuth()
   const { t } = useTranslation()
+
+  // Set initial email if provided
+  React.useEffect(() => {
+    if (initialEmail) {
+      form.setFieldsValue({ email: initialEmail })
+    }
+  }, [initialEmail, form])
 
   const handleSubmit = async (values: any) => {
     setLoading(true)

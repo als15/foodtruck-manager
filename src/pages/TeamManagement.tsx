@@ -6,7 +6,8 @@ import {
   DeleteOutlined,
   EditOutlined,
   SendOutlined,
-  CopyOutlined
+  CopyOutlined,
+  MailOutlined
 } from '@ant-design/icons';
 import { useBusiness } from '../contexts/BusinessContext';
 import { supabase } from '../lib/supabase';
@@ -106,7 +107,7 @@ const TeamManagement: React.FC = () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
-      const { error } = await supabase
+      const { data: inviteData, error } = await supabase
         .from('business_invitations')
         .insert({
           business_id: currentBusiness.id,
@@ -115,16 +116,34 @@ const TeamManagement: React.FC = () => {
           invited_by: (await supabase.auth.getUser()).data.user?.id,
           token: token,
           expires_at: expiresAt.toISOString()
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      console.log('Invitation created:', inviteData);
+
+      // Send invitation email via Edge Function
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        body: { invitationId: inviteData.id }
+      });
+
+      console.log('Edge Function response:', { data: emailData, error: emailError });
+
+      if (emailError) {
+        console.error('Failed to send email:', emailError);
+        message.warning('Invitation created but email failed to send. Link copied to clipboard.');
+      } else {
+        message.success('Invitation email sent successfully!');
+      }
 
       const inviteLink = `${window.location.origin}/invite/${token}`;
       await navigator.clipboard.writeText(inviteLink);
 
       Modal.success({
         title: t('invitation_created'),
-        content: `The invitation link has been copied to your clipboard. Send this link to ${inviteForm.email}:\n\n${inviteLink}`
+        content: `Invitation email sent to ${inviteForm.email}. Link copied to clipboard as backup:\n\n${inviteLink}`
       });
 
       setInviteDialogOpen(false);
@@ -182,6 +201,27 @@ const TeamManagement: React.FC = () => {
         }
       }
     });
+  };
+
+  const handleResendInvitation = async (invitationId: string) => {
+    try {
+      // Send invitation email via Edge Function
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        body: { invitationId }
+      });
+
+      console.log('Resend Edge Function response:', { data: emailData, error: emailError });
+
+      if (emailError) {
+        console.error('Failed to resend email:', emailError);
+        message.error('Failed to resend invitation email');
+      } else {
+        message.success('Invitation email resent successfully!');
+      }
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      message.error('Failed to resend invitation email');
+    }
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
@@ -287,6 +327,12 @@ const TeamManagement: React.FC = () => {
       align: 'right',
       render: (_, record) => (
         <Space>
+          <Button
+            type="text"
+            icon={<MailOutlined />}
+            onClick={() => handleResendInvitation(record.id)}
+            title="Resend invitation email"
+          />
           <Button
             type="text"
             icon={<CopyOutlined />}
