@@ -16,26 +16,41 @@ serve(async (req) => {
 
   try {
     const { invitationId } = await req.json()
+    console.log('Processing invitation:', invitationId)
+
+    // Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const appUrl = Deno.env.get('APP_URL')
+
+    console.log('Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceRoleKey: !!serviceRoleKey,
+      hasResendKey: !!RESEND_API_KEY,
+      hasAppUrl: !!appUrl
+    })
+
+    if (!supabaseUrl || !serviceRoleKey || !RESEND_API_KEY || !appUrl) {
+      throw new Error('Missing required environment variables')
+    }
 
     // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
 
     // Get invitation details
     const { data: invitation, error } = await supabaseClient
       .from('business_invitations')
       .select(`
         *,
-        business:businesses(name),
-        inviter:auth.users!invited_by(email)
+        business:businesses(name)
       `)
       .eq('id', invitationId)
       .single()
 
+    console.log('Invitation query result:', { invitation, error })
+
     if (error || !invitation) {
-      throw new Error('Invitation not found')
+      throw new Error(`Invitation not found: ${error?.message || 'No data'}`)
     }
 
     // Send email via Resend
@@ -46,7 +61,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@yourdomain.com', // Replace with your verified domain in Resend
+        from: 'noreply@itsnomnoms.com',
         to: [invitation.email],
         subject: `You're invited to join ${invitation.business.name}`,
         html: `
@@ -86,16 +101,19 @@ serve(async (req) => {
     })
 
     const data = await res.json()
+    console.log('Resend API response:', { status: res.status, data })
 
     if (!res.ok) {
-      throw new Error(data.message || 'Failed to send email')
+      throw new Error(`Resend API error: ${data.message || JSON.stringify(data)}`)
     }
 
+    console.log('Email sent successfully:', data.id)
     return new Response(
       JSON.stringify({ success: true, emailId: data.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('Edge Function error:', error.message)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
