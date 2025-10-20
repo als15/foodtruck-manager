@@ -45,7 +45,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import Papa from 'papaparse';
 import { MenuItem as MenuItemType, Order, OrderItem } from '../../types';
-import { menuItemsService, ordersService } from '../../services/supabaseService';
+import { menuItemsService, ordersService, productMappingsService } from '../../services/supabaseService';
 
 interface SalesData {
   productName: string;
@@ -103,6 +103,14 @@ interface OrderGenerationDebug {
   estimatedOrderCount: number;
 }
 
+interface ImportSettings {
+  generateRealisticOrders: boolean;
+  orderDistributionHours: number;
+  averageItemsPerOrder: number;
+  applyDiscounts: boolean;
+  orderDate: Date;
+}
+
 interface AIOrderImporterProps {
   open: boolean;
   onClose: () => void;
@@ -115,19 +123,70 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
   onOrdersImported
 }) => {
   const { t } = useTranslation();
-  const [activeStep, setActiveStep] = useState(0);
-  const [parsedData, setParsedData] = useState<ParsedData | null>(null);
+
+  // Load persisted state from localStorage - defined first so it can be used in initialization
+  const loadPersistedState = React.useCallback(() => {
+    try {
+      const saved = localStorage.getItem('aiOrderImporter_state');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          orderDate: parsed.orderDate ? new Date(parsed.orderDate) : new Date()
+        };
+      }
+    } catch (error) {
+      console.error('Failed to load persisted state:', error);
+    }
+    return null;
+  }, []);
+
+  // Initialize state with persisted values if available
+  const [activeStep, setActiveStep] = useState(() => {
+    const persisted = loadPersistedState();
+    return persisted?.activeStep || 0;
+  });
+  const [parsedData, setParsedData] = useState<ParsedData | null>(() => {
+    const persisted = loadPersistedState();
+    return persisted?.parsedData || null;
+  });
   const [menuItems, setMenuItems] = useState<MenuItemType[]>([]);
-  const [productMappings, setProductMappings] = useState<ProductMapping[]>([]);
-  const [generatedOrders, setGeneratedOrders] = useState<GeneratedOrder[]>([]);
-  const [orderGenerationDebug, setOrderGenerationDebug] = useState<OrderGenerationDebug | null>(null);
+  const [productMappings, setProductMappings] = useState<ProductMapping[]>(() => {
+    const persisted = loadPersistedState();
+    return persisted?.productMappings || [];
+  });
+  const [generatedOrders, setGeneratedOrders] = useState<GeneratedOrder[]>(() => {
+    const persisted = loadPersistedState();
+    if (persisted?.generatedOrders) {
+      return persisted.generatedOrders.map((order: any) => ({
+        ...order,
+        orderTime: new Date(order.orderTime)
+      }));
+    }
+    return [];
+  });
+  const [orderGenerationDebug, setOrderGenerationDebug] = useState<OrderGenerationDebug | null>(() => {
+    const persisted = loadPersistedState();
+    return persisted?.orderGenerationDebug || null;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [importSettings, setImportSettings] = useState({
-    generateRealisticOrders: true,
-    orderDistributionHours: 8, // spread orders over 8 hours
-    averageItemsPerOrder: 2.5,
-    applyDiscounts: true
+
+  const [importSettings, setImportSettings] = useState<ImportSettings>(() => {
+    const persisted = loadPersistedState();
+    if (persisted?.importSettings) {
+      return {
+        ...persisted.importSettings,
+        orderDate: persisted.importSettings.orderDate ? new Date(persisted.importSettings.orderDate) : new Date()
+      };
+    }
+    return {
+      generateRealisticOrders: true,
+      orderDistributionHours: 8,
+      averageItemsPerOrder: 2.5,
+      applyDiscounts: true,
+      orderDate: new Date()
+    };
   });
 
   const steps = [
@@ -138,12 +197,56 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
     'Review & Import'
   ];
 
-  // Load menu items on component mount
+  // Load menu items and saved product mappings on component mount
   React.useEffect(() => {
     if (open) {
       loadMenuItems();
+      loadSavedMappings();
+
+      // Load persisted state when modal opens
+      const persisted = loadPersistedState();
+      if (persisted) {
+        setActiveStep(persisted.activeStep);
+        setParsedData(persisted.parsedData);
+        setProductMappings(persisted.productMappings);
+        setGeneratedOrders(persisted.generatedOrders.map((order: any) => ({
+          ...order,
+          orderTime: new Date(order.orderTime)
+        })));
+        setOrderGenerationDebug(persisted.orderGenerationDebug);
+
+        // Restore import settings with proper Date conversion
+        if (persisted.importSettings) {
+          setImportSettings({
+            ...persisted.importSettings,
+            orderDate: persisted.importSettings.orderDate ? new Date(persisted.importSettings.orderDate) : new Date()
+          });
+        }
+      }
     }
   }, [open]);
+
+  // Persist state to localStorage whenever it changes
+  React.useEffect(() => {
+    if (open && (activeStep > 0 || parsedData || productMappings.length > 0)) {
+      try {
+        const stateToPersist = {
+          activeStep,
+          parsedData,
+          productMappings,
+          generatedOrders,
+          orderGenerationDebug,
+          importSettings: {
+            ...importSettings,
+            orderDate: importSettings.orderDate.toISOString()
+          }
+        };
+        localStorage.setItem('aiOrderImporter_state', JSON.stringify(stateToPersist));
+      } catch (error) {
+        console.error('Failed to persist state:', error);
+      }
+    }
+  }, [activeStep, parsedData, productMappings, generatedOrders, orderGenerationDebug, importSettings, open]);
 
   const loadMenuItems = async () => {
     try {
@@ -152,6 +255,24 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
     } catch (error) {
       console.error('Failed to load menu items:', error);
       setError('Failed to load menu items');
+    }
+  };
+
+  const [savedMappings, setSavedMappings] = React.useState<Map<string, string>>(new Map());
+
+  const loadSavedMappings = async () => {
+    try {
+      const mappings = await productMappingsService.getAll('payment_provider');
+      const mappingsMap = new Map<string, string>();
+      mappings.forEach(mapping => {
+        if (mapping.menuItemId) {
+          mappingsMap.set(mapping.originalName, mapping.menuItemId);
+        }
+      });
+      setSavedMappings(mappingsMap);
+    } catch (error) {
+      console.error('Failed to load saved mappings:', error);
+      // Don't show error to user - this is optional functionality
     }
   };
 
@@ -375,10 +496,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
       })));
 
       setProductMappings(mappings);
-      setActiveStep(3);
-      
-      // Auto-generate orders
-      await generateOrders(mappings, salesData);
+      setActiveStep(2); // Move to AI Product Mapping step to review mappings
     } catch (error) {
       console.error('AI mapping failed:', error);
       setError('AI mapping failed. Please check mappings manually.');
@@ -388,12 +506,30 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
   };
 
   const mapProductToMenuItem = async (productName: string, salesData: SalesData[]): Promise<ProductMapping> => {
+    // Check if we have a saved mapping for this product
+    const savedMenuItemId = savedMappings.get(productName);
+    let savedMenuItem: MenuItemType | undefined;
+
+    if (savedMenuItemId) {
+      savedMenuItem = menuItems.find(item => item.id === savedMenuItemId);
+      if (savedMenuItem) {
+        console.log(`Using saved mapping for "${productName}" -> "${savedMenuItem.name}"`);
+        return {
+          originalName: productName,
+          mappedMenuItem: savedMenuItem,
+          confidence: 1.0, // Saved mappings have 100% confidence
+          suggestions: [savedMenuItem],
+          manualOverride: savedMenuItem
+        };
+      }
+    }
+
     // Simple AI-like matching based on text similarity and keywords
     const normalizedProduct = productName.toLowerCase().trim();
-    
+
     console.log(`Mapping product: "${productName}" (normalized: "${normalizedProduct}")`);
     console.log(`Available menu items:`, menuItems.map(item => item.name));
-    
+
     const suggestions = menuItems
       .map(item => ({
         item,
@@ -405,7 +541,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
       .map(({ item }) => item);
 
     const bestMatch = suggestions[0];
-    const confidence = suggestions.length > 0 ? 
+    const confidence = suggestions.length > 0 ?
       calculateSimilarity(normalizedProduct, bestMatch.name.toLowerCase()) : 0;
 
     console.log(`  Suggestions for "${productName}":`, suggestions.map(s => s.name));
@@ -494,10 +630,10 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
 
   const generateOrders = async (mappings: ProductMapping[], salesData: SalesData[]) => {
     setLoading(true);
-    
+
     try {
       const orders: GeneratedOrder[] = [];
-      const baseDate = new Date();
+      const baseDate = new Date(importSettings.orderDate);
       baseDate.setHours(8, 0, 0, 0); // Start at 8 AM
 
       console.log('\n=== ORDER GENERATION DEBUG ===');
@@ -674,11 +810,29 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
     return 'Regular Customer';
   };
 
-  const handleMappingChange = (index: number, menuItem: MenuItemType | null) => {
+  const handleMappingChange = async (index: number, menuItem: MenuItemType | null) => {
     const updated = [...productMappings];
     updated[index].manualOverride = menuItem || undefined;
     updated[index].shouldCreateNewItem = false; // Override the create new item option
     setProductMappings(updated);
+
+    // Save the mapping to the database
+    if (menuItem) {
+      const mapping = updated[index];
+      try {
+        await productMappingsService.upsert({
+          originalName: mapping.originalName,
+          sourceType: 'payment_provider',
+          menuItemId: menuItem.id,
+          confidence: 1.0,
+          isManual: true
+        });
+        console.log(`Saved mapping: "${mapping.originalName}" -> "${menuItem.name}"`);
+      } catch (error) {
+        console.error('Failed to save product mapping:', error);
+        // Don't show error to user - the mapping still works for this session
+      }
+    }
   };
 
   const handleCreateNewMenuItem = async (index: number) => {
@@ -687,7 +841,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
 
     try {
       setLoading(true);
-      
+
       // Create the new menu item
       const newMenuItem: Omit<MenuItemType, 'id' | 'businessId' | 'totalIngredientCost' | 'profitMargin'> = {
         name: mapping.newItemData.name,
@@ -701,17 +855,32 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
       };
 
       const createdMenuItem = await menuItemsService.create(newMenuItem);
-      
+
       // Update the local menu items list
       setMenuItems(prev => [...prev, createdMenuItem]);
-      
+
       // Update the mapping to use the newly created item
       const updated = [...productMappings];
       updated[index].mappedMenuItem = createdMenuItem;
       updated[index].shouldCreateNewItem = false;
       updated[index].confidence = 1.0; // Perfect match since we created it
       setProductMappings(updated);
-      
+
+      // Save the mapping to the database
+      try {
+        await productMappingsService.upsert({
+          originalName: mapping.originalName,
+          sourceType: 'payment_provider',
+          menuItemId: createdMenuItem.id,
+          confidence: 1.0,
+          isManual: true
+        });
+        console.log(`Saved mapping for new item: "${mapping.originalName}" -> "${createdMenuItem.name}"`);
+      } catch (error) {
+        console.error('Failed to save product mapping:', error);
+        // Don't show error to user - the mapping still works for this session
+      }
+
     } catch (error) {
       console.error('Failed to create menu item:', error);
       setError(`Failed to create menu item: ${error}`);
@@ -722,49 +891,41 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
 
   const handleImportOrders = async () => {
     setLoading(true);
-    
+
     try {
-      const orders: Order[] = [];
-      
-      for (let i = 0; i < generatedOrders.length; i++) {
-        const generatedOrder = generatedOrders[i];
-        const order: Omit<Order, 'id' | 'orderNumber' | 'businessId'> = {
-          items: generatedOrder.items,
-          total: generatedOrder.total,
-          subtotal: generatedOrder.total,
-          status: 'completed', // Historical orders are completed
-          orderTime: generatedOrder.orderTime,
-          location: 'Main Location',
-          paymentMethod: 'card',
-          paymentStatus: 'completed',
-          externalSource: 'payment_provider_import'
-        };
+      const timestamp = Date.now();
 
-        try {
-          const createdOrder = await ordersService.create(order);
-          orders.push(createdOrder);
-        } catch (error) {
-          if (error instanceof Error && error.message.includes('duplicate key value violates unique constraint "orders_order_number_key"')) {
-            // Add small delay and retry once
-            await new Promise(resolve => setTimeout(resolve, 100));
-            const createdOrder = await ordersService.create(order);
-            orders.push(createdOrder);
-          } else {
-            throw error;
-          }
-        }
-        
-        // Add small delay between orders to prevent race conditions
-        if (i < generatedOrders.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
+      // Prepare all orders for bulk insert
+      const ordersToImport = generatedOrders.map((generatedOrder, i) => ({
+        orderNumber: `IMP-${timestamp}-${i.toString().padStart(4, '0')}`,
+        items: generatedOrder.items,
+        total: generatedOrder.total,
+        subtotal: generatedOrder.total,
+        status: 'completed' as const,
+        orderTime: generatedOrder.orderTime,
+        completedTime: generatedOrder.orderTime,
+        location: 'Main Location',
+        paymentMethod: 'card' as const,
+        paymentStatus: 'completed' as const,
+        externalSource: 'payment_provider_import'
+      }));
 
-      onOrdersImported(orders);
+      console.log(`Bulk importing ${ordersToImport.length} orders in a single request...`);
+
+      // Use bulk import method
+      const importedOrders = await ordersService.bulkCreate(ordersToImport);
+
+      console.log(`Successfully imported ${importedOrders.length} orders`);
+
+      onOrdersImported(importedOrders);
+
+      // Clear persisted state after successful import
+      localStorage.removeItem('aiOrderImporter_state');
+
       onClose();
     } catch (error) {
       console.error('Failed to import orders:', error);
-      
+
       // Check if it's an inventory error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('Insufficient inventory')) {
@@ -787,6 +948,9 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
     setGeneratedOrders([]);
     setOrderGenerationDebug(null);
     setError(null);
+
+    // Clear persisted state
+    localStorage.removeItem('aiOrderImporter_state');
   };
 
   return (
@@ -817,6 +981,21 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
 
         {loading && <LinearProgress sx={{ mb: 2 }} />}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        {/* Resume indicator */}
+        {activeStep > 0 && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            📋 Resuming from previous session - your progress has been saved.
+            <Button
+              size="small"
+              onClick={handleReset}
+              sx={{ ml: 2 }}
+              variant="outlined"
+            >
+              Start Fresh Import
+            </Button>
+          </Alert>
+        )}
 
         {/* Step 0: File Upload */}
         {activeStep === 0 && (
@@ -959,6 +1138,11 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
             <Typography variant="h6" gutterBottom>AI Product Mapping</Typography>
             <Alert severity="info" sx={{ mb: 2 }}>
               AI has analyzed your payment data and mapped products to your menu items. Review and adjust as needed.
+              {savedMappings.size > 0 && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  ✅ {savedMappings.size} saved mapping(s) automatically applied from previous imports
+                </Typography>
+              )}
             </Alert>
             
             {/* Debug info for menu items */}
@@ -993,15 +1177,25 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
                       <TableCell>{parsedData.salesData[index]?.quantitySold}</TableCell>
                       <TableCell>
                         {mapping.mappedMenuItem ? (
-                          <Chip 
-                            label={mapping.mappedMenuItem.name}
-                            color={mapping.confidence > 0.7 ? 'success' : 'warning'}
-                            size="small"
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                              label={mapping.mappedMenuItem.name}
+                              color={mapping.confidence > 0.7 ? 'success' : 'warning'}
+                              size="small"
+                            />
+                            {mapping.confidence === 1.0 && savedMappings.has(mapping.originalName) && (
+                              <Chip
+                                label="Saved"
+                                color="primary"
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
                         ) : mapping.shouldCreateNewItem ? (
-                          <Chip 
-                            label="Will create new item" 
-                            color="info" 
+                          <Chip
+                            label="Will create new item"
+                            color="info"
                             size="small"
                             icon={<AddIcon />}
                           />
@@ -1012,6 +1206,11 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
                       <TableCell>
                         <Typography variant="body2" color={mapping.confidence > 0.7 ? 'success.main' : 'warning.main'}>
                           {Math.round(mapping.confidence * 100)}%
+                          {mapping.confidence === 1.0 && savedMappings.has(mapping.originalName) && (
+                            <Typography variant="caption" display="block" color="primary.main">
+                              From saved mapping
+                            </Typography>
+                          )}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ minWidth: 250 }}>
@@ -1094,6 +1293,21 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>Generation Settings</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  label="Order Date"
+                  type="date"
+                  value={importSettings.orderDate.toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    setImportSettings(prev => ({ ...prev, orderDate: newDate }));
+                  }}
+                  helperText="Date when these orders occurred"
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  fullWidth
+                />
+
                 <FormControlLabel
                   control={
                     <Switch
@@ -1103,7 +1317,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
                   }
                   label="Generate realistic order patterns"
                 />
-                
+
                 <TextField
                   label="Average items per order"
                   type="number"
@@ -1111,7 +1325,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
                   onChange={(e) => setImportSettings(prev => ({ ...prev, averageItemsPerOrder: parseFloat(e.target.value) }))}
                   inputProps={{ min: 1, max: 10, step: 0.1 }}
                 />
-                
+
                 <TextField
                   label="Distribution hours"
                   type="number"
@@ -1120,7 +1334,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
                   inputProps={{ min: 1, max: 24 }}
                   helperText="Spread orders over this many hours"
                 />
-                
+
                 <FormControlLabel
                   control={
                     <Switch
@@ -1387,7 +1601,12 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({
           </Button>
         )}
         {activeStep === 2 && (
-          <Button onClick={() => generateOrders(productMappings, parsedData?.salesData || [])} variant="contained">
+          <Button onClick={() => setActiveStep(3)} variant="contained">
+            Continue to Order Settings
+          </Button>
+        )}
+        {activeStep === 3 && (
+          <Button onClick={() => generateOrders(productMappings, parsedData?.salesData || [])} variant="contained" disabled={loading}>
             Generate Orders
           </Button>
         )}

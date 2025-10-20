@@ -22,7 +22,8 @@ import {
   Order,
   OrderItem,
   SupplierOrder,
-  SupplierOrderItem
+  SupplierOrderItem,
+  ProductMapping
 } from '../types';
 
 // Helper function to handle Supabase errors
@@ -3553,6 +3554,150 @@ export const ordersService = {
     return inventoryManagementService.validateOrderInventory(orderItems);
   },
 
+  async bulkCreate(orders: (Omit<Order, 'id' | 'businessId'> & { orderNumber: string })[]): Promise<Order[]> {
+    const businessId = getCurrentBusinessId();
+
+    // Prepare all orders and order items for bulk insert
+    const timestamp = Date.now();
+    const ordersData = orders.map((order, index) => ({
+      business_id: businessId,
+      order_number: order.orderNumber,
+      customer_id: order.customerId,
+      total: order.total,
+      subtotal: order.subtotal,
+      tax_amount: order.taxAmount || 0,
+      tip_amount: order.tipAmount || 0,
+      discount_amount: order.discountAmount || 0,
+      status: order.status,
+      order_time: order.orderTime.toISOString(),
+      completed_time: order.completedTime?.toISOString(),
+      location: order.location,
+      payment_method: order.paymentMethod,
+      payment_status: order.paymentStatus || 'completed',
+      special_instructions: order.specialInstructions,
+      external_order_id: order.externalOrderId,
+      external_source: order.externalSource || 'manual',
+      employee_id: order.employeeId
+    }));
+
+    // Insert all orders in one call
+    const { data: insertedOrders, error: ordersError } = await supabase
+      .from('orders')
+      .insert(ordersData)
+      .select();
+
+    if (ordersError) handleError(ordersError, 'bulk create orders');
+    if (!insertedOrders) throw new Error('No orders returned after insert');
+
+    // Now insert all order items
+    const allOrderItems: any[] = [];
+    insertedOrders.forEach((insertedOrder, orderIndex) => {
+      const orderItems = orders[orderIndex].items;
+      orderItems.forEach(item => {
+        allOrderItems.push({
+          order_id: insertedOrder.id,
+          menu_item_id: item.menuItemId,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total_price: item.totalPrice,
+          special_instructions: item.specialInstructions
+        });
+      });
+    });
+
+    // Insert all order items in one call
+    if (allOrderItems.length > 0) {
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(allOrderItems);
+
+      if (itemsError) handleError(itemsError, 'bulk create order items');
+    }
+
+    // Fetch complete order data with items
+    const { data: completeOrders, error: fetchError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          menu_item_id,
+          quantity,
+          unit_price,
+          total_price,
+          special_instructions,
+          menu_items (
+            name,
+            description,
+            price
+          )
+        ),
+        customers (
+          id,
+          business_id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          loyalty_points,
+          total_orders,
+          total_spent
+        )
+      `)
+      .in('id', insertedOrders.map(o => o.id));
+
+    if (fetchError) handleError(fetchError, 'fetch bulk created orders');
+    if (!completeOrders) throw new Error('No orders returned after fetch');
+
+    // Map orders to Order type (same logic as getAll)
+    return completeOrders.map(order => ({
+      id: order.id,
+      businessId: order.business_id,
+      orderNumber: order.order_number,
+      customerId: order.customer_id,
+      customer: order.customers ? {
+        id: order.customers.id,
+        businessId: order.business_id,
+        firstName: order.customers.first_name,
+        lastName: order.customers.last_name,
+        email: order.customers.email,
+        phone: order.customers.phone,
+        loyaltyPoints: order.customers.loyalty_points,
+        totalOrders: order.customers.total_orders,
+        totalSpent: order.customers.total_spent
+      } : undefined,
+      items: order.order_items.map((item: any) => ({
+        id: item.id,
+        menuItemId: item.menu_item_id,
+        menuItem: item.menu_items ? {
+          name: item.menu_items.name,
+          description: item.menu_items.description,
+          price: item.menu_items.price
+        } : undefined,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        totalPrice: item.total_price,
+        specialInstructions: item.special_instructions
+      })),
+      total: order.total,
+      subtotal: order.subtotal,
+      taxAmount: order.tax_amount,
+      tipAmount: order.tip_amount,
+      discountAmount: order.discount_amount,
+      status: order.status,
+      orderTime: new Date(order.order_time),
+      completedTime: order.completed_time ? new Date(order.completed_time) : undefined,
+      location: order.location,
+      paymentMethod: order.payment_method,
+      paymentStatus: order.payment_status,
+      specialInstructions: order.special_instructions,
+      externalOrderId: order.external_order_id,
+      externalSource: order.external_source,
+      prepTimeMinutes: order.prep_time_minutes,
+      employeeId: order.employee_id
+    }));
+  },
+
   async create(order: Omit<Order, 'id' | 'orderNumber' | 'businessId'>): Promise<Order> {
     const businessId = getCurrentBusinessId();
     
@@ -3584,23 +3729,29 @@ export const ordersService = {
       }
     }
     
-    // Generate order number
+    // Generate order number (or use provided one for bulk imports)
     let orderNumber: string;
-    try {
-      const { data: orderNumberData, error: orderNumberError } = await supabase
-        .rpc('generate_order_number');
-      
-      if (orderNumberError) {
-        console.warn('Failed to generate order number via RPC, using fallback:', orderNumberError);
-        // Fallback: generate a simple order number
-        orderNumber = `ORD-${Date.now()}`;
-      } else {
-        orderNumber = orderNumberData;
+    if ((order as any).orderNumber) {
+      // Use provided order number (for bulk imports)
+      orderNumber = (order as any).orderNumber;
+    } else {
+      // Generate order number via RPC
+      try {
+        const { data: orderNumberData, error: orderNumberError } = await supabase
+          .rpc('generate_order_number');
+
+        if (orderNumberError) {
+          console.warn('Failed to generate order number via RPC, using fallback:', orderNumberError);
+          // Fallback: generate a unique order number with random suffix
+          orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        } else {
+          orderNumber = orderNumberData;
+        }
+      } catch (error) {
+        console.warn('Error calling generate_order_number RPC, using fallback:', error);
+        // Fallback: generate a unique order number with random suffix
+        orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       }
-    } catch (error) {
-      console.warn('Error calling generate_order_number RPC, using fallback:', error);
-      // Fallback: generate a simple order number
-      orderNumber = `ORD-${Date.now()}`;
     }
     
     const orderData = {
@@ -3832,6 +3983,182 @@ export const ordersService = {
   }
 };
 
+// ==================== PRODUCT MAPPINGS ====================
+
+export const productMappingsService = {
+  async getAll(sourceType: string = 'payment_provider'): Promise<ProductMapping[]> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('product_mappings')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('source_type', sourceType)
+      .order('last_used_at', { ascending: false });
+
+    if (error) handleError(error, 'fetch product mappings');
+
+    return (data || []).map(mapping => ({
+      id: mapping.id,
+      businessId: mapping.business_id,
+      originalName: mapping.original_name,
+      sourceType: mapping.source_type,
+      menuItemId: mapping.menu_item_id,
+      confidence: mapping.confidence,
+      isManual: mapping.is_manual,
+      createdAt: new Date(mapping.created_at),
+      updatedAt: new Date(mapping.updated_at),
+      lastUsedAt: new Date(mapping.last_used_at)
+    }));
+  },
+
+  async getByOriginalName(originalName: string, sourceType: string = 'payment_provider'): Promise<ProductMapping | null> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('product_mappings')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('original_name', originalName)
+      .eq('source_type', sourceType)
+      .maybeSingle();
+
+    if (error) handleError(error, 'fetch product mapping');
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      originalName: data.original_name,
+      sourceType: data.source_type,
+      menuItemId: data.menu_item_id,
+      confidence: data.confidence,
+      isManual: data.is_manual,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastUsedAt: new Date(data.last_used_at)
+    };
+  },
+
+  async create(mapping: Omit<ProductMapping, 'id' | 'businessId' | 'createdAt' | 'updatedAt' | 'lastUsedAt'>): Promise<ProductMapping> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('product_mappings')
+      .insert({
+        business_id: businessId,
+        original_name: mapping.originalName,
+        source_type: mapping.sourceType,
+        menu_item_id: mapping.menuItemId,
+        confidence: mapping.confidence,
+        is_manual: mapping.isManual
+      })
+      .select()
+      .single();
+
+    if (error) handleError(error, 'create product mapping');
+
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      originalName: data.original_name,
+      sourceType: data.source_type,
+      menuItemId: data.menu_item_id,
+      confidence: data.confidence,
+      isManual: data.is_manual,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastUsedAt: new Date(data.last_used_at)
+    };
+  },
+
+  async upsert(mapping: Omit<ProductMapping, 'id' | 'businessId' | 'createdAt' | 'updatedAt' | 'lastUsedAt'>): Promise<ProductMapping> {
+    const businessId = getCurrentBusinessId();
+    const { data, error } = await supabase
+      .from('product_mappings')
+      .upsert({
+        business_id: businessId,
+        original_name: mapping.originalName,
+        source_type: mapping.sourceType,
+        menu_item_id: mapping.menuItemId,
+        confidence: mapping.confidence,
+        is_manual: mapping.isManual,
+        last_used_at: new Date().toISOString()
+      }, {
+        onConflict: 'business_id,original_name,source_type'
+      })
+      .select()
+      .single();
+
+    if (error) handleError(error, 'upsert product mapping');
+
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      originalName: data.original_name,
+      sourceType: data.source_type,
+      menuItemId: data.menu_item_id,
+      confidence: data.confidence,
+      isManual: data.is_manual,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastUsedAt: new Date(data.last_used_at)
+    };
+  },
+
+  async update(id: string, updates: Partial<Omit<ProductMapping, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>>): Promise<ProductMapping> {
+    const businessId = getCurrentBusinessId();
+    const updateData: any = {};
+
+    if (updates.menuItemId !== undefined) updateData.menu_item_id = updates.menuItemId;
+    if (updates.confidence !== undefined) updateData.confidence = updates.confidence;
+    if (updates.isManual !== undefined) updateData.is_manual = updates.isManual;
+    if (updates.lastUsedAt !== undefined) updateData.last_used_at = updates.lastUsedAt.toISOString();
+
+    const { data, error } = await supabase
+      .from('product_mappings')
+      .update(updateData)
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+
+    if (error) handleError(error, 'update product mapping');
+
+    return {
+      id: data.id,
+      businessId: data.business_id,
+      originalName: data.original_name,
+      sourceType: data.source_type,
+      menuItemId: data.menu_item_id,
+      confidence: data.confidence,
+      isManual: data.is_manual,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      lastUsedAt: new Date(data.last_used_at)
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    const { error } = await supabase
+      .from('product_mappings')
+      .delete()
+      .eq('id', id)
+      .eq('business_id', businessId);
+
+    if (error) handleError(error, 'delete product mapping');
+  },
+
+  async updateLastUsedAt(id: string): Promise<void> {
+    const businessId = getCurrentBusinessId();
+    const { error } = await supabase
+      .from('product_mappings')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('business_id', businessId);
+
+    if (error) handleError(error, 'update product mapping last used');
+  }
+};
+
 // ==================== DAILY SALES ====================
 
 export const dailySalesService = {
@@ -3843,11 +4170,11 @@ export const dailySalesService = {
       .eq('business_id', businessId)
       .eq('date', date.toISOString().split('T')[0])
       .single();
-    
+
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
       handleError(error, 'fetch daily sales');
     }
-    
+
     return data;
   },
 
@@ -3860,9 +4187,9 @@ export const dailySalesService = {
       .gte('date', startDate.toISOString().split('T')[0])
       .lte('date', endDate.toISOString().split('T')[0])
       .order('date', { ascending: true });
-    
+
     if (error) handleError(error, 'fetch daily sales range');
-    
+
     return data || [];
   }
 };

@@ -363,15 +363,10 @@ export default function SupplierOrders() {
   // Effect to update total amount when order items change
   useEffect(() => {
     const totalAmount = orderItems.reduce((sum, item) => {
-      const ingredient = ingredients.find(i => i.id === item.ingredientId)
-      if (ingredient?.orderByPackage && ingredient?.unitsPerPackage && ingredient.unitsPerPackage > 1) {
-        // If ordering by package, multiply by units per package
-        return sum + item.totalPrice * ingredient.unitsPerPackage
-      }
       return sum + item.totalPrice
     }, 0)
     setNewOrder(prev => ({ ...prev, totalAmount }))
-  }, [orderItems, ingredients])
+  }, [orderItems])
 
   const handleRemoveOrderItem = useCallback((tempId: string) => {
     setOrderItems(prev => prev.filter(item => item.tempId !== tempId))
@@ -980,7 +975,11 @@ export default function SupplierOrders() {
                         handleUpdateOrderItem(item.tempId, 'ingredientId', value)
                         const ingredient = filteredIngredients.find(i => i.id === value)
                         if (ingredient) {
-                          handleUpdateOrderItem(item.tempId, 'unitPrice', ingredient.costPerUnit)
+                          // If ordering by package, unit price should be cost per unit * units per package
+                          const unitPrice = ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1
+                            ? ingredient.costPerUnit * ingredient.unitsPerPackage
+                            : ingredient.costPerUnit
+                          handleUpdateOrderItem(item.tempId, 'unitPrice', unitPrice)
                         }
                       }}
                       disabled={!newOrder.supplierId}
@@ -1015,7 +1014,7 @@ export default function SupplierOrders() {
                 </Col>
                 <Col xs={12} sm={4}>
                   <div style={{ marginBottom: 8 }}>
-                    <Text>{hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.unit}` : t('unit_cost')}</Text>
+                    <Text>{hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.packageType || 'package'}` : t('unit_cost')}</Text>
                     <Input
                       type="number"
                       style={{ marginTop: 4 }}
@@ -1029,7 +1028,7 @@ export default function SupplierOrders() {
                     <Text>{t('total')}</Text>
                     <Input
                       style={{ marginTop: 4 }}
-                      value={formatCurrency(hasPackaging ? item.totalPrice * (selectedIngredient?.unitsPerPackage || 1) : item.totalPrice)}
+                      value={formatCurrency(item.totalPrice)}
                       disabled
                     />
                   </div>

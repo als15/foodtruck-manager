@@ -86,6 +86,19 @@ export interface MenuCategory {
   displayOrder: number;
 }
 
+export interface ProductMapping {
+  id: string;
+  businessId: string;
+  originalName: string;
+  sourceType: string;
+  menuItemId?: string;
+  confidence: number;
+  isManual: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  lastUsedAt: Date;
+}
+
 export interface Employee {
   id: string;
   businessId: string;
