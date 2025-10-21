@@ -36,6 +36,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member' | 'viewer' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const previousUserIdRef = React.useRef<string | null>(null);
 
   // Load user's businesses
   const loadUserBusinesses = async () => {
@@ -207,7 +208,12 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    loadUserBusinesses();
+    // Only reload if the user ID actually changed (not just a reconnection)
+    const currentUserId = user?.id || null;
+    if (currentUserId !== previousUserIdRef.current) {
+      previousUserIdRef.current = currentUserId;
+      loadUserBusinesses();
+    }
   }, [user]);
 
   return (
