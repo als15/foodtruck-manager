@@ -296,10 +296,22 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '12px',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)'
         }}
       >
-        <h2 style={{ color: '#7fd3c7', margin: 0, fontSize: collapsed ? 18 : 20 }}>{collapsed ? 'FT' : 'NomNom'}</h2>
+        <img
+          src="/logo_cropped.png"
+          alt="NomNom"
+          style={{
+            height: collapsed ? 32 : 40,
+            width: 'auto',
+            transition: 'height 0.2s, filter 0.2s',
+            objectFit: 'contain',
+            filter: 'brightness(0) invert(1)'
+          }}
+        />
       </div>
 
       {/* Navigation Menu */}

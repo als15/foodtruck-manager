@@ -261,10 +261,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           px: 2,
           display: 'flex',
           justifyContent: 'center',
-          position: 'relative'
+          position: 'relative',
+          minHeight: '72px !important',
+          backgroundColor: 'rgba(0, 0, 0, 0.02)'
         }}
       >
-        <NomNomLogo size="medium" showText={true} />
+        <NomNomLogo size="medium" showText={false} />
       </Toolbar>
       <Box
         sx={{

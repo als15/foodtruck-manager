@@ -45,14 +45,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '24px'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px'
+      }}
+    >
       <Card
         style={{
           maxWidth: 450,
@@ -62,25 +64,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
-            <Title level={2} style={{ marginBottom: 8, color: '#667eea' }}>
-              {t('welcome_back')}
-            </Title>
-            <Text type="secondary">
+            <img
+              src="/nomnom_logo.png"
+              alt="NomNom"
+              style={{
+                height: 140,
+                width: 'auto',
+                marginBottom: 24
+              }}
+            />
+
+            {/* <Text type="secondary">
               {t('login_to_your_account')}
-            </Text>
+            </Text> */}
           </div>
 
-          {error && (
-            <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} />
-          )}
+          {error && <Alert message={error} type="error" showIcon closable onClose={() => setError(null)} />}
 
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            size="large"
-            requiredMark={false}
-          >
+          <Form form={form} layout="vertical" onFinish={handleSubmit} size="large" requiredMark={false}>
             <Form.Item
               name="email"
               label={t('email')}
@@ -89,26 +90,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
                 { type: 'email', message: t('please_enter_valid_email') }
               ]}
             >
-              <Input
-                prefix={<MailOutlined style={{ color: 'rgba(0,0,0,.25)' }} />}
-                placeholder={t('email')}
-                disabled={loading}
-              />
+              <Input prefix={<MailOutlined style={{ color: 'rgba(0,0,0,.25)' }} />} placeholder={t('email')} disabled={loading} />
             </Form.Item>
 
-            <Form.Item
-              name="password"
-              label={t('password')}
-              rules={[
-                { required: true, message: t('please_enter_password') }
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined style={{ color: 'rgba(0,0,0,.25)' }} />}
-                placeholder={t('password')}
-                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-                disabled={loading}
-              />
+            <Form.Item name="password" label={t('password')} rules={[{ required: true, message: t('please_enter_password') }]}>
+              <Input.Password prefix={<LockOutlined style={{ color: 'rgba(0,0,0,.25)' }} />} placeholder={t('password')} iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)} disabled={loading} />
             </Form.Item>
 
             <Form.Item style={{ marginBottom: 8 }}>

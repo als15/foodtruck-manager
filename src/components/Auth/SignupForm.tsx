@@ -97,6 +97,15 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSucce
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
+            <img
+              src="/nomnom_logo.png"
+              alt="NomNom"
+              style={{
+                height: 120,
+                width: 'auto',
+                marginBottom: 24
+              }}
+            />
             <Title level={2} style={{ marginBottom: 8, color: '#667eea' }}>
               {t('signup')}
             </Title>

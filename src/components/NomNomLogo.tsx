@@ -33,54 +33,25 @@ const NomNomLogo: React.FC<NomNomLogoProps> = ({
   const currentSize = logoSizes[size];
 
   return (
-    <Box display="flex" alignItems="center" gap={showText ? 1.5 : 0}>
-      {/* Food Truck Icon with Playful Animation */}
+    <Box display="flex" alignItems="center" justifyContent="center" sx={{ width: '100%' }}>
+      {/* Logo Image */}
       <Box
+        component="img"
+        src="/logo_cropped.png"
+        alt="NomNom"
         sx={{
-          width: currentSize.icon,
-          height: currentSize.icon,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
+          height: size === 'small' ? 40 : size === 'medium' ? 50 : 70,
+          width: 'auto',
+          maxWidth: '100%',
+          objectFit: 'contain',
           transition: 'all 0.3s ease-out',
           cursor: 'pointer',
+          filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(255, 255, 255, 0.2))',
           '&:hover': {
-            transform: 'scale(1.1)',
+            transform: 'scale(1.05)',
           },
         }}
-      >
-        <Box
-          sx={{
-            fontSize: currentSize.icon,
-            color: nomNomColors.primary,
-            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
-          }}
-        >
-          🚚
-        </Box>
-      </Box>
-      
-      {showText && (
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{
-            fontSize: currentSize.text,
-            fontWeight: 700,
-            color: '#1a1a1a',
-            letterSpacing: '-0.02em',
-            fontFamily: '"Fredoka", "Quicksand", "Inter", sans-serif',
-            transition: 'all 0.3s ease-out',
-            cursor: 'pointer',
-            '&:hover': {
-              color: nomNomColors.primaryDark,
-            },
-          }}
-        >
-          NomNom
-        </Typography>
-      )}
+      />
     </Box>
   );
 };

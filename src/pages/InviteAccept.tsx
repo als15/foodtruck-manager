@@ -115,7 +115,18 @@ const InviteAccept: React.FC = () => {
   if (error) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <Card style={{ padding: 24, maxWidth: 400 }}>
+        <Card style={{ padding: 24, maxWidth: 400, textAlign: 'center' }}>
+          <img
+            src="/nomnom_logo.png"
+            alt="NomNom"
+            style={{
+              height: 80,
+              width: 'auto',
+              marginBottom: 24,
+              display: 'block',
+              margin: '0 auto 24px auto'
+            }}
+          />
           <Alert
             message={error}
             type="error"
@@ -137,6 +148,17 @@ const InviteAccept: React.FC = () => {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
         <Card style={{ padding: 24, maxWidth: 400, textAlign: 'center' }}>
+          <img
+            src="/nomnom_logo.png"
+            alt="NomNom"
+            style={{
+              height: 80,
+              width: 'auto',
+              marginBottom: 24,
+              display: 'block',
+              margin: '0 auto 24px auto'
+            }}
+          />
           <Title level={3}>Business Invitation</Title>
           <div style={{ marginBottom: 24 }}>
             <Text>
