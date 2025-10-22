@@ -43,7 +43,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSucce
         setSuccess(true)
         setTimeout(() => {
           onSuccess?.()
-        }, 2000)
+        }, 4000)
       }
     } catch (err) {
       setError(t('unexpected_error'))

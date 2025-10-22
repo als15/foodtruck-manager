@@ -257,7 +257,7 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
     {
       key: '/orders',
       icon: <AccountBookOutlined />,
-      label: t('orders'),
+      label: t('sales'),
       onClick: () => navigate('/orders')
     }
   ]

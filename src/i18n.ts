@@ -158,6 +158,8 @@ const resources = {
 
       // Orders
       orders: 'Orders',
+      purchases: 'Purchases',
+      sales: 'Sales',
       all_orders: 'All Orders',
       add_order_record: 'Add Order Record',
       import_orders: 'Import Orders',
@@ -577,6 +579,11 @@ const resources = {
       user_management: 'User Management',
       profile_information: 'Profile Information',
       account_created: 'Account Created',
+      welcome_aboard: 'Welcome Aboard',
+      welcome_message: 'Get ready to streamline your food truck operations!',
+      quick_setup: 'Quick Setup',
+      powerful_tools: 'Powerful Tools',
+      grow_business: 'Grow Your Business',
       last_sign_in: 'Last Sign In',
       email_verified: 'Email Verified',
       verified: 'Verified',
@@ -1198,6 +1205,8 @@ const resources = {
 
       // Orders
       orders: 'הזמנות',
+      purchases: 'רכישות',
+      sales: 'מכירות',
       all_orders: 'כל ההזמנות',
       add_order_record: 'הוסף רשומת הזמנה',
       import_orders: 'ייבא הזמנות',
@@ -1610,6 +1619,11 @@ const resources = {
       user_management: 'ניהול משתמש',
       profile_information: 'פרטי פרופיל',
       account_created: 'החשבון נוצר',
+      welcome_aboard: 'ברוכים הבאים',
+      welcome_message: 'התכוננו לייעל את פעילות עגלת האוכל שלכם!',
+      quick_setup: 'התקנה מהירה',
+      powerful_tools: 'כלים רבי עוצמה',
+      grow_business: 'צמיחת העסק',
       last_sign_in: 'התחברות אחרונה',
       email_verified: 'האימייל מאומת',
       verified: 'מאומת',
