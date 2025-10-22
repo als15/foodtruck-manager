@@ -85,6 +85,15 @@ const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
               : {})
           }
         }
+      },
+      MuiStepper: {
+        styleOverrides: {
+          root: {
+            ...(direction === 'rtl' && {
+              flexDirection: 'row-reverse'
+            })
+          }
+        }
       }
     }
   })

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { Business, UserBusiness } from '../types';
@@ -36,10 +36,10 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member' | 'viewer' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const previousUserIdRef = React.useRef<string | null>(null);
+  const previousUserIdRef = React.useRef<string | null | undefined>(undefined);
 
   // Load user's businesses
-  const loadUserBusinesses = async () => {
+  const loadUserBusinesses = useCallback(async () => {
     if (!user) {
       setUserBusinesses([]);
       setCurrentBusiness(null);
@@ -108,7 +108,7 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Switch to a different business
   const switchBusiness = async (businessId: string) => {
@@ -208,13 +208,16 @@ export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    // Only reload if the user ID actually changed (not just a reconnection)
+    // Always load businesses when the effect runs, but track user ID to prevent unnecessary reloads
     const currentUserId = user?.id || null;
-    if (currentUserId !== previousUserIdRef.current) {
+    const hasUserIdChanged = currentUserId !== previousUserIdRef.current;
+
+    // Load businesses if user ID changed OR if this is the first run (previousUserIdRef is undefined)
+    if (hasUserIdChanged || previousUserIdRef.current === undefined) {
       previousUserIdRef.current = currentUserId;
       loadUserBusinesses();
     }
-  }, [user]);
+  }, [user, loadUserBusinesses]);
 
   return (
     <BusinessContext.Provider

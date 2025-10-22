@@ -47,18 +47,13 @@ export const CustomThemeProvider: React.FC<CustomThemeProviderProps> = ({ childr
   // Apply dark algorithm if in dark mode
   const finalThemeConfig = {
     ...themeConfig,
-    algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+    algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm
   }
 
   return (
     <ThemeContext.Provider value={{ mode, toggleTheme, isDarkMode }}>
-      <ConfigProvider
-        theme={finalThemeConfig}
-        direction={direction}
-      >
-        <App>
-          {children}
-        </App>
+      <ConfigProvider theme={finalThemeConfig} direction={direction}>
+        <App>{children}</App>
       </ConfigProvider>
     </ThemeContext.Provider>
   )
