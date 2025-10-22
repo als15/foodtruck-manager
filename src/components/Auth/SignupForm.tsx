@@ -92,7 +92,8 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSucce
         style={{
           maxWidth: 500,
           width: '100%',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          direction: 'rtl'
         }}
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
