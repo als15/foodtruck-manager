@@ -1513,9 +1513,12 @@ const resources = {
       // Inventory Dialog
       edit_inventory_item: 'ערוך פריט מלאי',
       add_new_inventory_item: 'הוסף פריט מלאי חדש',
-      select_ingredient_label: 'בחר מרכיב',
-      select_ingredient_placeholder: 'בחר ממרכיבים קיימים',
-      auto_filled_from_ingredient: 'מולא אוטומטית מהמרכיב',
+      select_product_label: 'בחר מוצר',
+      select_ingredient_label: 'בחר מוצר', // Legacy key
+      select_product_placeholder: 'בחר ממוצרים קיימים',
+      select_ingredient_placeholder: 'בחר ממוצרים קיימים', // Legacy key
+      auto_filled_from_product: 'מולא אוטומטית מהמוצר',
+      auto_filled_from_ingredient: 'מולא אוטומטית מהמוצר', // Legacy key
       import_from_ingredients: 'ייבוא ממרכיבים',
       all_ingredients_in_inventory: 'כל המרכיבים כבר במלאי',
       imported_ingredients_to_inventory: 'יובאו {{count}} מרכיבים למלאי',

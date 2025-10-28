@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, AutoComplete, Spin, message, Dropdown, Divider, Tabs, Progress, Statistic, Alert as AntAlert } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PlusOutlined, EditOutlined, DeleteOutlined, WarningOutlined, AppstoreOutlined, MoreOutlined, ImportOutlined, ShoppingCartOutlined, CarOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, DeleteOutlined as DisposeIcon, BarChartOutlined, SearchOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, WarningOutlined, AppstoreOutlined, MoreOutlined, ImportOutlined, ShoppingCartOutlined, CarOutlined, ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, MinusCircleOutlined, BarChartOutlined, SearchOutlined } from '@ant-design/icons'
 import { InventoryItem, Product, Supplier, Order, MenuItem } from '../types'
 import { inventoryService, productsService, suppliersService, subscriptions, ordersService, menuItemsService } from '../services/supabaseService'
 import WasteAnalyticsDashboard from '../components/WasteAnalyticsDashboard'
@@ -719,7 +719,7 @@ export default function Inventory() {
                     <Button
                       type="text"
                       size="small"
-                      icon={<DisposeIcon />}
+                      icon={<MinusCircleOutlined />}
                       onClick={() => handleMarkAsDisposed(record)}
                       title="Mark as disposed"
                       style={{ color: '#faad14' }}
@@ -854,7 +854,7 @@ export default function Inventory() {
               />
             </Col>
             <Col span={12}>
-              <Text>Category</Text>
+              <Text>{t('category')}</Text>
               <AutoComplete
                 style={{ marginTop: 8, width: '100%' }}
                 options={allCategories.map(cat => ({ value: cat }))}
@@ -864,7 +864,7 @@ export default function Inventory() {
               />
             </Col>
             <Col span={8}>
-              <Text>Current Stock</Text>
+              <Text>{t('current_stock')}</Text>
               <Input
                 style={{ marginTop: 8 }}
                 type="number"
@@ -936,7 +936,7 @@ export default function Inventory() {
       <Modal
         title={
           <Space>
-            <DisposeIcon style={{ color: '#faad14' }} />
+            <MinusCircleOutlined style={{ color: '#faad14' }} />
             {t('mark_as_disposed_title')}
           </Space>
         }
