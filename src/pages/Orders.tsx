@@ -60,7 +60,7 @@ export default function Orders() {
   })
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-  const [taxRate, setTaxRate] = useState(0.08) // 8% tax rate
+  const [taxRate, setTaxRate] = useState(0) // 0% tax rate
 
   const [importData, setImportData] = useState('')
 
@@ -593,22 +593,23 @@ export default function Orders() {
       sorter: true,
       render: (time: Date) => time.toLocaleString()
     },
-    {
-      title: t('customer'),
-      key: 'customer',
-      render: (_, record) =>
-        record.customer ? (
-          <div>
-            <Text>
-              {record.customer.firstName} {record.customer.lastName}
-            </Text>
-            <br />
-            <Text type="secondary">{record.customer.phone}</Text>
-          </div>
-        ) : (
-          <Text type="secondary">{t('walk_in')}</Text>
-        )
-    },
+    // Customer column hidden for now
+    // {
+    //   title: t('customer'),
+    //   key: 'customer',
+    //   render: (_, record) =>
+    //     record.customer ? (
+    //       <div>
+    //         <Text>
+    //           {record.customer.firstName} {record.customer.lastName}
+    //         </Text>
+    //         <br />
+    //         <Text type="secondary">{record.customer.phone}</Text>
+    //       </div>
+    //     ) : (
+    //       <Text type="secondary">{t('walk_in')}</Text>
+    //     )
+    // },
     {
       title: t('items'),
       key: 'items',
@@ -912,7 +913,6 @@ export default function Orders() {
                   <Option value="week">{t('week_label')}</Option>
                   <Option value="month">{t('month_label')}</Option>
                   <Option value="status">{t('status_label')}</Option>
-                  <Option value="location">{t('location_label')}</Option>
                 </Select>
               </Space>
             </div>
@@ -978,7 +978,7 @@ export default function Orders() {
         <div style={{ marginTop: 16 }}>
           <Row gutter={[16, 16]}>
             {/* Customer Selection */}
-            <Col xs={24}>
+            <Col xs={24} style={{ display: 'none' }}>
               <Text strong>{t('customer')}</Text>
               <div style={{ marginTop: 8 }}>
                 {!showNewCustomerForm ? (
@@ -1123,7 +1123,7 @@ export default function Orders() {
               </Select>
             </Col>
 
-            <Col xs={24} sm={12}>
+            <Col xs={24} sm={12} style={{ display: 'none' }}>
               <Text>{t('location')}</Text>
               <Input
                 style={{ marginTop: 4 }}
@@ -1145,7 +1145,7 @@ export default function Orders() {
               />
             </Col>
 
-            <Col xs={24} sm={12}>
+            <Col xs={24} sm={12} style={{ display: 'none' }}>
               <Text>{t('tax_rate')}</Text>
               <Input
                 type="number"
