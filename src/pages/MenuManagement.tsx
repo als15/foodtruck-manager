@@ -643,7 +643,7 @@ export default function MenuManagement() {
       key: category,
       label: (
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Text>{category}</Text>
+          <Text>{t(category)}</Text>
           <Space>
             <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEditCategory(category)} />
             <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteCategory(category)} />

@@ -62,6 +62,7 @@ export default function SupplierOrders() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
 
   const [newOrder, setNewOrder] = useState<Partial<SupplierOrder>>({
     supplierId: '',
@@ -394,11 +395,14 @@ export default function SupplierOrders() {
 
   const handleUpdateStatus = async (orderId: string, status: SupplierOrder['status']) => {
     try {
+      setUpdatingOrderId(orderId)
       await supplierOrdersService.updateStatus(orderId, status)
       message.success('Order status updated successfully')
       loadOrders()
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to update order status')
+    } finally {
+      setUpdatingOrderId(null)
     }
   }
 
@@ -573,6 +577,8 @@ export default function SupplierOrders() {
           value={status}
           onChange={(value) => handleUpdateStatus(record.id, value)}
           style={{ minWidth: 120 }}
+          loading={updatingOrderId === record.id}
+          disabled={updatingOrderId === record.id}
         >
           {ORDER_STATUSES.map(s => (
             <Option key={s} value={s}>

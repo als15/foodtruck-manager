@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import AppLayout from './components/Layout/AntdAppLayout'
 import Dashboard from './pages/Dashboard'
@@ -21,19 +21,40 @@ import { Auth } from './pages/Auth'
 import { UserManagement } from './pages/UserManagement'
 import TeamManagement from './pages/TeamManagement'
 import InviteAccept from './pages/InviteAccept'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { BusinessProvider } from './contexts/BusinessContext'
 import { CustomThemeProvider } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/Auth/ProtectedRoute'
+import { WelcomeAnimation } from './components/Welcome/WelcomeAnimation'
 
-function App() {
+function AppContent() {
+  const { user } = useAuth()
+  const [showWelcome, setShowWelcome] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
+      if (!hasSeenWelcome) {
+        setShowWelcome(true)
+      }
+    }
+  }, [user])
+
+  const handleCloseWelcome = () => {
+    setShowWelcome(false)
+    if (user) {
+      localStorage.setItem(`welcome_shown_${user.id}`, 'true')
+    }
+  }
+
+  const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0]
+
   return (
-    <CustomThemeProvider>
-      <AuthProvider>
-        <BusinessProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/invite/:token" element={<InviteAccept />} />
+    <>
+      <WelcomeAnimation visible={showWelcome} onClose={handleCloseWelcome} userName={userName} />
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/invite/:token" element={<InviteAccept />} />
             <Route
               path="/user-management"
               element={
@@ -75,6 +96,16 @@ function App() {
               }
             />
           </Routes>
+      </>
+    )
+}
+
+function App() {
+  return (
+    <CustomThemeProvider>
+      <AuthProvider>
+        <BusinessProvider>
+          <AppContent />
         </BusinessProvider>
       </AuthProvider>
     </CustomThemeProvider>
