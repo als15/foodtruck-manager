@@ -434,6 +434,8 @@ const resources = {
       unknown: 'Unknown',
       edit_order: 'Edit Order',
       delete_order: 'Delete Order',
+      create_order: 'Create Order',
+      update_order: 'Update Order',
       // Inventory Dialog
       edit_inventory_item: 'Edit Inventory Item',
       add_new_inventory_item: 'Add New Inventory Item',
@@ -842,6 +844,12 @@ const resources = {
       order_refunded: 'Refunded',
       order_failed: 'Failed',
       // Supplier order statuses
+      draft: 'Draft',
+      submitted: 'Submitted',
+      confirmed: 'Confirmed',
+      shipped: 'Shipped',
+      delivered: 'Delivered',
+      cancelled: 'Cancelled',
       supplier_draft: 'Draft',
       supplier_submitted: 'Submitted',
       supplier_confirmed: 'Confirmed',
@@ -1500,6 +1508,8 @@ const resources = {
       unknown: 'לא ידוע',
       edit_order: 'ערוך הזמנה',
       delete_order: 'מחק הזמנה',
+      create_order: 'צור הזמנה',
+      update_order: 'עדכן הזמנה',
       // Inventory Dialog
       edit_inventory_item: 'ערוך פריט מלאי',
       add_new_inventory_item: 'הוסף פריט מלאי חדש',
@@ -1902,6 +1912,12 @@ const resources = {
       order_refunded: 'זוכה',
       order_failed: 'נכשל',
       // Supplier order statuses
+      draft: 'טיוטה',
+      submitted: 'הוגשה',
+      confirmed: 'אושרה',
+      shipped: 'נשלחה',
+      delivered: 'נמסרה',
+      cancelled: 'בוטל',
       supplier_draft: 'טיוטה',
       supplier_submitted: 'הוגשה',
       supplier_confirmed: 'אושרה',

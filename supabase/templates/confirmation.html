@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm Your Email</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f5f5f5">
+      <tr>
+        <td align="center" style="padding: 40px 20px">
+          <!-- Main Container -->
+          <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)">
+            <!-- Header with Logo -->
+            <tr>
+              <td style="padding: 40px 40px 30px; text-align: center; background: linear-gradient(135deg, #7fd3c7 0%, #5cdbd3 100%); border-radius: 12px 12px 0 0">
+                <div style="display: inline-block; background-color: #ffffff; padding: 20px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)">
+                  <img src="{{ .SiteURL }}/logo_cropped.png" alt="NomNom" style="height: 60px; width: auto; display: block; margin: 0 auto" />
+                </div>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px 40px 20px">
+                <h2 style="margin: 0 0 20px; font-size: 24px; font-weight: 600; color: #1a1a1a; text-align: center">Confirm Your Email Address</h2>
+                <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #4a4a4a; text-align: center">Welcome to NomNom! We're excited to have you on board. Please confirm your email address to get started with managing your food truck business.</p>
+              </td>
+            </tr>
+
+            <!-- CTA Button -->
+            <tr>
+              <td style="padding: 0 40px 40px; text-align: center">
+                <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #7fd3c7 0%, #5cdbd3 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 12px rgba(127, 211, 199, 0.3); transition: all 0.3s ease"> Confirm Email Address </a>
+              </td>
+            </tr>
+
+            <!-- Alternative Link -->
+            <tr>
+              <td style="padding: 0 40px 40px">
+                <div style="background-color: #f5f5f5; border-radius: 8px; padding: 20px; border-left: 4px solid #7fd3c7">
+                  <p style="margin: 0 0 12px; font-size: 14px; color: #666666; line-height: 1.5"><strong>Can't click the button?</strong> Copy and paste this link into your browser:</p>
+                  <p style="margin: 0; font-size: 13px; color: #1890ff; word-break: break-all; line-height: 1.5">
+                    <a href="{{ .ConfirmationURL }}" style="color: #1890ff; text-decoration: underline">{{ .ConfirmationURL }}</a>
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Security Notice -->
+            <tr>
+              <td style="padding: 0 40px 30px">
+                <div style="border-top: 1px solid #e8e8e8; padding-top: 24px">
+                  <p style="margin: 0; font-size: 13px; color: #999999; line-height: 1.6; text-align: center">
+                    🔒 This link will expire in 24 hours for your security.<br />
+                    If you didn't create an account, you can safely ignore this email.
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 24px 40px; background-color: #fafafa; border-radius: 0 0 12px 12px; border-top: 1px solid #e8e8e8">
+                <p style="margin: 0 0 8px; font-size: 14px; color: #666666; text-align: center; line-height: 1.5"><strong>Need help?</strong> Contact our support team</p>
+                <p style="margin: 0; font-size: 12px; color: #999999; text-align: center; line-height: 1.5">© 2025 NomNom Food Truck Management. All rights reserved.</p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Email Footer Note -->
+          <table role="presentation" style="width: 100%; max-width: 600px; margin-top: 20px">
+            <tr>
+              <td style="padding: 0 20px; text-align: center">
+                <p style="margin: 0; font-size: 12px; color: #999999; line-height: 1.5">
+                  This email was sent to {{ .Email }}<br />
+                  You received this email because you signed up for a NomNom account.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

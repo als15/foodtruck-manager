@@ -1168,12 +1168,12 @@ export const inventoryManagementService = {
           .single();
         
         if (ingredientError) throw ingredientError;
-        
+
         // Find inventory item by name matching
-        let inventoryItem = inventoryItems?.find(invItem => 
+        let inventoryItem = inventoryItems?.find(invItem =>
           invItem.name.toLowerCase().trim() === ingredient.name.toLowerCase().trim()
         );
-        
+
         // If inventory item doesn't exist, create it
         if (!inventoryItem) {
           const { data: ingredient, error: ingredientError } = await supabase
@@ -1182,9 +1182,9 @@ export const inventoryManagementService = {
             .eq('id', item.ingredient_id)
             .eq('business_id', businessId)
             .single();
-          
+
           if (ingredientError) throw ingredientError;
-          
+
           const { data: newInventoryItem, error: createError } = await supabase
             .from('inventory_items')
             .insert({
@@ -1200,21 +1200,32 @@ export const inventoryManagementService = {
             })
             .select()
             .single();
-          
+
           if (createError) throw createError;
           inventoryItem = newInventoryItem;
         }
-        
+
+        // Calculate actual quantity to add to inventory
+        // If ordering by package, multiply by units per package
+        const actualQuantity = ingredient.order_by_package && ingredient.units_per_package && ingredient.units_per_package > 1
+          ? item.quantity * ingredient.units_per_package
+          : item.quantity;
+
+        // Calculate cost per unit (not per package)
+        const costPerUnit = ingredient.order_by_package && ingredient.units_per_package && ingredient.units_per_package > 1
+          ? item.unit_price / ingredient.units_per_package
+          : item.unit_price;
+
         // Update inventory stock
         await this.updateStock(
           inventoryItem.id,
-          item.quantity,
+          actualQuantity,
           'in',
           'supplier_delivery',
           supplierOrderId,
           `Supplier Order #${supplierOrder.order_number}`,
           `Delivery from ${supplierOrder.supplier?.name || 'supplier'}`,
-          item.unit_price
+          costPerUnit
         );
       }
       
