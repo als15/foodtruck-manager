@@ -227,6 +227,7 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
       key: 'finance-insights',
       icon: <BarChartOutlined />,
       label: t('finance_insights'),
+      disabled: true,
       children: [
         {
           key: '/finances',

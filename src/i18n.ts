@@ -507,6 +507,7 @@ const resources = {
       product_management: 'Product Management',
       ingredient_management: 'Product Management', // Legacy key
       import_export: 'Import/Export',
+      search_products: 'Search products by name, category, supplier, or unit...',
       total_products: 'Total Products',
       total_ingredients: 'Total Products', // Legacy key
       categories_text: 'Categories',
@@ -1581,6 +1582,7 @@ const resources = {
       // Ingredients Page
       ingredient_management: 'ניהול מוצרים',
       import_export: 'ייבוא/ייצוא',
+      search_products: 'חפש מוצרים לפי שם, קטגוריה, ספק או יחידה...',
       total_ingredients: 'סך המוצרים',
       categories_text: 'קטגוריות',
       table_view: 'טבלה',

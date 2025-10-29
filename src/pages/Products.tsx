@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, AutoComplete, Switch, Spin, message, Dropdown, Divider, Segmented, Statistic, Flex } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, AppstoreOutlined, MoreOutlined, UploadOutlined, DownloadOutlined, BulbOutlined, TableOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, AppstoreOutlined, MoreOutlined, UploadOutlined, DownloadOutlined, BulbOutlined, TableOutlined, SearchOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { Product, Supplier } from '../types'
@@ -12,6 +12,7 @@ import RecipeParser from '../components/RecipeParser'
 import { formatCurrency } from '../utils/currency'
 
 const { Title, Text } = Typography
+const { Search } = Input
 
 export default function Products() {
   const { t, i18n } = useTranslation()
@@ -31,6 +32,7 @@ export default function Products() {
 
   // View toggle: 'table' (default) or 'grouped'
   const [productsView, setProductsView] = useState<'table' | 'grouped'>('table')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
@@ -337,9 +339,21 @@ export default function Products() {
 
   const supplierNames = suppliers.map(supplier => supplier.name).sort()
 
-  const totalProducts = products.length
-  const availableProducts = products.filter(ing => ing.isAvailable).length
-  const avgCostPerProduct = products.length > 0 ? products.reduce((sum, ing) => sum + ing.costPerUnit, 0) / products.length : 0
+  // Filter products based on search term
+  const filteredProducts = products.filter(product => {
+    if (!searchTerm) return true
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      product.name.toLowerCase().includes(searchLower) ||
+      product.category.toLowerCase().includes(searchLower) ||
+      product.supplier.toLowerCase().includes(searchLower) ||
+      product.unit.toLowerCase().includes(searchLower)
+    )
+  })
+
+  const totalProducts = filteredProducts.length
+  const availableProducts = filteredProducts.filter(ing => ing.isAvailable).length
+  const avgCostPerProduct = filteredProducts.length > 0 ? filteredProducts.reduce((sum, ing) => sum + ing.costPerUnit, 0) / filteredProducts.length : 0
 
   // Dropdown menu items
   const menuItems: MenuProps['items'] = [
@@ -547,11 +561,22 @@ export default function Products() {
         </Col>
       </Row>
 
+      <Card bordered={false} style={{ marginBottom: 24 }}>
+        <Search
+          placeholder={t('search_products')}
+          allowClear
+          size="large"
+          prefix={<SearchOutlined />}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </Card>
+
       {productsView === 'table' ? (
         <Card bordered={false}>
           <Table
             columns={columns}
-            dataSource={products}
+            dataSource={filteredProducts}
             rowKey="id"
             pagination={{ pageSize: 20, showSizeChanger: true }}
             rowClassName={(record) => !record.isAvailable ? 'opacity-60' : ''}
@@ -559,23 +584,27 @@ export default function Products() {
         </Card>
       ) : (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {categories.map(category => (
-            <div key={category}>
-              <Title level={4} style={{ marginBottom: 16 }}>
-                <AppstoreOutlined style={{ marginRight: 8 }} />
-                {category}
-              </Title>
-              <Card bordered={false}>
-                <Table
-                  columns={columns.filter((col: any) => col.key !== 'category')}
-                  dataSource={products.filter(p => p.category === category)}
-                  rowKey="id"
-                  pagination={false}
-                  rowClassName={(record) => !record.isAvailable ? 'opacity-60' : ''}
-                />
-              </Card>
-            </div>
-          ))}
+          {categories.map(category => {
+            const categoryProducts = filteredProducts.filter(p => p.category === category)
+            if (categoryProducts.length === 0) return null
+            return (
+              <div key={category}>
+                <Title level={4} style={{ marginBottom: 16 }}>
+                  <AppstoreOutlined style={{ marginRight: 8 }} />
+                  {category}
+                </Title>
+                <Card bordered={false}>
+                  <Table
+                    columns={columns.filter((col: any) => col.key !== 'category')}
+                    dataSource={categoryProducts}
+                    rowKey="id"
+                    pagination={false}
+                    rowClassName={(record) => !record.isAvailable ? 'opacity-60' : ''}
+                  />
+                </Card>
+              </div>
+            )
+          })}
         </Space>
       )}
 

@@ -964,12 +964,11 @@ export default function SupplierOrders() {
           const selectedIngredient = filteredIngredients.find(i => i.id === item.ingredientId)
           console.log('Selected ingredient:', selectedIngredient)
           const hasPackaging = selectedIngredient?.orderByPackage && selectedIngredient?.unitsPerPackage && selectedIngredient.unitsPerPackage > 1
-          const packageInfo = hasPackaging ? `${selectedIngredient.unitsPerPackage} ${selectedIngredient.unit} per ${selectedIngredient.packageType || 'package'}` : ''
           const totalUnits = hasPackaging ? item.quantity * (selectedIngredient?.unitsPerPackage || 1) : item.quantity
 
           return (
-            <div key={item.tempId} style={{ marginBottom: 24 }}>
-              <Row gutter={16} align="top">
+            <div key={item.tempId} style={{ marginBottom: 16 }}>
+              <Row gutter={16} align="middle">
                 <Col xs={24} sm={10}>
                   <div style={{ marginBottom: 8 }}>
                     <Text>{t('ingredient')}</Text>
@@ -1010,12 +1009,12 @@ export default function SupplierOrders() {
                       style={{ marginTop: 4 }}
                       value={item.quantity}
                       onChange={(e) => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))}
+                      suffix={hasPackaging ? (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {totalUnits} {selectedIngredient?.unit}
+                        </Text>
+                      ) : undefined}
                     />
-                    {hasPackaging && (
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                        {totalUnits} {selectedIngredient?.unit} total
-                      </Text>
-                    )}
                   </div>
                 </Col>
                 <Col xs={12} sm={4}>
@@ -1048,11 +1047,6 @@ export default function SupplierOrders() {
                   />
                 </Col>
               </Row>
-              {packageInfo && (
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                  {packageInfo}
-                </Text>
-              )}
             </div>
           )
         })}
