@@ -21,6 +21,9 @@ import { Auth } from './pages/Auth'
 import { UserManagement } from './pages/UserManagement'
 import TeamManagement from './pages/TeamManagement'
 import InviteAccept from './pages/InviteAccept'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
+import Disclaimer from './pages/Disclaimer'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { BusinessProvider } from './contexts/BusinessContext'
 import { CustomThemeProvider } from './contexts/ThemeContext'
@@ -55,6 +58,9 @@ function AppContent() {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/invite/:token" element={<InviteAccept />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/disclaimer" element={<Disclaimer />} />
             <Route
               path="/user-management"
               element={

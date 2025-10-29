@@ -1077,7 +1077,12 @@ const resources = {
       csv_generated_desc: 'Your ingredients CSV has been downloaded and is ready to import.',
       import_ingredients_now: 'Import Ingredients Now',
       back: 'Back',
-      done: 'Done'
+      done: 'Done',
+
+      // Legal Pages
+      privacy_policy: 'Privacy Policy',
+      terms_of_service: 'Terms of Service',
+      disclaimer: 'Disclaimer'
     }
   },
   he: {
@@ -2149,7 +2154,12 @@ const resources = {
       csv_generated_desc: 'קובץ ה-CSV של המרכיבים הורד ומוכן לייבוא.',
       import_ingredients_now: 'ייבא מרכיבים עכשיו',
       back: 'חזרה',
-      done: 'בוצע'
+      done: 'בוצע',
+
+      // Legal Pages
+      privacy_policy: 'מדיניות פרטיות',
+      terms_of_service: 'תנאי שימוש',
+      disclaimer: 'הצהרת אחריות'
     }
   }
 }

@@ -3,6 +3,7 @@ import { Card, Form, Input, Button, Typography, Alert, Space, Row, Col, Divider 
 import { UserOutlined, MailOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTranslation } from 'react-i18next'
+import { Link as RouterLink } from 'react-router-dom'
 
 const { Title, Text, Link } = Typography
 
@@ -244,6 +245,21 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSucce
           </div>
         </Space>
       </Card>
+
+      {/* Legal Links */}
+      <div style={{ textAlign: 'center', marginTop: 24 }}>
+        <Space split="|" size="small">
+          <RouterLink to="/privacy-policy" style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12 }}>
+            Privacy Policy
+          </RouterLink>
+          <RouterLink to="/terms-of-service" style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12 }}>
+            Terms of Service
+          </RouterLink>
+          <RouterLink to="/disclaimer" style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12 }}>
+            Disclaimer
+          </RouterLink>
+        </Space>
+      </div>
     </div>
   )
 }
