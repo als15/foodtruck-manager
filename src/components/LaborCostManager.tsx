@@ -50,9 +50,6 @@ export default function LaborCostManager({ employees, shifts, weeklyRevenue = 0,
     const projection = LaborCalculator.projectLaborCosts(employees, projectedHours, projectedRevenue)
 
     setOpenProjectionDialog(false)
-
-    // Here you would typically save the projection to the database
-    console.log('Labor Projection Created:', projection)
   }
 
   const getLaborHealthColor = (percentage: number) => {

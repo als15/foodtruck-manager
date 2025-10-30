@@ -148,7 +148,6 @@ export default function SupplierOrders() {
   const loadIngredients = async () => {
     try {
       const data = await ingredientsService.getAll()
-      console.log('Loaded ingredients with packaging info:', data)
       setIngredients(data.filter(i => i.isAvailable))
     } catch (err) {
       console.error('Failed to load ingredients:', err)
@@ -200,7 +199,7 @@ export default function SupplierOrders() {
         itemName: 'Ground Beef',
         quantity: 10,
         unitPrice: 8.99,
-        totalPrice: 89.90,
+        totalPrice: 89.9,
         status: 'draft',
         priority: 'medium',
         orderDate: format(new Date(), 'yyyy-MM-dd'),
@@ -211,8 +210,8 @@ export default function SupplierOrders() {
         supplier: 'Meat Supplier Co.',
         itemName: 'Chicken Breast',
         quantity: 15,
-        unitPrice: 6.50,
-        totalPrice: 97.50,
+        unitPrice: 6.5,
+        totalPrice: 97.5,
         status: 'draft',
         priority: 'medium',
         orderDate: format(new Date(), 'yyyy-MM-dd'),
@@ -223,8 +222,8 @@ export default function SupplierOrders() {
         supplier: 'Fresh Produce Inc.',
         itemName: 'Tomatoes',
         quantity: 20,
-        unitPrice: 2.50,
-        totalPrice: 50.00,
+        unitPrice: 2.5,
+        totalPrice: 50.0,
         status: 'draft',
         priority: 'high',
         orderDate: format(new Date(), 'yyyy-MM-dd'),
@@ -550,7 +549,7 @@ export default function SupplierOrders() {
       dataIndex: ['supplier', 'name'],
       key: 'supplier',
       sorter: true,
-      render: (text) => text || t('unknown')
+      render: text => text || t('unknown')
     },
     {
       title: t('items'),
@@ -564,7 +563,7 @@ export default function SupplierOrders() {
       key: 'totalAmount',
       sorter: true,
       align: isRtl ? 'left' : 'right',
-      render: (amount) => formatCurrency(amount)
+      render: amount => formatCurrency(amount)
     },
     {
       title: t('status'),
@@ -572,14 +571,7 @@ export default function SupplierOrders() {
       key: 'status',
       sorter: true,
       render: (status, record) => (
-        <Select
-          size="small"
-          value={status}
-          onChange={(value) => handleUpdateStatus(record.id, value)}
-          style={{ minWidth: 120 }}
-          loading={updatingOrderId === record.id}
-          disabled={updatingOrderId === record.id}
-        >
+        <Select size="small" value={status} onChange={value => handleUpdateStatus(record.id, value)} style={{ minWidth: 120 }} loading={updatingOrderId === record.id} disabled={updatingOrderId === record.id}>
           {ORDER_STATUSES.map(s => (
             <Option key={s} value={s}>
               <Tag color={getStatusColor(s)}>{t(s)}</Tag>
@@ -593,21 +585,21 @@ export default function SupplierOrders() {
       dataIndex: 'priority',
       key: 'priority',
       sorter: true,
-      render: (priority) => <Tag color={getPriorityColor(priority)}>{t(priority)}</Tag>
+      render: priority => <Tag color={getPriorityColor(priority)}>{t(priority)}</Tag>
     },
     {
       title: t('order_date'),
       dataIndex: 'orderDate',
       key: 'orderDate',
       sorter: true,
-      render: (date) => format(new Date(date), 'MMM dd, yyyy')
+      render: date => format(new Date(date), 'MMM dd, yyyy')
     },
     {
       title: t('expected_delivery'),
       dataIndex: 'expectedDeliveryDate',
       key: 'expectedDeliveryDate',
       sorter: true,
-      render: (date) => date ? format(new Date(date), 'MMM dd, yyyy') : '-'
+      render: date => (date ? format(new Date(date), 'MMM dd, yyyy') : '-')
     },
     {
       title: t('actions'),
@@ -615,19 +607,8 @@ export default function SupplierOrders() {
       align: isRtl ? 'left' : 'right',
       render: (_, record) => (
         <Space>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenDialog(record)}
-            title={t('edit_order')}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteOrder(record.id)}
-            title={t('delete_order')}
-          />
+          <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenDialog(record)} title={t('edit_order')} />
+          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteOrder(record.id)} title={t('delete_order')} />
         </Space>
       )
     }
@@ -650,9 +631,7 @@ export default function SupplierOrders() {
         </Title>
         <Space direction="horizontal">
           <Dropdown menu={{ items: importExportMenuItems }}>
-            <Button icon={<MoreOutlined />}>
-              {t('import_export')}
-            </Button>
+            <Button icon={<MoreOutlined />}>{t('import_export')}</Button>
           </Dropdown>
           <Button icon={<ThunderboltOutlined />} onClick={handleGenerateAutoOrders} loading={loading}>
             {t('generate_auto_orders')}
@@ -734,9 +713,7 @@ export default function SupplierOrders() {
                 <div>
                   <Text strong>{`${order.orderNumber} - ${order.supplier?.name}`}</Text>
                   <br />
-                  <Text type="secondary">
-                    {order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? t('overdue_delivery_expected', { date: format(order.expectedDeliveryDate, 'MMM dd, yyyy') }) : order.status === 'submitted' && order.submittedDate ? t('submitted_days_ago', { count: Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24)) }) : t('needs_attention')}
-                  </Text>
+                  <Text type="secondary">{order.expectedDeliveryDate && order.expectedDeliveryDate < new Date(new Date().getTime() - 24 * 60 * 60 * 1000) ? t('overdue_delivery_expected', { date: format(order.expectedDeliveryDate, 'MMM dd, yyyy') }) : order.status === 'submitted' && order.submittedDate ? t('submitted_days_ago', { count: Math.floor((new Date().getTime() - order.submittedDate.getTime()) / (1000 * 60 * 60 * 24)) }) : t('needs_attention')}</Text>
                 </div>
                 <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenDialog(order)} />
               </div>
@@ -749,12 +726,7 @@ export default function SupplierOrders() {
       {suppliersWithoutOpenOrders.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           {!expandedSuppliersSection ? (
-            <Button
-              size="small"
-              icon={<ShoppingCartOutlined />}
-              onClick={() => setExpandedSuppliersSection(true)}
-              style={{ textTransform: 'none' }}
-            >
+            <Button size="small" icon={<ShoppingCartOutlined />} onClick={() => setExpandedSuppliersSection(true)} style={{ textTransform: 'none' }}>
               {t('suppliers_without_open_orders')} ({suppliersWithoutOpenOrders.length}) <DownOutlined />
             </Button>
           ) : (
@@ -762,7 +734,9 @@ export default function SupplierOrders() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: isRtl ? 'row-reverse' : 'row', marginBottom: 8 }}>
                 <Space direction="horizontal">
                   <ShoppingCartOutlined />
-                  <Title level={5} style={{ margin: 0 }}>{t('suppliers_without_open_orders')}</Title>
+                  <Title level={5} style={{ margin: 0 }}>
+                    {t('suppliers_without_open_orders')}
+                  </Title>
                 </Space>
                 <Button type="text" size="small" icon={<UpOutlined />} onClick={() => setExpandedSuppliersSection(false)} />
               </div>
@@ -799,21 +773,13 @@ export default function SupplierOrders() {
       )}
 
       {/* Error handling */}
-      {error && (
-        <Alert message={error} type="error" style={{ marginBottom: 24 }} closable />
-      )}
+      {error && <Alert message={error} type="error" style={{ marginBottom: 24 }} closable />}
 
       {/* Orders Table */}
       <Card>
         {/* Search Bar */}
         <div style={{ marginBottom: 16 }}>
-          <Input
-            placeholder={t('search_orders')}
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            allowClear
-          />
+          <Input placeholder={t('search_orders')} prefix={<SearchOutlined />} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} allowClear />
         </div>
 
         <Table
@@ -843,12 +809,7 @@ export default function SupplierOrders() {
           <Button key="cancel" onClick={handleCloseDialog}>
             {t('cancel')}
           </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleSubmitOrder}
-            disabled={!newOrder.supplierId || orderItems.length === 0}
-          >
+          <Button key="submit" type="primary" onClick={handleSubmitOrder} disabled={!newOrder.supplierId || orderItems.length === 0}>
             {editingOrder ? t('update_order') : t('create_order')}
           </Button>
         ]}
@@ -861,7 +822,7 @@ export default function SupplierOrders() {
                 style={{ width: '100%', marginTop: 4 }}
                 placeholder={t('supplier_label')}
                 value={newOrder.supplierId || undefined}
-                onChange={(value) => {
+                onChange={value => {
                   setNewOrder({ ...newOrder, supplierId: value, totalAmount: 0 })
                   setOrderItems([])
                 }}
@@ -879,11 +840,7 @@ export default function SupplierOrders() {
           <Col xs={24} sm={12}>
             <div style={{ marginBottom: 16 }}>
               <Text>{t('priority')}</Text>
-              <Select
-                style={{ width: '100%', marginTop: 4 }}
-                value={newOrder.priority || 'medium'}
-                onChange={(value) => setNewOrder({ ...newOrder, priority: value as SupplierOrder['priority'] })}
-              >
+              <Select style={{ width: '100%', marginTop: 4 }} value={newOrder.priority || 'medium'} onChange={value => setNewOrder({ ...newOrder, priority: value as SupplierOrder['priority'] })}>
                 {ORDER_PRIORITIES.map(priority => (
                   <Option key={priority} value={priority}>
                     {t(priority)}
@@ -895,11 +852,7 @@ export default function SupplierOrders() {
           <Col xs={24} sm={12}>
             <div style={{ marginBottom: 16 }}>
               <Text>{t('status')}</Text>
-              <Select
-                style={{ width: '100%', marginTop: 4 }}
-                value={newOrder.status || 'draft'}
-                onChange={(value) => setNewOrder({ ...newOrder, status: value as SupplierOrder['status'] })}
-              >
+              <Select style={{ width: '100%', marginTop: 4 }} value={newOrder.status || 'draft'} onChange={value => setNewOrder({ ...newOrder, status: value as SupplierOrder['status'] })}>
                 {ORDER_STATUSES.map(status => (
                   <Option key={status} value={status}>
                     <Tag color={getStatusColor(status)}>{t(status)}</Tag>
@@ -911,32 +864,19 @@ export default function SupplierOrders() {
           <Col xs={24} sm={12}>
             <div style={{ marginBottom: 16 }}>
               <Text>{t('order_date')}</Text>
-              <DatePicker
-                style={{ width: '100%', marginTop: 4 }}
-                value={newOrder.orderDate ? dayjs(newOrder.orderDate) : dayjs()}
-                onChange={(date) => setNewOrder({ ...newOrder, orderDate: date ? date.toDate() : new Date() })}
-              />
+              <DatePicker style={{ width: '100%', marginTop: 4 }} value={newOrder.orderDate ? dayjs(newOrder.orderDate) : dayjs()} onChange={date => setNewOrder({ ...newOrder, orderDate: date ? date.toDate() : new Date() })} />
             </div>
           </Col>
           <Col xs={24} sm={12}>
             <div style={{ marginBottom: 16 }}>
               <Text>{t('expected_delivery')}</Text>
-              <DatePicker
-                style={{ width: '100%', marginTop: 4 }}
-                value={newOrder.expectedDeliveryDate ? dayjs(newOrder.expectedDeliveryDate) : null}
-                onChange={(date) => setNewOrder({ ...newOrder, expectedDeliveryDate: date ? date.toDate() : undefined })}
-              />
+              <DatePicker style={{ width: '100%', marginTop: 4 }} value={newOrder.expectedDeliveryDate ? dayjs(newOrder.expectedDeliveryDate) : null} onChange={date => setNewOrder({ ...newOrder, expectedDeliveryDate: date ? date.toDate() : undefined })} />
             </div>
           </Col>
           <Col xs={24}>
             <div style={{ marginBottom: 16 }}>
               <Text>{t('notes')}</Text>
-              <Input.TextArea
-                style={{ marginTop: 4 }}
-                value={newOrder.notes || ''}
-                onChange={(e) => setNewOrder({ ...newOrder, notes: e.target.value })}
-                rows={2}
-              />
+              <Input.TextArea style={{ marginTop: 4 }} value={newOrder.notes || ''} onChange={e => setNewOrder({ ...newOrder, notes: e.target.value })} rows={2} />
             </div>
           </Col>
         </Row>
@@ -952,13 +892,9 @@ export default function SupplierOrders() {
           </Button>
         </div>
 
-        {!newOrder.supplierId && (
-          <Alert message={t('select_supplier_first')} type="info" style={{ marginBottom: 16 }} />
-        )}
+        {!newOrder.supplierId && <Alert message={t('select_supplier_first')} type="info" style={{ marginBottom: 16 }} />}
 
-        {newOrder.supplierId && filteredIngredients.length === 0 && (
-          <Alert message={t('no_ingredients_for_supplier')} type="warning" style={{ marginBottom: 16 }} />
-        )}
+        {newOrder.supplierId && filteredIngredients.length === 0 && <Alert message={t('no_ingredients_for_supplier')} type="warning" style={{ marginBottom: 16 }} />}
 
         {orderItems.map(item => {
           const selectedIngredient = filteredIngredients.find(i => i.id === item.ingredientId)
@@ -976,14 +912,12 @@ export default function SupplierOrders() {
                       style={{ width: '100%', marginTop: 4 }}
                       placeholder={t('ingredient')}
                       value={item.ingredientId || undefined}
-                      onChange={(value) => {
+                      onChange={value => {
                         handleUpdateOrderItem(item.tempId, 'ingredientId', value)
                         const ingredient = filteredIngredients.find(i => i.id === value)
                         if (ingredient) {
                           // If ordering by package, unit price should be cost per unit * units per package
-                          const unitPrice = ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1
-                            ? ingredient.costPerUnit * ingredient.unitsPerPackage
-                            : ingredient.costPerUnit
+                          const unitPrice = ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1 ? ingredient.costPerUnit * ingredient.unitsPerPackage : ingredient.costPerUnit
                           handleUpdateOrderItem(item.tempId, 'unitPrice', unitPrice)
                         }
                       }}
@@ -993,9 +927,7 @@ export default function SupplierOrders() {
                     >
                       {filteredIngredients.map(ingredient => (
                         <Option key={ingredient.id} value={ingredient.id}>
-                          {ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1
-                            ? `${ingredient.name} (${ingredient.unitsPerPackage} ${ingredient.unit}/${ingredient.packageType || 'package'})`
-                            : ingredient.name}
+                          {ingredient.orderByPackage && ingredient.unitsPerPackage && ingredient.unitsPerPackage > 1 ? `${ingredient.name} (${ingredient.unitsPerPackage} ${ingredient.unit}/${ingredient.packageType || 'package'})` : ingredient.name}
                         </Option>
                       ))}
                     </Select>
@@ -1008,43 +940,31 @@ export default function SupplierOrders() {
                       type="number"
                       style={{ marginTop: 4 }}
                       value={item.quantity}
-                      onChange={(e) => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))}
-                      suffix={hasPackaging ? (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          {totalUnits} {selectedIngredient?.unit}
-                        </Text>
-                      ) : undefined}
+                      onChange={e => handleUpdateOrderItem(item.tempId, 'quantity', Number(e.target.value))}
+                      suffix={
+                        hasPackaging ? (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {totalUnits} {selectedIngredient?.unit}
+                          </Text>
+                        ) : undefined
+                      }
                     />
                   </div>
                 </Col>
                 <Col xs={12} sm={4}>
                   <div style={{ marginBottom: 8 }}>
                     <Text>{hasPackaging ? `${t('unit_cost')}/${selectedIngredient?.packageType || 'package'}` : t('unit_cost')}</Text>
-                    <Input
-                      type="number"
-                      style={{ marginTop: 4 }}
-                      value={item.unitPrice}
-                      onChange={(e) => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))}
-                    />
+                    <Input type="number" style={{ marginTop: 4 }} value={item.unitPrice} onChange={e => handleUpdateOrderItem(item.tempId, 'unitPrice', Number(e.target.value))} />
                   </div>
                 </Col>
                 <Col xs={12} sm={4}>
                   <div style={{ marginBottom: 8 }}>
                     <Text>{t('total')}</Text>
-                    <Input
-                      style={{ marginTop: 4 }}
-                      value={formatCurrency(item.totalPrice)}
-                      disabled
-                    />
+                    <Input style={{ marginTop: 4 }} value={formatCurrency(item.totalPrice)} disabled />
                   </div>
                 </Col>
                 <Col xs={12} sm={2} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                  <Button
-                    danger
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleRemoveOrderItem(item.tempId)}
-                  />
+                  <Button danger type="text" icon={<DeleteOutlined />} onClick={() => handleRemoveOrderItem(item.tempId)} />
                 </Col>
               </Row>
             </div>
@@ -1079,12 +999,7 @@ export default function SupplierOrders() {
           >
             {t('cancel')}
           </Button>,
-          <Button
-            key="import"
-            type="primary"
-            onClick={handleImportMapping}
-            disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}
-          >
+          <Button key="import" type="primary" onClick={handleImportMapping} disabled={!importMapping.supplier || !importMapping.itemNameColumn || !importMapping.quantityColumn || !importMapping.unitPriceColumn}>
             {t('import')}
           </Button>
         ]}
@@ -1105,7 +1020,7 @@ export default function SupplierOrders() {
                     style={{ width: '100%', marginTop: 4 }}
                     placeholder={t('select_supplier')}
                     value={importMapping.supplier?.id}
-                    onChange={(value) => {
+                    onChange={value => {
                       const supplier = suppliers.find(s => s.id === value)
                       setImportMapping({ ...importMapping, supplier: supplier || undefined })
                     }}
@@ -1126,11 +1041,7 @@ export default function SupplierOrders() {
                   <Col xs={24} sm={8}>
                     <div style={{ marginBottom: 16 }}>
                       <Text>{t('item_name_column')}</Text>
-                      <Select
-                        style={{ width: '100%', marginTop: 4 }}
-                        value={importMapping.itemNameColumn}
-                        onChange={(value) => setImportMapping({ ...importMapping, itemNameColumn: value })}
-                      >
+                      <Select style={{ width: '100%', marginTop: 4 }} value={importMapping.itemNameColumn} onChange={value => setImportMapping({ ...importMapping, itemNameColumn: value })}>
                         {Object.keys(importData[0]).map(column => (
                           <Option key={column} value={column}>
                             {column}
@@ -1143,11 +1054,7 @@ export default function SupplierOrders() {
                   <Col xs={24} sm={8}>
                     <div style={{ marginBottom: 16 }}>
                       <Text>{t('quantity_column')}</Text>
-                      <Select
-                        style={{ width: '100%', marginTop: 4 }}
-                        value={importMapping.quantityColumn}
-                        onChange={(value) => setImportMapping({ ...importMapping, quantityColumn: value })}
-                      >
+                      <Select style={{ width: '100%', marginTop: 4 }} value={importMapping.quantityColumn} onChange={value => setImportMapping({ ...importMapping, quantityColumn: value })}>
                         {Object.keys(importData[0]).map(column => (
                           <Option key={column} value={column}>
                             {column}
@@ -1160,11 +1067,7 @@ export default function SupplierOrders() {
                   <Col xs={24} sm={8}>
                     <div style={{ marginBottom: 16 }}>
                       <Text>{t('unit_price_column')}</Text>
-                      <Select
-                        style={{ width: '100%', marginTop: 4 }}
-                        value={importMapping.unitPriceColumn}
-                        onChange={(value) => setImportMapping({ ...importMapping, unitPriceColumn: value })}
-                      >
+                      <Select style={{ width: '100%', marginTop: 4 }} value={importMapping.unitPriceColumn} onChange={value => setImportMapping({ ...importMapping, unitPriceColumn: value })}>
                         {Object.keys(importData[0]).map(column => (
                           <Option key={column} value={column}>
                             {column}
@@ -1191,19 +1094,19 @@ export default function SupplierOrders() {
                   title: t('item_name'),
                   dataIndex: importMapping.itemNameColumn,
                   key: 'itemName',
-                  render: (text) => text || '-'
+                  render: text => text || '-'
                 },
                 {
                   title: t('quantity'),
                   dataIndex: importMapping.quantityColumn,
                   key: 'quantity',
-                  render: (text) => text || '-'
+                  render: text => text || '-'
                 },
                 {
                   title: t('unit_price'),
                   dataIndex: importMapping.unitPriceColumn,
                   key: 'unitPrice',
-                  render: (text) => text || '-'
+                  render: text => text || '-'
                 }
               ]}
             />
