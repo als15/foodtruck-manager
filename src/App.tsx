@@ -29,10 +29,14 @@ import { BusinessProvider } from './contexts/BusinessContext'
 import { CustomThemeProvider } from './contexts/ThemeContext'
 import { ProtectedRoute } from './components/Auth/ProtectedRoute'
 import { WelcomeAnimation } from './components/Welcome/WelcomeAnimation'
+import { usePageViewTracking } from './hooks/usePostHog'
 
 function AppContent() {
   const { user } = useAuth()
   const [showWelcome, setShowWelcome] = useState(false)
+
+  // Track page views with PostHog
+  usePageViewTracking()
 
   useEffect(() => {
     if (user) {

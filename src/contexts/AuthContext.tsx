@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import posthog from 'posthog-js'
 
 interface AuthContextType {
   user: User | null
@@ -37,6 +38,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+
+      // Identify user in PostHog if session exists
+      if (session?.user) {
+        posthog.identify(session.user.id, {
+          email: session.user.email,
+          name: session.user.user_metadata?.first_name || session.user.user_metadata?.name,
+          created_at: session.user.created_at
+        })
+      }
     }
 
     getSession()
@@ -46,6 +56,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+
+        // Identify or reset user in PostHog
+        if (session?.user) {
+          posthog.identify(session.user.id, {
+            email: session.user.email,
+            name: session.user.user_metadata?.first_name || session.user.user_metadata?.name,
+            created_at: session.user.created_at
+          })
+        } else if (event === 'SIGNED_OUT') {
+          posthog.reset()
+        }
       }
     )
 

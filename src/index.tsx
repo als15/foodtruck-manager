@@ -6,6 +6,7 @@ import { CacheProvider } from '@emotion/react'
 import createCache from '@emotion/cache'
 import rtlPlugin from 'stylis-plugin-rtl'
 import CssBaseline from '@mui/material/CssBaseline'
+import { PostHogProvider } from 'posthog-js/react'
 import './index.css'
 import i18n from './i18n'
 import App from './App'
@@ -22,6 +23,15 @@ const cacheRtl = createCache({
 const cacheLtr = createCache({
   key: 'muiltr'
 })
+
+// PostHog configuration
+const posthogOptions = {
+  api_host: process.env.REACT_APP_POSTHOG_HOST,
+  person_profiles: 'identified_only' as const,
+  capture_pageview: false, // We'll manually capture pageviews with router integration
+  capture_pageleave: true,
+  autocapture: true
+}
 
 // Function to create theme with direction using NomNom theme
 const createDirectionalTheme = (direction: 'ltr' | 'rtl') =>
@@ -140,9 +150,11 @@ const AppWithTheme = () => {
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AppWithTheme />
-    </BrowserRouter>
+    <PostHogProvider apiKey={process.env.REACT_APP_POSTHOG_KEY!} options={posthogOptions}>
+      <BrowserRouter>
+        <AppWithTheme />
+      </BrowserRouter>
+    </PostHogProvider>
   </React.StrictMode>
 )
 
