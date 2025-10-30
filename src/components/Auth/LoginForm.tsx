@@ -53,7 +53,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '24px'
+        padding: '24px',
+        position: 'relative'
       }}
     >
       <Card
@@ -61,7 +62,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
           maxWidth: 450,
           width: '100%',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-          direction: 'rtl'
+          direction: 'rtl',
+          zIndex: 1
         }}
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -131,7 +133,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup, onSucces
       </Card>
 
       {/* Legal Links */}
-      <div style={{ textAlign: 'center', marginTop: 24 }}>
+      <div style={{
+        position: 'absolute',
+        bottom: 16,
+        left: 0,
+        right: 0,
+        textAlign: 'center'
+      }}>
         <Space split="|" size="small">
           <RouterLink to="/privacy-policy" style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12 }}>
             Privacy Policy

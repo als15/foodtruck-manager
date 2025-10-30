@@ -33,32 +33,32 @@ import { usePageViewTracking } from './hooks/usePostHog'
 
 function AppContent() {
   const { user } = useAuth()
-  const [showWelcome, setShowWelcome] = useState(false)
+  // const [showWelcome, setShowWelcome] = useState(false)
 
   // Track page views with PostHog
   usePageViewTracking()
 
-  useEffect(() => {
-    if (user) {
-      const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
-      if (!hasSeenWelcome) {
-        setShowWelcome(true)
-      }
-    }
-  }, [user])
+  // useEffect(() => {
+  //   if (user) {
+  //     const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
+  //     if (!hasSeenWelcome) {
+  //       setShowWelcome(true)
+  //     }
+  //   }
+  // }, [user])
 
-  const handleCloseWelcome = () => {
-    setShowWelcome(false)
-    if (user) {
-      localStorage.setItem(`welcome_shown_${user.id}`, 'true')
-    }
-  }
+  // const handleCloseWelcome = () => {
+  //   setShowWelcome(false)
+  //   if (user) {
+  //     localStorage.setItem(`welcome_shown_${user.id}`, 'true')
+  //   }
+  // }
 
-  const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0]
+  // const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0]
 
   return (
     <>
-      <WelcomeAnimation visible={showWelcome} onClose={handleCloseWelcome} userName={userName} />
+      {/* <WelcomeAnimation visible={showWelcome} onClose={handleCloseWelcome} userName={userName} /> */}
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/invite/:token" element={<InviteAccept />} />

@@ -8,7 +8,6 @@ import LanguageSwitcher from '../LanguageSwitcher'
 import DarkModeToggle from '../DarkModeToggle'
 import { useAuth } from '../../contexts/AuthContext'
 import { useBusiness } from '../../contexts/BusinessContext'
-import Footer from './Footer'
 
 const { Text } = Typography
 const { Option } = Select
@@ -382,9 +381,6 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
 
       <Layout
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
           ...(isRtl ? { marginRight: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-right 0.2s' } : { marginLeft: isMobile ? 0 : collapsed ? 80 : 240, transition: 'margin-left 0.2s' })
         }}
       >
@@ -436,15 +432,11 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
           style={{
             margin: '24px 16px',
             padding: 24,
-            minHeight: 280,
-            paddingBottom: 48
+            minHeight: 280
           }}
         >
           {children}
         </Content>
-
-        {/* Footer */}
-        <Footer />
       </Layout>
 
       {/* Create Business Modal */}
