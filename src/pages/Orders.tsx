@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, message, Select, Tabs, Divider, Statistic, Collapse, Spin, DatePicker } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PlusOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, UploadOutlined, ShoppingCartOutlined, CheckCircleOutlined, CloseCircleOutlined, DollarOutlined, ClockCircleOutlined, UserOutlined, RiseOutlined, FallOutlined, LineOutlined, EnvironmentOutlined, BulbOutlined, ExpandAltOutlined, CalendarOutlined, FilterOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, UploadOutlined, ShoppingCartOutlined, CheckCircleOutlined, CloseCircleOutlined, DollarOutlined, ClockCircleOutlined, UserOutlined, RiseOutlined, FallOutlined, LineOutlined, EnvironmentOutlined, BulbOutlined, ExpandAltOutlined, CalendarOutlined, FilterOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { Order, OrderItem, MenuItem, Employee, Customer } from '../types'
 import { ordersService, menuItemsService, employeesService, customersService, subscriptions } from '../services/supabaseService'
@@ -93,6 +93,23 @@ export default function Orders() {
       return orderDate.isAfter(dateRange[0]) && orderDate.isBefore(dateRange[1])
     })
   }, [orders, dateRange])
+
+  // Navigate date range
+  const navigateDateRange = (direction: 'prev' | 'next' | 'today') => {
+    if (direction === 'today') {
+      setDateRange([dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')])
+      return
+    }
+
+    // Calculate range duration, minimum 1 day for single-day selections
+    const rangeDuration = Math.max(1, dateRange[1].diff(dateRange[0], 'day'))
+    const shift = direction === 'next' ? rangeDuration : -rangeDuration
+
+    setDateRange([
+      dateRange[0].add(shift, 'day').startOf('day'),
+      dateRange[1].add(shift, 'day').endOf('day')
+    ])
+  }
 
   // Load data on component mount
   useEffect(() => {
@@ -757,18 +774,33 @@ export default function Orders() {
           </Col>
           <Col xs={24} md={12} style={{ textAlign: isRtl ? 'left' : 'right' }}>
             <Space wrap>
-              <RangePicker
-                value={dateRange}
-                onChange={(dates) => {
-                  if (dates && dates[0] && dates[1]) {
-                    setDateRange([dates[0].startOf('day'), dates[1].endOf('day')])
-                  }
-                }}
-                presets={dateRangePresets}
-                format="MMM D, YYYY"
-                style={{ width: 300 }}
-                suffixIcon={<CalendarOutlined />}
-              />
+              <Space.Compact>
+                <Button
+                  icon={isRtl ? <RightOutlined /> : <LeftOutlined />}
+                  onClick={() => navigateDateRange('prev')}
+                  title={t('previous_period')}
+                />
+                <RangePicker
+                  value={dateRange}
+                  onChange={(dates) => {
+                    if (dates && dates[0] && dates[1]) {
+                      setDateRange([dates[0].startOf('day'), dates[1].endOf('day')])
+                    }
+                  }}
+                  presets={dateRangePresets}
+                  format="MMM D, YYYY"
+                  style={{ width: 280 }}
+                  suffixIcon={<CalendarOutlined />}
+                />
+                <Button
+                  icon={isRtl ? <LeftOutlined /> : <RightOutlined />}
+                  onClick={() => navigateDateRange('next')}
+                  title={t('next_period')}
+                />
+              </Space.Compact>
+              <Button onClick={() => navigateDateRange('today')}>
+                {t('today')}
+              </Button>
               <Button icon={<UploadOutlined />} onClick={() => setOpenImportDialog(true)}>
                 {t('import_orders')}
               </Button>
