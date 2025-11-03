@@ -273,6 +273,12 @@ export interface Supplier {
   deliveryMethods: ('pickup' | 'delivery')[]; // e.g., ['pickup'], ['delivery'], or ['pickup', 'delivery']
   notes?: string;
   isActive: boolean;
+  // Payment details
+  accountName?: string;
+  bankName?: string;
+  bankCode?: string;
+  branchNumber?: string;
+  accountNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }

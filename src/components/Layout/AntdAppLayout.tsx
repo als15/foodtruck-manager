@@ -388,7 +388,7 @@ const AntdAppLayout: React.FC<AntdAppLayoutProps> = ({ children }) => {
         <Header
           style={{
             padding: '0 24px',
-            background: 'var(--header-bg)',
+            background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

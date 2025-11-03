@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Switch, Space, Spin, Alert, message, AutoComplete, Select } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, PhoneOutlined, MailOutlined, CarOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShopOutlined, PhoneOutlined, MailOutlined, CarOutlined, ThunderboltOutlined, BankOutlined } from '@ant-design/icons'
 import { Supplier } from '../types'
 import { suppliersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +44,12 @@ export default function Suppliers() {
     paymentTerms: 'Net 30',
     deliveryMethods: [],
     notes: '',
-    isActive: true
+    isActive: true,
+    accountName: '',
+    bankName: '',
+    bankCode: '',
+    branchNumber: '',
+    accountNumber: ''
   })
 
   // Load suppliers on component mount and when business changes
@@ -161,7 +166,12 @@ export default function Suppliers() {
       paymentTerms: 'Net 30',
       deliveryMethods: [],
       notes: '',
-      isActive: true
+      isActive: true,
+      accountName: '',
+      bankName: '',
+      bankCode: '',
+      branchNumber: '',
+      accountNumber: ''
     })
     setEditingSupplier(null)
     setOpenDialog(false)
@@ -433,6 +443,81 @@ export default function Suppliers() {
           rowKey="id"
           pagination={{ pageSize: 10 }}
           rowClassName={(record) => !record.isActive ? 'opacity-60' : ''}
+          expandable={{
+            expandedRowRender: (record) => {
+              const hasPaymentDetails = record.accountName || record.bankName || record.bankCode || record.branchNumber || record.accountNumber
+
+              if (!hasPaymentDetails) {
+                return (
+                  <div style={{ padding: '16px 24px', background: '#fafafa' }}>
+                    <Space>
+                      <BankOutlined style={{ color: '#999' }} />
+                      <Text type="secondary">{t('no_payment_details')}</Text>
+                    </Space>
+                  </div>
+                )
+              }
+
+              const paymentDetailsColumns = [
+                {
+                  title: t('account_name'),
+                  dataIndex: 'accountName',
+                  key: 'accountName',
+                  render: (text: string) => text || '-'
+                },
+                {
+                  title: t('bank_name'),
+                  dataIndex: 'bankName',
+                  key: 'bankName',
+                  render: (text: string) => text || '-'
+                },
+                {
+                  title: t('bank_code'),
+                  dataIndex: 'bankCode',
+                  key: 'bankCode',
+                  render: (text: string) => text || '-'
+                },
+                {
+                  title: t('branch_number'),
+                  dataIndex: 'branchNumber',
+                  key: 'branchNumber',
+                  render: (text: string) => text || '-'
+                },
+                {
+                  title: t('account_number'),
+                  dataIndex: 'accountNumber',
+                  key: 'accountNumber',
+                  render: (text: string) => text || '-'
+                },
+                {
+                  title: t('payment_terms'),
+                  dataIndex: 'paymentTerms',
+                  key: 'paymentTerms',
+                  render: (text: string) => text || '-'
+                }
+              ]
+
+              return (
+                <div style={{ padding: '16px 24px', background: '#fafafa' }}>
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Space>
+                      <BankOutlined style={{ fontSize: 16, color: '#1890ff' }} />
+                      <Text strong>{t('payment_details')}</Text>
+                    </Space>
+                    <Table
+                      columns={paymentDetailsColumns}
+                      dataSource={[record]}
+                      pagination={false}
+                      size="small"
+                      bordered
+                      rowKey="id"
+                    />
+                  </Space>
+                </div>
+              )
+            },
+            rowExpandable: () => true
+          }}
         />
       </Card>
 
@@ -589,6 +674,55 @@ export default function Suppliers() {
               placeholder={t('notes_placeholder')}
             />
           </Col>
+
+          {/* Payment Details Section */}
+          <Col xs={24}>
+            <Space style={{ marginTop: 16, marginBottom: 8 }}>
+              <BankOutlined style={{ fontSize: 16, color: '#1890ff' }} />
+              <Text strong style={{ fontSize: 14 }}>{t('payment_details')}</Text>
+            </Space>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('account_name')}</Text>
+            <Input
+              value={newSupplier.accountName}
+              onChange={e => setNewSupplier({ ...newSupplier, accountName: e.target.value })}
+              placeholder={t('account_name')}
+            />
+          </Col>
+          <Col xs={24} sm={12}>
+            <Text>{t('bank_name')}</Text>
+            <Input
+              value={newSupplier.bankName}
+              onChange={e => setNewSupplier({ ...newSupplier, bankName: e.target.value })}
+              placeholder={t('bank_name')}
+            />
+          </Col>
+          <Col xs={24} sm={8}>
+            <Text>{t('bank_code')}</Text>
+            <Input
+              value={newSupplier.bankCode}
+              onChange={e => setNewSupplier({ ...newSupplier, bankCode: e.target.value })}
+              placeholder={t('bank_code')}
+            />
+          </Col>
+          <Col xs={24} sm={8}>
+            <Text>{t('branch_number')}</Text>
+            <Input
+              value={newSupplier.branchNumber}
+              onChange={e => setNewSupplier({ ...newSupplier, branchNumber: e.target.value })}
+              placeholder={t('branch_number')}
+            />
+          </Col>
+          <Col xs={24} sm={8}>
+            <Text>{t('account_number')}</Text>
+            <Input
+              value={newSupplier.accountNumber}
+              onChange={e => setNewSupplier({ ...newSupplier, accountNumber: e.target.value })}
+              placeholder={t('account_number')}
+            />
+          </Col>
+
           <Col xs={24} sm={12}>
             <Space>
               <Switch

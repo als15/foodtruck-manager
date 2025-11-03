@@ -1,7 +1,7 @@
 import React from 'react'
-import { Row, Col, Card, Typography, Button, Input, Table, Tag, Space, Alert, Tabs, Select } from 'antd'
+import { Row, Col, Card, Typography, Button, Input, Table, Tag, Space, Alert, Tabs, Select, Statistic } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PlusOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, AppstoreOutlined, ShoppingOutlined, InboxOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { ingredientsService, menuItemsService } from '../services/supabaseService'
 import type { Ingredient, MenuItem } from '../types'
@@ -243,14 +243,56 @@ export default function PrepPlanner() {
     }
   ]
 
+  const resultsColumns: ColumnsType<AggregatedIngredient> = [
+    {
+      title: t('ingredient'),
+      key: 'ingredient',
+      render: (_, record) => (
+        <Space>
+          <InboxOutlined style={{ color: '#1890ff' }} />
+          <Text strong>{record.ingredientName}</Text>
+        </Space>
+      )
+    },
+    {
+      title: t('unit'),
+      dataIndex: 'unit',
+      key: 'unit',
+      align: isRtl ? 'left' : 'right',
+      render: (unit: string) => <Tag color="blue">{unit || t('unit')}</Tag>
+    },
+    {
+      title: t('total_quantity'),
+      dataIndex: 'totalQuantity',
+      key: 'totalQuantity',
+      align: isRtl ? 'left' : 'right',
+      render: (qty: number) => (
+        <Text strong style={{ fontSize: 16, color: '#1890ff' }}>
+          {qty.toFixed(2)}
+        </Text>
+      )
+    }
+  ]
+
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <AppstoreOutlined style={{ fontSize: 32, color: '#1890ff' }} />
-        <Title level={4} style={{ margin: 0, fontWeight: 700 }}>
-          {t('prep_planner')}
-        </Title>
-      </div>
+    <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+      <Card bordered={false} style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={4} style={{ margin: 0 }}>
+            {t('prep_planner')}
+          </Title>
+          {selectedMenuItems.length > 0 && (
+            <Space size="large">
+              <Tag icon={<ShoppingOutlined />} color="success">
+                {selectedMenuItems.length} {t('items')}
+              </Tag>
+              <Tag icon={<CheckCircleOutlined />} color="warning">
+                {selectedMenuItems.reduce((sum, item) => sum + item.quantity, 0)} {t('portions')}
+              </Tag>
+            </Space>
+          )}
+        </div>
+      </Card>
 
       <Card style={{ marginBottom: 24 }}>
         <Tabs activeKey={tabValue} onChange={setTabValue}>
@@ -366,45 +408,38 @@ export default function PrepPlanner() {
         </Tabs>
       </Card>
 
-      <div style={{ marginTop: 24 }}>
-        <Title level={5} style={{ marginBottom: 8, fontWeight: 700, textAlign: isRtl ? 'right' : 'left' }}>
-          {t('aggregated_ingredients')}
-        </Title>
+      {/* Results Section */}
+      <Card
+        bordered={false}
+        title={
+          <Space>
+            <AppstoreOutlined style={{ fontSize: 16, color: '#1890ff' }} />
+            <Text strong style={{ fontSize: 16 }}>{t('aggregated_ingredients')}</Text>
+            {results.length > 0 && (
+              <Tag color="blue">{results.length} {t('ingredients')}</Tag>
+            )}
+          </Space>
+        }
+      >
         {results.length === 0 ? (
-          <Text type="secondary" style={{ display: 'block', textAlign: isRtl ? 'right' : 'left' }}>
-            {t('no_ingredients_to_show')}
-          </Text>
+          <Alert
+            message={t('no_ingredients_to_show')}
+            description={t('select_menu_items_and_calculate')}
+            type="info"
+            showIcon
+            icon={<InboxOutlined />}
+          />
         ) : (
-          <Card>
-            <div dir={isRtl ? 'rtl' : 'ltr'}>
-              {results.map(r => (
-                <div
-                  key={`${r.ingredientId}-${r.unit}`}
-                  style={{
-                    padding: '12px 0',
-                    borderBottom: '1px solid #f0f0f0',
-                    display: 'flex',
-                    flexDirection: isRtl ? 'row-reverse' : 'row',
-                    justifyContent: isRtl ? 'flex-end' : 'flex-start'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                    <Text strong style={{ textAlign: isRtl ? 'right' : 'left' }}>
-                      {r.ingredientName}
-                    </Text>
-                    <Tag>{r.unit || t('unit')}</Tag>
-                  </div>
-                  <div style={{ marginTop: 4 }}>
-                    <Text type="secondary" style={{ textAlign: isRtl ? 'right' : 'left', display: 'block' }}>
-                      {t('total_quantity')}: {r.totalQuantity}
-                    </Text>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <Table
+            columns={resultsColumns}
+            dataSource={results}
+            rowKey={(record) => `${record.ingredientId}-${record.unit}`}
+            pagination={results.length > 10 ? { pageSize: 10 } : false}
+            size="middle"
+            bordered
+          />
         )}
-      </div>
+      </Card>
     </div>
   )
 }

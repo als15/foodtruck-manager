@@ -1413,6 +1413,11 @@ export const suppliersService = {
       deliveryMethods: supplier.delivery_methods || [],
       notes: supplier.notes || '',
       isActive: supplier.is_active,
+      accountName: supplier.account_name,
+      bankName: supplier.bank_name,
+      bankCode: supplier.bank_code,
+      branchNumber: supplier.branch_number,
+      accountNumber: supplier.account_number,
       createdAt: new Date(supplier.created_at),
       updatedAt: new Date(supplier.updated_at)
     }));
@@ -1446,6 +1451,11 @@ export const suppliersService = {
       deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
+      accountName: data.account_name,
+      bankName: data.bank_name,
+      bankCode: data.bank_code,
+      branchNumber: data.branch_number,
+      accountNumber: data.account_number,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };
@@ -1470,7 +1480,12 @@ export const suppliersService = {
         payment_terms: supplier.paymentTerms,
         delivery_methods: supplier.deliveryMethods,
         notes: supplier.notes,
-        is_active: supplier.isActive
+        is_active: supplier.isActive,
+        account_name: supplier.accountName,
+        bank_name: supplier.bankName,
+        bank_code: supplier.bankCode,
+        branch_number: supplier.branchNumber,
+        account_number: supplier.accountNumber
       })
       .select()
       .single();
@@ -1494,6 +1509,11 @@ export const suppliersService = {
       deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
+      accountName: data.account_name,
+      bankName: data.bank_name,
+      bankCode: data.bank_code,
+      branchNumber: data.branch_number,
+      accountNumber: data.account_number,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };
@@ -1516,7 +1536,12 @@ export const suppliersService = {
     if (supplier.deliveryMethods !== undefined) updateData.delivery_methods = supplier.deliveryMethods;
     if (supplier.notes !== undefined) updateData.notes = supplier.notes;
     if (supplier.isActive !== undefined) updateData.is_active = supplier.isActive;
-    
+    if (supplier.accountName !== undefined) updateData.account_name = supplier.accountName;
+    if (supplier.bankName !== undefined) updateData.bank_name = supplier.bankName;
+    if (supplier.bankCode !== undefined) updateData.bank_code = supplier.bankCode;
+    if (supplier.branchNumber !== undefined) updateData.branch_number = supplier.branchNumber;
+    if (supplier.accountNumber !== undefined) updateData.account_number = supplier.accountNumber;
+
     const { data, error } = await supabase
       .from('suppliers')
       .update(updateData)
@@ -1544,6 +1569,11 @@ export const suppliersService = {
       deliveryMethods: data.delivery_methods || [],
       notes: data.notes || '',
       isActive: data.is_active,
+      accountName: data.account_name,
+      bankName: data.bank_name,
+      bankCode: data.bank_code,
+      branchNumber: data.branch_number,
+      accountNumber: data.account_number,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
     };

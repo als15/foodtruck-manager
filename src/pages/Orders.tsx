@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, message, Select, Tabs, Divider, Statistic, Collapse, Spin } from 'antd'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Row, Col, Card, Typography, Button, Modal, Input, Table, Tag, Space, message, Select, Tabs, Divider, Statistic, Collapse, Spin, DatePicker } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { PlusOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, UploadOutlined, ShoppingCartOutlined, CheckCircleOutlined, CloseCircleOutlined, DollarOutlined, ClockCircleOutlined, UserOutlined, RiseOutlined, FallOutlined, LineOutlined, EnvironmentOutlined, BulbOutlined, ExpandAltOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FileTextOutlined, UploadOutlined, ShoppingCartOutlined, CheckCircleOutlined, CloseCircleOutlined, DollarOutlined, ClockCircleOutlined, UserOutlined, RiseOutlined, FallOutlined, LineOutlined, EnvironmentOutlined, BulbOutlined, ExpandAltOutlined, CalendarOutlined, FilterOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { Order, OrderItem, MenuItem, Employee, Customer } from '../types'
 import { ordersService, menuItemsService, employeesService, customersService, subscriptions } from '../services/supabaseService'
 import { useTranslation } from 'react-i18next'
@@ -15,16 +16,37 @@ const { Option } = Select
 const { TabPane } = Tabs
 const { Panel } = Collapse
 
+const { RangePicker } = DatePicker
+
 export default function Orders() {
   const { t, i18n } = useTranslation()
   const isRtl = i18n.dir() === 'rtl'
-  const [tabValue, setTabValue] = useState('all')
+  const [tabValue, setTabValue] = useState('overview')
   const [orders, setOrders] = useState<Order[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [ingredients, setIngredients] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Date range filter - default to last 7 days
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(7, 'day').startOf('day'),
+    dayjs().endOf('day')
+  ])
+
+  // Quick date range presets
+  const dateRangePresets: {
+    label: string
+    value: [dayjs.Dayjs, dayjs.Dayjs]
+  }[] = [
+    { label: t('today'), value: [dayjs().startOf('day'), dayjs().endOf('day')] },
+    { label: t('yesterday'), value: [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')] },
+    { label: t('last_7_days'), value: [dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')] },
+    { label: t('last_30_days'), value: [dayjs().subtract(30, 'day').startOf('day'), dayjs().endOf('day')] },
+    { label: t('this_month'), value: [dayjs().startOf('month'), dayjs().endOf('day')] },
+    { label: t('last_month'), value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+  ]
 
   // Dialog states
   const [openOrderDialog, setOpenOrderDialog] = useState(false)
@@ -63,6 +85,14 @@ export default function Orders() {
   const [taxRate, setTaxRate] = useState(0) // 0% tax rate
 
   const [importData, setImportData] = useState('')
+
+  // Filter orders based on selected date range
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const orderDate = dayjs(order.orderTime)
+      return orderDate.isAfter(dateRange[0]) && orderDate.isBefore(dateRange[1])
+    })
+  }, [orders, dateRange])
 
   // Load data on component mount
   useEffect(() => {
@@ -360,22 +390,22 @@ export default function Orders() {
     return { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd }
   }
 
-  const analytics = () => {
+  const analytics = (ordersToAnalyze: Order[] = orders) => {
     const { today, yesterday, thisWeekStart, lastWeekStart, lastWeekEnd, thisMonth, lastMonth, lastMonthEnd } = getDateFilters()
 
     // Filter orders by time periods
-    const todayOrders = orders.filter(o => new Date(o.orderTime) >= today)
-    const yesterdayOrders = orders.filter(o => {
+    const todayOrders = ordersToAnalyze.filter(o => new Date(o.orderTime) >= today)
+    const yesterdayOrders = ordersToAnalyze.filter(o => {
       const orderDate = new Date(o.orderTime)
       return orderDate >= yesterday && orderDate < today
     })
-    const thisWeekOrders = orders.filter(o => new Date(o.orderTime) >= thisWeekStart)
-    const lastWeekOrders = orders.filter(o => {
+    const thisWeekOrders = ordersToAnalyze.filter(o => new Date(o.orderTime) >= thisWeekStart)
+    const lastWeekOrders = ordersToAnalyze.filter(o => {
       const orderDate = new Date(o.orderTime)
       return orderDate >= lastWeekStart && orderDate <= lastWeekEnd
     })
-    const thisMonthOrders = orders.filter(o => new Date(o.orderTime) >= thisMonth)
-    const lastMonthOrders = orders.filter(o => {
+    const thisMonthOrders = ordersToAnalyze.filter(o => new Date(o.orderTime) >= thisMonth)
+    const lastMonthOrders = ordersToAnalyze.filter(o => {
       const orderDate = new Date(o.orderTime)
       return orderDate >= lastMonth && orderDate <= lastMonthEnd
     })
@@ -394,7 +424,7 @@ export default function Orders() {
     const monthlyGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
 
     // Top-selling items analysis
-    const itemSales = orders.reduce((acc, order) => {
+    const itemSales = ordersToAnalyze.reduce((acc, order) => {
       order.items.forEach(item => {
         const itemName = item.menuItem?.name || 'Unknown Item'
         if (!acc[itemName]) {
@@ -411,7 +441,7 @@ export default function Orders() {
       .slice(0, 5)
 
     // Peak hours analysis
-    const hourlyOrders = orders.reduce((acc, order) => {
+    const hourlyOrders = ordersToAnalyze.reduce((acc, order) => {
       const hour = new Date(order.orderTime).getHours()
       acc[hour] = (acc[hour] || 0) + 1
       return acc
@@ -420,13 +450,13 @@ export default function Orders() {
     const peakHour = Object.entries(hourlyOrders).sort(([, a], [, b]) => b - a)[0]
 
     // Payment method breakdown
-    const paymentMethods = orders.reduce((acc, order) => {
+    const paymentMethods = ordersToAnalyze.reduce((acc, order) => {
       acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
     // Calculate average profit margin
-    const ordersWithCost = orders.filter(order => {
+    const ordersWithCost = ordersToAnalyze.filter(order => {
       const foodCost = calculateOrderFoodCost(order)
       return foodCost > 0 && order.subtotal > 0
     })
@@ -442,8 +472,8 @@ export default function Orders() {
         : 0
 
     // Calculate total food costs and profits
-    const totalFoodCost = orders.reduce((sum, order) => sum + calculateOrderFoodCost(order), 0)
-    const totalProfit = orders.reduce((sum, order) => {
+    const totalFoodCost = ordersToAnalyze.reduce((sum, order) => sum + calculateOrderFoodCost(order), 0)
+    const totalProfit = ordersToAnalyze.reduce((sum, order) => {
       const foodCost = calculateOrderFoodCost(order)
       return sum + (order.subtotal - foodCost)
     }, 0)
@@ -458,7 +488,7 @@ export default function Orders() {
       thisMonthOrders: thisMonthOrders.length,
       thisMonthRevenue,
       monthlyGrowth,
-      averageOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0,
+      averageOrderValue: ordersToAnalyze.length > 0 ? ordersToAnalyze.reduce((sum, o) => sum + o.total, 0) / ordersToAnalyze.length : 0,
       averageProfitMargin,
       totalFoodCost,
       totalProfit,
@@ -466,17 +496,17 @@ export default function Orders() {
       topItems,
       peakHour: peakHour ? { hour: parseInt(peakHour[0]), count: peakHour[1] } : null,
       paymentMethods,
-      totalOrders: orders.length,
-      totalRevenue: orders.reduce((sum, o) => sum + o.total, 0)
+      totalOrders: ordersToAnalyze.length,
+      totalRevenue: ordersToAnalyze.reduce((sum, o) => sum + o.total, 0)
     }
   }
 
-  const stats = analytics()
+  const stats = analytics(filteredOrders)
 
   // Group and sort orders
   const getGroupedOrders = () => {
     // First sort orders
-    let sortedOrders = [...orders]
+    let sortedOrders = [...filteredOrders]
 
     switch (sortBy) {
       case 'time':
@@ -714,222 +744,215 @@ export default function Orders() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={4}>{t('order_management')}</Title>
-        <Space>
-          <Button icon={<UploadOutlined />} onClick={() => setOpenImportDialog(true)}>
-            {t('import_orders')}
-          </Button>
-          <Button icon={<BulbOutlined />} onClick={() => setOpenAIImportDialog(true)}>
-            {t('ai_import')}
-          </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenOrderDialog(true)}>
-            {t('add_order_record')}
-          </Button>
-        </Space>
-      </div>
-
-      {/* Enhanced Business Analytics Dashboard */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {/* Today's Performance */}
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title={t('todays_performance')} value={formatCurrency(stats.todayRevenue)} suffix={getTrendIcon(stats.dailyGrowth)} />
-            <Text type="secondary">{t('orders_count', { count: stats.todayOrders })}</Text>
-            <div style={{ marginTop: 8 }}>
-              <Text type={stats.dailyGrowth > 0 ? 'success' : stats.dailyGrowth < 0 ? 'danger' : 'secondary'}>
-                {stats.dailyGrowth > 0 ? '+' : ''}
-                {stats.dailyGrowth.toFixed(1)}%
+      {/* Date-Focused Header */}
+      <Card bordered={false} style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} md={12}>
+            <Space direction="vertical" size={0}>
+              <Title level={4} style={{ margin: 0 }}>{t('order_management')}</Title>
+              <Text type="secondary">
+                {t('orders_count_label', { count: filteredOrders.length })} • {formatCurrency(stats.totalRevenue)}
               </Text>
-            </div>
-          </Card>
-        </Col>
+            </Space>
+          </Col>
+          <Col xs={24} md={12} style={{ textAlign: isRtl ? 'left' : 'right' }}>
+            <Space wrap>
+              <RangePicker
+                value={dateRange}
+                onChange={(dates) => {
+                  if (dates && dates[0] && dates[1]) {
+                    setDateRange([dates[0].startOf('day'), dates[1].endOf('day')])
+                  }
+                }}
+                presets={dateRangePresets}
+                format="MMM D, YYYY"
+                style={{ width: 300 }}
+                suffixIcon={<CalendarOutlined />}
+              />
+              <Button icon={<UploadOutlined />} onClick={() => setOpenImportDialog(true)}>
+                {t('import_orders')}
+              </Button>
+              <Button icon={<BulbOutlined />} onClick={() => setOpenAIImportDialog(true)}>
+                {t('ai_import')}
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpenOrderDialog(true)}>
+                {t('add_order_record')}
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
-        {/* This Week */}
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title={t('this_week')} value={formatCurrency(stats.thisWeekRevenue)} suffix={getTrendIcon(stats.weeklyGrowth)} />
-            <Text type="secondary">{t('orders_group_count', { count: stats.thisWeekOrders })}</Text>
-            <div style={{ marginTop: 8 }}>
-              <Text type={stats.weeklyGrowth > 0 ? 'success' : stats.weeklyGrowth < 0 ? 'danger' : 'secondary'}>
-                {stats.weeklyGrowth > 0 ? '+' : ''}
-                {stats.weeklyGrowth.toFixed(1)}%
-              </Text>
-            </div>
-          </Card>
-        </Col>
-
-        {/* This Month */}
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title={t('this_month')} value={formatCurrency(stats.thisMonthRevenue)} suffix={getTrendIcon(stats.monthlyGrowth)} />
-            <Text type="secondary">{t('orders_group_count', { count: stats.thisMonthOrders })}</Text>
-            <div style={{ marginTop: 8 }}>
-              <Text type={stats.monthlyGrowth > 0 ? 'success' : stats.monthlyGrowth < 0 ? 'danger' : 'secondary'}>
-                {stats.monthlyGrowth > 0 ? '+' : ''}
-                {stats.monthlyGrowth.toFixed(1)}%
-              </Text>
-            </div>
-          </Card>
-        </Col>
-
-        {/* Average Order Value */}
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic title={t('avg_order_value_short')} value={formatCurrency(stats.averageOrderValue)} prefix={<DollarOutlined />} valueStyle={{ color: '#3f8600' }} />
-            <Text type="secondary">{t('total_orders_text', { count: stats.totalOrders })}</Text>
-          </Card>
-        </Col>
-
-        {/* Average Profit Margin */}
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title={t('avg_profit_margin')}
-              value={stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : t('no_data')}
-              prefix={<RiseOutlined />}
-              valueStyle={{ color: stats.averageProfitMargin > 30 ? '#3f8600' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }}
-            />
-            <Text type="secondary">{t('with_cost_data', { ordersWithCostData: stats.ordersWithCostData, totalOrders: stats.totalOrders })}</Text>
-          </Card>
-        </Col>
-
-        {/* Top Selling Items */}
-        <Col xs={24} md={6}>
-          <Card title={<span>🏆 {t('top_selling_items')}</span>} bordered={false}>
-            {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
-              <div key={itemName} style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Text>
-                    #{index + 1} {itemName}
-                  </Text>
-                  <Text type="secondary">
-                    {data.quantity} {t('sold')}
-                  </Text>
-                </div>
-                <Text type="secondary">
-                  {formatCurrency(data.revenue)} {t('revenue')}
-                </Text>
-              </div>
-            ))}
-            {stats.topItems.length === 0 && <Text type="secondary">{t('no_sales_data')}</Text>}
-          </Card>
-        </Col>
-
-        {/* Key Metrics */}
-        <Col xs={24} md={6}>
-          <Card title={<span>📊 {t('key_metrics')}</span>} bordered={false}>
-            <Row gutter={[8, 8]}>
-              <Col span={12}>
-                <Card bordered style={{ textAlign: 'center' }}>
-                  <DollarOutlined style={{ fontSize: 24, color: '#52c41a' }} />
-                  <Title level={5} style={{ margin: '8px 0' }}>
-                    {formatCurrency(stats.averageOrderValue)}
-                  </Title>
-                  <Text type="secondary">{t('avg_order_value')}</Text>
+      {/* Main Content Tabs */}
+      <Card bordered={false}>
+        <Tabs activeKey={tabValue} onChange={setTabValue}>
+          {/* Overview Tab */}
+          <TabPane tab={<span><DollarOutlined /> {t('overview')}</span>} key="overview">
+            {/* Summary Cards */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+              <Col xs={24} sm={8}>
+                <Card>
+                  <Statistic
+                    title={t('total_revenue')}
+                    value={formatCurrency(stats.totalRevenue)}
+                    prefix={<DollarOutlined />}
+                    valueStyle={{ color: '#3f8600' }}
+                  />
+                  <Text type="secondary">{t('in_selected_period')}</Text>
                 </Card>
               </Col>
-              <Col span={12}>
-                <Card bordered style={{ textAlign: 'center' }}>
-                  <RiseOutlined style={{ fontSize: 24, color: stats.averageProfitMargin > 30 ? '#52c41a' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }} />
-                  <Title level={5} style={{ margin: '8px 0', color: stats.averageProfitMargin > 30 ? '#52c41a' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }}>
-                    {stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : t('no_data')}
-                  </Title>
-                  <Text type="secondary">{t('avg_profit_margin')}</Text>
+              <Col xs={24} sm={8}>
+                <Card>
+                  <Statistic
+                    title={t('total_orders')}
+                    value={stats.totalOrders}
+                    prefix={<ShoppingCartOutlined />}
+                    valueStyle={{ color: '#1890ff' }}
+                  />
+                  <Text type="secondary">{t('avg_order_value_short')}: {formatCurrency(stats.averageOrderValue)}</Text>
                 </Card>
               </Col>
-              <Col span={12}>
-                <Card bordered style={{ textAlign: 'center' }}>
-                  <FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                  <Title level={5} style={{ margin: '8px 0' }}>
-                    {stats.totalOrders}
-                  </Title>
-                  <Text type="secondary">{t('total_orders')}</Text>
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card bordered style={{ textAlign: 'center' }}>
-                  <DollarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                  <Title level={5} style={{ margin: '8px 0' }}>
-                    {formatCurrency(stats.totalProfit)}
-                  </Title>
-                  <Text type="secondary">{t('total_profit')}</Text>
-                </Card>
-              </Col>
-              {stats.peakHour && (
-                <Col span={12}>
-                  <Card bordered style={{ textAlign: 'center' }}>
-                    <ClockCircleOutlined style={{ fontSize: 24, color: '#faad14' }} />
-                    <Title level={5} style={{ margin: '8px 0' }}>
-                      {stats.peakHour.hour}:00
-                    </Title>
-                    <Text type="secondary">{t('peak_hour')}</Text>
-                  </Card>
-                </Col>
-              )}
-              <Col span={12}>
-                <Card bordered style={{ textAlign: 'center' }}>
-                  <DollarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                  <Title level={5} style={{ margin: '8px 0' }}>
-                    {formatCurrency(stats.totalRevenue)}
-                  </Title>
-                  <Text type="secondary">{t('total_revenue')}</Text>
+              <Col xs={24} sm={8}>
+                <Card>
+                  <Statistic
+                    title={t('avg_profit_margin')}
+                    value={stats.ordersWithCostData > 0 ? `${stats.averageProfitMargin.toFixed(1)}%` : t('no_data')}
+                    prefix={<RiseOutlined />}
+                    valueStyle={{ color: stats.averageProfitMargin > 30 ? '#3f8600' : stats.averageProfitMargin > 0 ? '#faad14' : '#cf1322' }}
+                  />
+                  <Text type="secondary">{stats.ordersWithCostData}/{stats.totalOrders} {t('with_cost_data_short')}</Text>
                 </Card>
               </Col>
             </Row>
-          </Card>
-        </Col>
 
-        {/* Payment Methods Breakdown */}
-        <Col xs={24} md={6}>
-          <Card title={<span>💳 {t('payment_methods')}</span>} bordered={false}>
-            {Object.entries(stats.paymentMethods).map(([method, count]) => (
-              <div key={method} style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Text>
-                    {getPaymentMethodIcon(method)} {method.charAt(0).toUpperCase() + method.slice(1)}
-                  </Text>
-                  <Text type="secondary">
-                    {t('orders_group_count', { count })} ({((count / stats.totalOrders) * 100).toFixed(1)}%)
-                  </Text>
-                </div>
-              </div>
-            ))}
-            {Object.keys(stats.paymentMethods).length === 0 && <Text type="secondary">{t('no_payment_data')}</Text>}
-          </Card>
-        </Col>
-      </Row>
+            {/* Insights Row */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Card title={<span>🏆 {t('top_selling_items')}</span>}>
+                  {stats.topItems.slice(0, 5).map(([itemName, data], index) => (
+                    <div key={itemName} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: index < 4 ? '1px solid #f0f0f0' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text strong>#{index + 1} {itemName}</Text>
+                        <Tag color="blue">{data.quantity} {t('sold')}</Tag>
+                      </div>
+                      <Text type="secondary">{formatCurrency(data.revenue)}</Text>
+                    </div>
+                  ))}
+                  {stats.topItems.length === 0 && <Text type="secondary">{t('no_sales_data')}</Text>}
+                </Card>
+              </Col>
 
-      <Card>
-        <Tabs activeKey={tabValue} onChange={setTabValue}>
-          <TabPane tab={t('all_orders')} key="all">
+              <Col xs={24} md={12}>
+                <Card title={<span>📊 {t('business_insights')}</span>}>
+                  {/* Peak Hour */}
+                  {stats.peakHour && (
+                    <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                          <ClockCircleOutlined style={{ color: '#faad14', fontSize: 18 }} />
+                          <Text>{t('peak_hour')}</Text>
+                        </Space>
+                        <Space>
+                          <Text strong style={{ fontSize: 16 }}>{stats.peakHour.hour}:00</Text>
+                          <Tag color="orange">{stats.peakHour.count} {t('orders_lowercase')}</Tag>
+                        </Space>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Average Items per Order */}
+                  <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Space>
+                        <ShoppingCartOutlined style={{ color: '#1890ff', fontSize: 18 }} />
+                        <Text>{t('avg_items_per_order')}</Text>
+                      </Space>
+                      <Text strong style={{ fontSize: 16 }}>
+                        {stats.totalOrders > 0
+                          ? (filteredOrders.reduce((sum, o) => sum + o.items.length, 0) / stats.totalOrders).toFixed(1)
+                          : '0'}
+                      </Text>
+                    </div>
+                  </div>
+
+                  {/* Total Profit */}
+                  {stats.ordersWithCostData > 0 && (
+                    <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                          <DollarOutlined style={{ color: '#52c41a', fontSize: 18 }} />
+                          <Text>{t('total_profit')}</Text>
+                        </Space>
+                        <Text strong style={{ fontSize: 16, color: '#52c41a' }}>
+                          {formatCurrency(stats.totalProfit)}
+                        </Text>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Methods Summary */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Space>
+                        <UserOutlined style={{ color: '#722ed1', fontSize: 18 }} />
+                        <Text>{t('payment_methods')}</Text>
+                      </Space>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {Object.entries(stats.paymentMethods).map(([method, count]) => (
+                        <Tag key={method} color="purple">
+                          {method.charAt(0).toUpperCase() + method.slice(1)}: {count}
+                        </Tag>
+                      ))}
+                      {Object.keys(stats.paymentMethods).length === 0 && (
+                        <Text type="secondary">{t('no_payment_data')}</Text>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          {/* All Orders Tab */}
+          <TabPane tab={<span><FileTextOutlined /> {t('all_orders')}</span>} key="all">
             {/* Table Toolbar with Grouping Control */}
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Title level={5}>{t('orders_count_label', { count: orders.length })}</Title>
-              <Space>
-                <Select value={groupBy} onChange={setGroupBy} style={{ width: 150 }}>
-                  <Option value="none">{t('no_grouping')}</Option>
-                  <Option value="day">{t('day_label')}</Option>
-                  <Option value="week">{t('week_label')}</Option>
-                  <Option value="month">{t('month_label')}</Option>
-                  <Option value="status">{t('status_label')}</Option>
-                </Select>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <Space wrap>
+                <Text strong>{t('orders_count_label', { count: filteredOrders.length })}</Text>
+                <Text type="secondary">•</Text>
+                <Text type="secondary">{formatCurrency(filteredOrders.reduce((sum, o) => sum + o.total, 0))}</Text>
               </Space>
+              <Select value={groupBy} onChange={setGroupBy} style={{ width: 150 }}>
+                <Option value="none">{t('no_grouping')}</Option>
+                <Option value="day">{t('day_label')}</Option>
+                <Option value="week">{t('week_label')}</Option>
+                <Option value="month">{t('month_label')}</Option>
+                <Option value="status">{t('status_label')}</Option>
+              </Select>
             </div>
 
             {groupBy === 'none' ? (
-              <Table columns={columns} dataSource={groupedOrders[0]?.orders || []} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+              <Table
+                columns={columns}
+                dataSource={filteredOrders}
+                rowKey="id"
+                loading={loading}
+                pagination={{
+                  pageSize: 20,
+                  showSizeChanger: true,
+                  showTotal: (total) => `${total} ${t('total_items').toLowerCase()}`
+                }}
+              />
             ) : (
               <Collapse>
                 {groupedOrders.map(group => (
                   <Panel
                     header={
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Title level={5} style={{ margin: 0 }}>
-                          {group.group}
-                        </Title>
+                        <Text strong>{group.group}</Text>
                         <Space>
-                          <Text type="secondary">{t('orders_group_count', { count: group.orders.length })}</Text>
+                          <Tag color="blue">{group.orders.length}</Tag>
                           <Text type="secondary">{formatCurrency(group.orders.reduce((sum, order) => sum + order.total, 0))}</Text>
                         </Space>
                       </div>
@@ -942,18 +965,13 @@ export default function Orders() {
               </Collapse>
             )}
 
-            {groupedOrders.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 32 }}>
-                <Title level={5} type="secondary">
-                  {t('no_orders_found')}
-                </Title>
+            {filteredOrders.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 48 }}>
+                <ShoppingCartOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
+                <Title level={5} type="secondary">{t('no_orders_found')}</Title>
+                <Text type="secondary">{t('try_different_date_range')}</Text>
               </div>
             )}
-          </TabPane>
-          <TabPane tab={t('analytics')} key="analytics">
-            <div style={{ marginBottom: 24 }}>
-              <Text>{t('detailed_analytics_message')}</Text>
-            </div>
           </TabPane>
         </Tabs>
       </Card>

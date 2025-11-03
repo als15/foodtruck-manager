@@ -1277,10 +1277,10 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                                             handleMappingChange(mappingIndex, menuItem || null)
                                           }}
                                           displayEmpty
-                                          placeholder="Select menu item"
+                                          placeholder={t('select_menu_item_to_map')}
                                         >
                                           <MenuItem value="">
-                                            <em>Select menu item to map</em>
+                                            <em>{t('select_menu_item_to_map')}</em>
                                           </MenuItem>
                                           {menuItems.map(item => (
                                             <MenuItem key={item.id} value={item.id}>
@@ -1292,13 +1292,13 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
 
                                       {mapping.newItemData && (
                                         <Button size="small" variant="outlined" color="primary" startIcon={<AddIcon />} onClick={() => handleCreateNewMenuItem(mappingIndex)} fullWidth>
-                                          Create ₪{mapping.newItemData.price}
+                                          {t('create_new_item')} ₪{mapping.newItemData.price}
                                         </Button>
                                       )}
                                     </Box>
                                   ) : (
                                     <Typography variant="caption" color="text.secondary">
-                                      Mapping not found
+                                      {t('mapping_not_found')}
                                     </Typography>
                                   )}
                                 </TableCell>
@@ -1310,10 +1310,10 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                     </TableContainer>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                       <Typography variant="body2" color="text.secondary">
-                        💡 Use the dropdowns above to map excluded products to existing menu items, then regenerate orders.
+                        💡 {t('use_dropdowns_to_map_excluded')}
                       </Typography>
                       <Button variant="contained" color="primary" onClick={() => generateOrders(productMappings, parsedData?.salesData || [])} size="small" disabled={loading}>
-                        Regenerate Orders
+                        {t('regenerate_orders')}
                       </Button>
                     </Box>
                   </Box>
@@ -1323,7 +1323,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
 
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                Import Summary
+                {t('import_summary')}
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
                 <Box>
@@ -1331,7 +1331,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                     {generatedOrders.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Orders Generated
+                    {t('orders_generated')}
                   </Typography>
                 </Box>
                 <Box>
@@ -1339,7 +1339,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                     ₪{generatedOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Total Revenue
+                    {t('total_revenue')}
                   </Typography>
                 </Box>
                 <Box>
@@ -1347,7 +1347,7 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                     {(generatedOrders.reduce((sum, order) => sum + order.items.length, 0) / generatedOrders.length).toFixed(1)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Avg Items/Order
+                    {t('avg_items_order')}
                   </Typography>
                 </Box>
               </Box>
@@ -1357,10 +1357,10 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Order Time</TableCell>
-                    <TableCell>Items</TableCell>
-                    <TableCell>Customer Type</TableCell>
-                    <TableCell align="right">Total</TableCell>
+                    <TableCell>{t('order_time')}</TableCell>
+                    <TableCell>{t('items')}</TableCell>
+                    <TableCell>{t('customer_type')}</TableCell>
+                    <TableCell align="right">{t('total')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1370,13 +1370,13 @@ const AIOrderImporter: React.FC<AIOrderImporterProps> = ({ open, onClose, onOrde
                       <TableCell>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                            {order.items.length} items
+                            {t('items_count', { count: order.items.length })}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             {order.items
                               .map((item, itemIndex) => {
                                 const menuItem = menuItems.find(mi => mi.id === item.menuItemId)
-                                return menuItem ? `${item.quantity}x ${menuItem.name}` : `${item.quantity}x Unknown`
+                                return menuItem ? `${item.quantity}x ${menuItem.name}` : `${item.quantity}x ${t('unknown')}`
                               })
                               .join(', ')}
                           </Typography>
